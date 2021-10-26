@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
 )
 
 const (
@@ -24,7 +23,7 @@ func main() {
 
 	ipGestorColas := os.Args[1]
 	puertoGestorColas := os.Args[2]
-	idAtraccion := strconv.Atoi(os.Args[3])
+	idAtraccion := os.Args[3]
 
 	for respuesta != "no" {
 
@@ -32,7 +31,9 @@ func main() {
 		fmt.Scanln(&respuesta)
 
 		if respuesta == "si" {
-			creaSensor(idAtraccion)
+
+			creaSensor(ipGestorColas, puertoGestorColas, idAtraccion)
+
 		} else if respuesta == "no" {
 
 		} else {
@@ -43,10 +44,10 @@ func main() {
 
 }
 
-func creaSensor(id int) {
+func creaSensor(ip, puerto, id string) {
 
 	s := new(sensor)
-	s.idAtraccion = id
+	s.IdAtraccion = 
 	s.Personas = rand.Intn(10-0) + 0
 
 }
