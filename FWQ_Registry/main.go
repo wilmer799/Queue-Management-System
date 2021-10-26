@@ -33,7 +33,7 @@ func main() {
 
 		c, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error connecting:", err.Error())
+			fmt.Println("Error conectando:", err.Error())
 		}
 
 		fmt.Println("Cliente " + c.RemoteAddr().String() + " conectado.")
