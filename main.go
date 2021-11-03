@@ -7,9 +7,6 @@ import (
 	visitante "github.com/wilmer799/SDPracticas/FWQ_Visitor"
 )
 
-var Alias string
-var usuario string
-var password string
 var opcion int
 
 func main() {
@@ -43,8 +40,8 @@ func main() {
 	case 3:
 		visitante.EntradaParque(IpFWQ_Registry, PuertoFWQ)
 	case 4:
-		//SalidaParque()
-		fmt.Println("Salida del parque de atracciones")
+		visitante.SalidaParque(IpFWQ_Registry, PuertoFWQ)
+
 	default:
 		fmt.Println("Opción invalida, elegie otra opción")
 	}
