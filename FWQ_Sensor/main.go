@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	topic             = "sd-events"
+	topic             = "sensor-servidorTiempos"
 	timeServerAddress = "localhost:9094"
 )
 
