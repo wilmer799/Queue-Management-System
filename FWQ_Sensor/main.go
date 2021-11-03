@@ -33,7 +33,7 @@ func (this *sensor) enviaInformacion(ctx context.Context, brokerAddress string, 
 	for {
 
 		err := escritor.WriteMessages(ctx, kafka.Message{
-			Value: []byte("Hola mundo"),
+			Value: []byte("En la atracción " + strconv.Itoa(this.IdAtraccion) + " hay actualmente " + strconv.Itoa(this.Personas) + " personas"),
 		})
 		if err != nil {
 			panic("Error: No se puede escribir el mensaje: " + err.Error())
