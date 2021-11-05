@@ -1,12 +1,19 @@
 package main
 
+import (
+	"context"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/segmentio/kafka-go"
+)
+
 func main() {
 
-	puertoEscucha := os.Args[1];
-	ipBrokerGestorColas := os.Args[2];
-	puertoBrokerGestorColas := os.Args[3];
-
-
+	puertoEscucha := os.Args[1]
+	ipBrokerGestorColas := os.Args[2]
+	puertoBrokerGestorColas := os.Args[3]
 
 }
 
@@ -22,9 +29,15 @@ func StartKafka() {
 	for {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
-			fmt.Println("Ha ocurrido algún error bro", err)
+			fmt.Println("Ha ocurrido algún error", err)
 			continue
 		}
 		fmt.Println("El mensaje es : ", string(m.Value))
+
+		infoAtraccion := strings.Split(string(buffer[:len(buffer)-1]), ":")
+
+		idAtraccion := infoAtraccion[0]
+		personasAtraccion := infoAtraccion[1]
+
 	}
 }
