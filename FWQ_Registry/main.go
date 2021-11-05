@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	host = "localhost"
+	host = "172.20.42.134"
 	tipo = "tcp"
 )
 
@@ -54,9 +54,9 @@ func manejoConexion(conexion net.Conn) {
 		return
 	}
 
-	visitante := strings.Split(string(buffer[:len(buffer)-1]), ":")
+	visitante := strings.Split(string(buffer[:len(buffer)-1]), " ")
 
-	log.Println("Visitante a registrar: " + visitante[0] + ":" + visitante[1] + ":" + visitante[2])
+	log.Println("Visitante a registrar: " + visitante[0] + " | " + visitante[1] + " | " + visitante[2])
 
 	conexion.Write(buffer)
 
