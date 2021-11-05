@@ -2,10 +2,15 @@ package FWQ_Visitor
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"strconv"
+	"time"
+
+	"github.com/segmentio/kafka-go"
 )
 
 const (
@@ -13,7 +18,7 @@ const (
 )
 
 func CrearPerfil(ipRegistry, puertoRegistry string) {
-	fmt.Println("Creación de perfil")
+	fmt.Println("**********Creación de perfil***********")
 	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
 	if err != nil {
 		fmt.Println("Error al conectarse:", err.Error())
@@ -21,7 +26,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 	}
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Println("Enviando mensajes por parte del visitante:")
+		fmt.Print("Enviando mensajes por parte del visitante:")
 		//Leer entrada hasta nueva linea, introduciendo llave
 		input, _ := reader.ReadString('\n')
 		//Enviamos la conexion del socket
@@ -42,7 +47,7 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 	}
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Println("Información del cliente que se quiere modificar")
+		fmt.Print("Información del cliente que se quiere modificar:")
 		input, _ := reader.ReadString('\n')
 		//Enviamos la conexion del socket
 		conn.Write([]byte(input))
@@ -78,6 +83,30 @@ func SalidaParque(ipRegistry, puertoRegistry string) {
 	fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
 }
 
-func ConexionKafka(IpBroker, PuertoBroker string) {
+func ConexionKafka(IpBroker, PuertoBroker string, ctx context.Context) {
+	//Es para pruebas
+	i := 0
+	var broker1Addres string = IpBroker + ":" + PuertoBroker
+	var broker2Addres string = IpBroker + ":" + PuertoBroker
+	var topic string = "sd-events"
+	w := kafka.NewWriter(kafka.WriterConfig{
+		Brokers: []string{broker1Addres, broker2Addres},
+		Topic:   topic,
+	})
+	for {
+		err := w.WriteMessages(ctx, kafka.Message{
+			Key:   []byte(strconv.Itoa(i)),
+			Value: []byte("Esto es un mensaje por parte de los visitantes" + strconv.Itoa(i)),
+		})
+		if err != nil {
+			panic("No se puede escribir mensaje" + err.Error())
+		}
+		//Tenemos que enviar la información de los visitantes
+		//Por lo que llamaremos a esta función desde crear perfil o editar perfil e ingresar en el parque
+		fmt.Println("Escribiendo:", i)
+		i++
+		//Descanso
+		time.Sleep(time.Second)
+	}
 
 }

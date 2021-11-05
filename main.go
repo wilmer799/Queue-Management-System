@@ -30,7 +30,7 @@ func main() {
 	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
 
-	fmt.Println("Elige la opción que quieras realizar:")
+	fmt.Print("Elige la opción que quieras realizar:")
 	fmt.Scanln(&opcion)
 	switch os := opcion; os {
 	case 1:
