@@ -57,7 +57,7 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 	// Inicializamos el escritor
 	escritor := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{"localhost:9094"},
-		Topic:   "sensor-servidorTiempos",
+		Topic:   "sensor-tiempos",
 	})
 
 	for {
