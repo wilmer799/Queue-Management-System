@@ -46,6 +46,7 @@ func main() {
 		}
 		fmt.Println()
 	}
+	conexionKafka()
 
 	//Tiene que ser cada X tiempo para que actualize la matriz
 	//tiempoEspera(IpFWQWating, PuertoKafka)
@@ -95,6 +96,6 @@ func conexionKafka() {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 			continue
 		}
-		fmt.Println("El mensaje es : ", string(m.Value))
+		fmt.Println("El mensaje es desde el terminal wilmer : ", string(m.Value))
 	}
 }
