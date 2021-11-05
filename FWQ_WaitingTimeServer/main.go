@@ -18,6 +18,7 @@ func main() {
 }
 
 func StartKafka() {
+
 	conf := kafka.ReaderConfig{
 		Brokers:  []string{"localhost:9092"},
 		Topic:    "sensor-servidorTiempos", //Topico que hemos creado
