@@ -1,4 +1,4 @@
-package FWQ_Visitor
+package main
 
 import (
 	"bufio"
@@ -16,6 +16,35 @@ import (
 const (
 	connType = "tcp"
 )
+
+func main() {
+
+	IpFWQ_Registry := os.Args[1]
+	PuertoFWQ := os.Args[2]
+	IpBroker := os.Args[3]
+	PuertoBroker := os.Args[4]
+
+	var opcion int
+	fmt.Println("Bienvenido al parque de atracciones")
+	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
+	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+
+	fmt.Print("Elige la opción que quieras realizar:")
+	fmt.Scanln(&opcion)
+	switch os := opcion; os {
+	case 1:
+		CrearPerfil(IpFWQ_Registry, PuertoFWQ)
+	case 2:
+		EditarPerfil(IpFWQ_Registry, PuertoFWQ)
+	case 3:
+		EntradaParque(IpFWQ_Registry, PuertoFWQ)
+	case 4:
+		SalidaParque(IpFWQ_Registry, PuertoFWQ)
+
+	default:
+		fmt.Println("Opción invalida, elegie otra opción")
+	}
+}
 
 func CrearPerfil(ipRegistry, puertoRegistry string) {
 	fmt.Println("**********Creación de perfil***********")
