@@ -23,7 +23,7 @@ type visitante struct {
 	Posiciony int    `json:"posiciony"`
 	Destinox  int    `json:"destinox"`
 	Destinoy  int    `json:"destinoy"`
-	Parque    string `json:parqueAtracciones`
+	Parque    string `json:"parqueAtracciones"`
 }
 
 const (
@@ -116,7 +116,7 @@ func manejoConexion(conexion net.Conn) {
 
 		// MODIFICAMOS la información de dicho visitante en la BD
 		// Preparamos para prevenir inyecciones SQL
-		sentenciaPreparada, err := db.Prepare("UPDATE visitante (id, nombre, contraseña) VALUES(?, ?, ?)")
+		sentenciaPreparada, err := db.Prepare("UPDATE visitante SET id = ?, nombre = ?, contraseña = ? WHERE id == " + vis[0])
 		if err != nil {
 			panic("Error al preparar la sentencia de modificación: " + err.Error())
 		}
