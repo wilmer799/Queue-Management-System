@@ -1,3 +1,0 @@
-ID: W
-Nombre: i
-Password: l
