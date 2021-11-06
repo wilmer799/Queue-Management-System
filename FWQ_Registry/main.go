@@ -2,12 +2,29 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strings"
+
+	_ "github.com/go-sql-driver/mysql"
 )
+
+/*
+* Estructura del visitante
+ */
+type visitante struct {
+	ID        string `json:"id"`
+	Nombre    string `json:"nombre"`
+	Password  string `json:"contraseña"`
+	Posicionx int    `json:"posicionx"`
+	Posiciony int    `json:"posiciony"`
+	Destinox  int    `json:"destinox"`
+	Destinoy  int    `json:"destinoy"`
+	Parque    string `json:parqueAtracciones`
+}
 
 const (
 	host = "172.20.42.134"
@@ -62,13 +79,73 @@ func manejoConexion(conexion net.Conn) {
 		return
 	}
 
-	visitante := strings.Split(string(buffer[:len(buffer)-1]), " ")
+	vis := strings.Split(string(buffer[:len(buffer)-1]), " ")
 
 	// Imprimimos la información del visitante a registrar o editar en la base de datos
-	log.Println("Visitante a registrar/editar: " + visitante[0] + " | " + visitante[1] + " | " + visitante[2])
+	log.Println("Visitante a registrar/editar: " + vis[0] + " | " + vis[1] + " | " + vis[2])
 
 	// Mandamos un mensaje de respuesta al cliente
 	conexion.Write(buffer)
+
+	// Accedemos a la base de datos, empezando por abrir la conexión
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+
+	// Comprobamos que no haya error al conectarse
+	if err != nil {
+		panic("Error al conectarse con la BD: " + err.Error())
+	}
+
+	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
+
+	results, err := db.Query("SELECT * FROM VISITANTE WHERE id == " + vis[0])
+
+	// Comrpobamos que no se produzcan errores al hacer la consulta
+	if err != nil {
+		panic("Error al hacer la consulta a la BD: " + err.Error())
+	}
+
+	v := visitante{
+		ID:       vis[0],
+		Nombre:   vis[1],
+		Password: vis[2],
+	}
+
+	// Comprobamos que la consulta haya devuelto alguna fila de la BD
+	// Si el visitante existe en la BD
+	if results.Next() {
+
+		// MODIFICAMOS la información de dicho visitante en la BD
+		// Preparamos para prevenir inyecciones SQL
+		sentenciaPreparada, err := db.Prepare("UPDATE visitante (id, nombre, contraseña) VALUES(?, ?, ?)")
+		if err != nil {
+			panic("Error al preparar la sentencia de modificación: " + err.Error())
+		}
+
+		defer sentenciaPreparada.Close()
+
+		// Ejecutar sentencia, un valor por cada '?'
+		_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password)
+		if err != nil {
+			panic("Error al modificar el visitante: " + err.Error())
+		}
+
+	} else { // Sino existe en la BD
+
+		// INSERTAMOS el nuevo visitante en la BD
+		// Preparamos para prevenir inyecciones SQL
+		sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña) VALUES(?, ?, ?)")
+		if err != nil {
+			panic("Error al preparar la sentencia de inserción: " + err.Error())
+		}
+
+		defer sentenciaPreparada.Close()
+
+		// Ejecutar sentencia, un valor por cada '?'
+		_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password)
+		if err != nil {
+			panic("Error al modificar el visitante: " + err.Error())
+		}
+	}
 
 	// Reiniciamos el proceso
 	manejoConexion(conexion)
