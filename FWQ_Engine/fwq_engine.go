@@ -24,7 +24,7 @@ type visitante struct {
 	Posiciony int    `json:"posiciony"`
 	Destinox  int    `json:"destinox"`
 	Destinoy  int    `json:"destinoy"`
-	Parque    string `json:parqueAtracciones`
+	Parque    string `json:"parqueAtracciones"`
 }
 
 /**
