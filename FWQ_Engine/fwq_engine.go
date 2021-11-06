@@ -3,13 +3,29 @@ package main
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
 	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
 )
+
+/*
+* Estructura del visitante
+ */
+type visitante struct {
+	ID        string `json:"id"`
+	Nombre    string `json:"nombre"`
+	Password  string `json:"contraseña"`
+	Posicionx int    `json:"posicionx"`
+	Posiciony int    `json:"posiciony"`
+	Destinox  int    `json:"destinox"`
+	Destinoy  int    `json:"destinoy"`
+	Parque    string `json:parqueAtracciones`
+}
 
 /**
  * @Description : Función main de fwq_engine
@@ -33,6 +49,35 @@ func main() {
 	mapa[1][2] = 1
 	mapa[2][1] = 2
 	mapa[3][1] = 3
+	//Accediendo a la base de datos
+	//Abrimos la conexion con la base de datos
+
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	//Si la conexión falla mostrara este error
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	//Ejecutamos la sentencia
+	results, err := db.Query("SELECT * FROM visitante")
+	if err != nil {
+		panic(err.Error()) //En caso de error a la hora de hacer la select
+	}
+	//Recorremos los resultados obtenidos por la consulta
+	for results.Next() {
+		//   var nombreVariable tipoVariable
+		var fwq_visitante visitante
+		err = results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
+			&fwq_visitante.Password, &fwq_visitante.Posicionx,
+			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
+			&fwq_visitante.Parque)
+		if err != nil {
+			panic(err.Error())
+		}
+		log.Println(fwq_visitante.ID, fwq_visitante.Nombre, fwq_visitante.Password,
+			fwq_visitante.Posicionx, fwq_visitante.Posiciony, fwq_visitante.Destinox,
+			fwq_visitante.Destinoy, fwq_visitante.Parque)
+	}
 	//Cada una de las casillas, su valor entero representa el tiempo en minutos de una atracción
 	//Cada uno de los personajes tenemos que representarlo por algo
 	//Esto se le asignara cuando entre al parque

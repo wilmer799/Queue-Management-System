@@ -1,3 +1,5 @@
+/* CREATE DATABASE parque_atracciones; */
+
 USE parque_atracciones;
 
 /* Creación de tablas */
@@ -42,3 +44,6 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtra
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion14", 12, 9, 20, 18, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion15", 13, 19, 4, 15, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion16", 19, 20, 15, 15, "SDpark");
+/* Visitantes */
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy,parqueAtracciones)
+VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,"SDpark");
