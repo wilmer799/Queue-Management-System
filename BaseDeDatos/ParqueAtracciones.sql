@@ -45,3 +45,6 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtra
 /* Visitantes */
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy,parqueAtracciones)
 VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,"SDpark");
+
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy,parqueAtracciones)
+VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,"SDpark");
