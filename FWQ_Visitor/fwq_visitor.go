@@ -46,7 +46,7 @@ func main() {
 		SalidaParque(IpFWQ_Registry, PuertoFWQ)
 
 	default:
-		fmt.Println("Opción invalida, elegie otra opción")
+		fmt.Println("Opción invalida, elige otra opción")
 	}
 }
 
@@ -63,22 +63,25 @@ func CrearPerfil(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		fmt.Print("Introduce tu ID:")
 		//Leer entrada hasta nueva linea, introduciendo llave
 		//input es el string que se ha escrito
-		input, _ := reader.ReadString('\n')
+
+		id, _ := reader.ReadString('\n')
+		conn.Write([]byte(id))
 		fmt.Print("Introduce tu nombre:")
 		nombre, _ := reader.ReadString('\n')
+		conn.Write([]byte(nombre))
 		fmt.Print("Introduce tu contraseña:")
 		password, _ := reader.ReadString('\n')
+		conn.Write([]byte(password))
 		//Con la función TrimSpace eliminamos los saltos de linea de input, nombre y contraseña
-		informacionVisitante = strings.TrimSpace(input) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
+		informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
 		//Para empezar con el kafka
 		ctx := context.Background()
 		ConexionKafka(IpBroker, PuertoBroker, informacionVisitante, ctx)
-		//Enviamos la conexion del socket
-		conn.Write([]byte(input))
+		//conn.Write([]byte(id))
 		//Escuchando por el relay
-		message, _ := bufio.NewReader(conn).ReadString('\n')
+		//message, _ := bufio.NewReader(conn).ReadString('\n')
 		//Print server relay
-		log.Print("Server relay:", message)
+		//log.Print("Server relay:", message)
 	}
 }
 
@@ -91,12 +94,18 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 	}
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print("Información del cliente que se quiere modificar:")
-		input, _ := reader.ReadString('\n')
-		//Enviamos la conexion del socket
-		conn.Write([]byte(input))
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		log.Print("Server relay:", message)
+		fmt.Println("Información del cliente que se quiere modificar:")
+		fmt.Print("Introduce el ID:")
+		id, _ := reader.ReadString('\n')
+		conn.Write([]byte(id))
+		fmt.Print("Introduce el nombre:")
+		nombre, _ := reader.ReadString('\n')
+		conn.Write([]byte(nombre))
+		fmt.Print("Introduce la contraseña:")
+		password, _ := reader.ReadString('\n')
+		conn.Write([]byte(password))
+		//message, _ := bufio.NewReader(conn).ReadString('\n')
+		//log.Print("Server relay:", message)
 	}
 
 }

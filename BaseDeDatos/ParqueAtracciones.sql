@@ -1,12 +1,10 @@
-/* CREATE DATABASE parque_atracciones; */
-
 USE parque_atracciones;
 
 /* Creación de tablas */
 CREATE TABLE parque (id varchar(30) PRIMARY KEY, aforoMaximo int, aforoActual int);
 
 CREATE TABLE visitante (
-id varchar(9) PRIMARY KEY, 
+id varchar(20) PRIMARY KEY, 
 nombre varchar(30) NOT NULL, 
 contraseña varchar(30) NOT NULL, 
 posicionx int DEFAULT 0, 
