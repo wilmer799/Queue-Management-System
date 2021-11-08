@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -42,6 +43,15 @@ type atraccion struct {
 }
 
 /*
+* Estructura del parque
+ */
+type parque struct {
+	ID          string `json:"id"`
+	AforoMaximo int    `json:"aforoMaximo"`
+	AforoActual int    `json:"aforoActual"`
+}
+
+/*
  * @Description : Función main de fwq_engine
  * @Author : Wilmer Fabricio Bravo Shuira
  */
@@ -51,6 +61,12 @@ func main() {
 	numeroVisitantes := os.Args[3]
 	IpFWQWating := os.Args[4]
 	PuertoWaiting := os.Args[5]
+
+	//Minimo del rand
+	min := 0
+	//Maximo del rand
+	max := 1
+	fmt.Println(rand.Intn(max-min) + min)
 	fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
 	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
@@ -63,12 +79,15 @@ func main() {
 	//Array de visitantes que se encuentran en el parque
 	var visitantesFinales []visitante
 	var atraccionesFinales []atraccion
+	var parqueTematico []parque
 	var conn = conexionBD()
 	visitantesFinales, _ = obtenerVisitantesBD(conn)
 	atraccionesFinales, _ = obtenerAtraccionesBD(conn)
+	parqueTematico, _ = obtenerParqueDB(conn)
 
 	fmt.Println(visitantesFinales)
 	fmt.Println(atraccionesFinales)
+	fmt.Println(parqueTematico)
 	//Ahora obtendremos el visitante y lo mostraremos en el mapa
 	//Cada una de las casillas, su valor entero representa el tiempo en minutos de una atracción
 	//Cada uno de los personajes tenemos que representarlo por algo
@@ -83,27 +102,17 @@ func main() {
 			")" + "   #" + "	(" + strconv.Itoa(visitantesFinales[i].Destinox) + "," + strconv.Itoa(visitantesFinales[i].Destinoy) +
 			")")
 	}
-	//Asignamos valores a las posiciones del mapa
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
-			for k := 0; k < len(visitantesFinales); k++ {
-				if visitantesFinales[k].Posicionx == i && visitantesFinales[k].Posiciony == j {
-					mapa[i][j] = "|"
-				}
-			}
-		}
-	}
+	mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
 	//Matriz transversal bidimensional
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
+
 			fmt.Print(mapa[i][j], " ")
+
 		}
 		fmt.Println()
 	}
 	conexionKafka()
-
-	//Tiene que ser cada X tiempo para que actualize la matriz
-	//tiempoEspera(IpFWQWating, PuertoKafka)
 }
 
 /*
@@ -120,6 +129,39 @@ func conexionBD() *sql.DB {
 	//Cierra la conexion con la bd
 	//defer db.Close()
 	return db
+}
+
+/*
+* Función que obtienen los parques
+* @return []parque : Arrays de parque en la base de datos
+* @return error : Error en caso de que no se pueda obtener parques
+ */
+func obtenerParqueDB(db *sql.DB) ([]parque, error) {
+	//Cada parque sera un grupo // Idea
+	results, err := db.Query("SELECT * FROM parque")
+	if err != nil {
+		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
+	}
+	//Cerramos la base de datos
+	defer results.Close()
+	//Declaramos el array de visitantes
+	var parquesTematicos []parque
+	//Recorremos los resultados obtenidos por la consulta
+	for results.Next() {
+		//   var nombreVariable tipoVariable
+		//Variable donde guardamos la información de cada una filas de la sentencia
+		var parqueTematico parque
+		if err := results.Scan(&parqueTematico.ID, &parqueTematico.AforoMaximo,
+			&parqueTematico.AforoActual); err != nil {
+			return parquesTematicos, err
+		}
+		//Vamos añadiendo los visitantes al array
+		parquesTematicos = append(parquesTematicos, parqueTematico)
+	}
+	if err = results.Err(); err != nil {
+		return parquesTematicos, err
+	}
+	return parquesTematicos, nil
 }
 
 /*
@@ -190,6 +232,36 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 		return atraccionesParque, err
 	}
 	return atraccionesParque, nil
+}
+
+/*
+* Función que asigna los visitantes y los parques en el mapa
+* @return [20][20]string : Matriz bidimensional representando el mapa
+ */
+func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []atraccion, mapa [20][20]string) [20][20]string {
+	//Asignamos valores a las posiciones del mapa
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
+			for k := 0; k < len(visitantesFinales); k++ {
+				if i == visitantesFinales[k].Posicionx && j == visitantesFinales[k].Posiciony {
+					mapa[i][j] = "|"
+				}
+			}
+		}
+	}
+	//Asignamos los valores de tiempo de espera de las atracciones
+	//Esto para posicionar una vez esta bien pero los tiempos de espera si
+	//que tenemos que actualizarlo
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
+			for k := 0; k < len(atraccionesFinales); k++ {
+				if i == atraccionesFinales[k].Posicionx && j == atraccionesFinales[k].Posiciony {
+					mapa[i][j] = strconv.Itoa(atraccionesFinales[k].TiempoEspera)
+				}
+			}
+		}
+	}
+	return mapa
 }
 
 /**
