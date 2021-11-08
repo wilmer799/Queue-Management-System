@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
@@ -102,7 +103,13 @@ func main() {
 			")" + "   #" + "	(" + strconv.Itoa(visitantesFinales[i].Destinox) + "," + strconv.Itoa(visitantesFinales[i].Destinoy) +
 			")")
 	}
+	//Obtenido todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
 	mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
+	//Para empezar con el kafka
+	ctx := context.Background()
+	//Enviamos la información al gestor de colas
+	productorEngineKafkaVisitantes(visitantesFinales, IpKafka, PuertoKafka, ctx)
+	//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 	//Matriz transversal bidimensional
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
@@ -112,7 +119,9 @@ func main() {
 		}
 		fmt.Println()
 	}
-	conexionKafka()
+	//Función que envia la información al kafka
+	//consumidorEngineKafka()
+
 }
 
 /*
@@ -292,7 +301,7 @@ func tiempoEspera(IpFWQWating, PuertoWaiting string) {
 /**
 * Función que conecta el engine con el kafka
 **/
-func conexionKafka() {
+func consumidorEngineKafka() {
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
@@ -310,4 +319,32 @@ func conexionKafka() {
 		}
 		fmt.Println("El mensaje es desde el terminal wilmer : ", string(m.Value))
 	}
+}
+
+/*
+* Función que envia la información de los visitantes al gestor de colas Apache Kafka
+ */
+func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBroker string, ctx context.Context) {
+	var broker1Addres string = IpBroker + ":" + PuertoBroker
+	var broker2Addres string = IpBroker + ":" + PuertoBroker
+	var topic string = "sd-events"
+	w := kafka.NewWriter(kafka.WriterConfig{
+		Brokers: []string{broker1Addres, broker2Addres},
+		Topic:   topic,
+	})
+	for {
+		err := w.WriteMessages(ctx, kafka.Message{
+			Key: []byte("Key-A"), //[]byte(strconv.Itoa(i)),
+			Value: []byte("Información del visitante: " + visitantes[0].ID + " " + visitantes[0].Nombre + " " +
+				"(" + strconv.Itoa(visitantes[0].Posicionx) + "," + strconv.Itoa(visitantes[0].Posiciony) + ")" + " " +
+				"(" + strconv.Itoa(visitantes[0].Destinox) + "," + strconv.Itoa(visitantes[0].Destinoy) + ")"), //strconv.Itoa(i)),
+			//Value es lo que envia el productor
+		})
+		if err != nil {
+			panic("No se puede escribir mensaje" + err.Error())
+		}
+		//Descanso
+		time.Sleep(time.Second)
+	}
+
 }

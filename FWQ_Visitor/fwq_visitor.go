@@ -26,28 +26,30 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	var opcion int
+	//var opcion int
 
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+	ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
+	/*
+		fmt.Print("Elige la opción que quieras realizar:")
 
-	fmt.Print("Elige la opción que quieras realizar:")
+		fmt.Scanln(&opcion)
+		switch os := opcion; os {
+		case 1:
+			CrearPerfil(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+		case 2:
+			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
+		case 3:
+			EntradaParque(IpFWQ_Registry, PuertoFWQ)
+		case 4:
+			SalidaParque(IpFWQ_Registry, PuertoFWQ)
 
-	fmt.Scanln(&opcion)
-	switch os := opcion; os {
-	case 1:
-		CrearPerfil(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-	case 2:
-		EditarPerfil(IpFWQ_Registry, PuertoFWQ)
-	case 3:
-		EntradaParque(IpFWQ_Registry, PuertoFWQ)
-	case 4:
-		SalidaParque(IpFWQ_Registry, PuertoFWQ)
-
-	default:
-		fmt.Println("Opción invalida, elige otra opción")
-	}
+		default:
+			fmt.Println("Opción invalida, elige otra opción")
+		}
+	*/
 }
 
 func CrearPerfil(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
@@ -76,7 +78,7 @@ func CrearPerfil(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
 		//Para empezar con el kafka
 		ctx := context.Background()
-		ConexionKafka(IpBroker, PuertoBroker, informacionVisitante, ctx)
+		ProductorKafkaVisitantes(IpBroker, PuertoBroker, informacionVisitante, ctx)
 		//conn.Write([]byte(id))
 		//Escuchando por el relay
 		//message, _ := bufio.NewReader(conn).ReadString('\n')
@@ -136,7 +138,7 @@ func SalidaParque(ipRegistry, puertoRegistry string) {
 	fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
 }
 
-func ConexionKafka(IpBroker, PuertoBroker, mensaje string, ctx context.Context) {
+func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx context.Context) {
 	var broker1Addres string = IpBroker + ":" + PuertoBroker
 	var broker2Addres string = IpBroker + ":" + PuertoBroker
 	var topic string = "sd-events"
@@ -157,6 +159,30 @@ func ConexionKafka(IpBroker, PuertoBroker, mensaje string, ctx context.Context) 
 		fmt.Println("Escribiendo:", mensaje)
 		//Descanso
 		time.Sleep(time.Second)
+	}
+
+}
+
+/*
+* Consumidor de kafka para un visitante en un grupo
+ */
+func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
+
+	broker := IpBroker + ":" + PuertoBroker
+	r := kafka.ReaderConfig(kafka.ReaderConfig{
+		Brokers: []string{broker},
+		Topic:   "sd-events",
+		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
+		StartOffset: kafka.LastOffset,
+	})
+	reader := kafka.NewReader(r)
+	for {
+		m, err := reader.ReadMessage(context.Background())
+		if err != nil {
+			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
+			continue
+		}
+		fmt.Println("[", string(m.Value), "]")
 	}
 
 }
