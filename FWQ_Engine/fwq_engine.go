@@ -119,8 +119,9 @@ func main() {
 		}
 		fmt.Println()
 	}
+	var conexion = conexionBD()
 	//Función que envia la información al kafka
-	//consumidorEngineKafka()
+	conexionTiempoEspera(conexion, IpFWQWating, PuertoKafka)
 
 }
 
