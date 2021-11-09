@@ -4,10 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -26,35 +24,33 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	//var opcion int
+	var opcion int
 
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
-	ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
-	/*
-		fmt.Print("Elige la opción que quieras realizar:")
 
-		fmt.Scanln(&opcion)
-		switch os := opcion; os {
-		case 1:
-			CrearPerfil(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-		case 2:
-			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
-		case 3:
-			EntradaParque(IpFWQ_Registry, PuertoFWQ)
-		case 4:
-			SalidaParque(IpFWQ_Registry, PuertoFWQ)
+	fmt.Print("Elige la opción que quieras realizar:")
 
-		default:
-			fmt.Println("Opción invalida, elige otra opción")
-		}
-	*/
+	fmt.Scanln(&opcion)
+	switch os := opcion; os {
+	case 1:
+		CrearPerfil(IpFWQ_Registry, PuertoFWQ)
+	case 2:
+		EditarPerfil(IpFWQ_Registry, PuertoFWQ)
+	case 3:
+		EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+	case 4:
+		SalidaParque(IpFWQ_Registry, PuertoFWQ)
+
+	default:
+		fmt.Println("Opción invalida, elige otra opción")
+	}
 }
 
-func CrearPerfil(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
+func CrearPerfil(ipRegistry, puertoRegistry string) {
 	fmt.Println("**********Creación de perfil***********")
-	var informacionVisitante string
+	//var informacionVisitante string
 	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
 	if err != nil {
 		fmt.Println("Error al conectarse:", err.Error())
@@ -74,12 +70,10 @@ func CrearPerfil(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		fmt.Print("Introduce tu contraseña:")
 		password, _ := reader.ReadString('\n')
 		conn.Write([]byte(password))
+		//Solo nos interesa que llegue la información y se pueda dar de alta
 		//Con la función TrimSpace eliminamos los saltos de linea de input, nombre y contraseña
-		informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
-		//Para empezar con el kafka
-		ctx := context.Background()
-		ProductorKafkaVisitantes(IpBroker, PuertoBroker, informacionVisitante, ctx)
-		//conn.Write([]byte(id))
+		//informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
+
 		//Escuchando por el relay
 		//message, _ := bufio.NewReader(conn).ReadString('\n')
 		//Print server relay
@@ -112,7 +106,7 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 
 }
 
-func EntradaParque(ipRegistry, puertoRegistry string) {
+func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	fmt.Println("*Bienvenido al parque de atracciones*")
 	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
 	if err != nil {
@@ -128,8 +122,11 @@ func EntradaParque(ipRegistry, puertoRegistry string) {
 		//Enviamos la conexion del socket
 		conn.Write([]byte(input))
 		conn.Write([]byte(salida))
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		log.Print("Server relay:", message)
+		//Llama al kafka para dibujar el mapa y la información del visitantes
+		ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
+		/*
+			message, _ := bufio.NewReader(conn).ReadString('\n')
+			log.Print("Server relay:", message) */
 	}
 
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -273,28 +272,30 @@ func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []at
 	return mapa
 }
 
-/**
+/*
 * Función que se conecta al servidor de tiempo de espera
-**/
-func tiempoEspera(IpFWQWating, PuertoWaiting string) {
-	fmt.Println("***Tiempo de espera***")
+ */
+func conexionTiempoEspera(IpFWQWating, PuertoWaiting string) {
+	fmt.Println("***Conexión con el servidor de tiempo de espera***")
+	fmt.Println("Arrancando el engine para atender los tiempos en el puerot" + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
-	conn, err := net.Dial(connType, IpFWQWating+":"+PuertoWaiting)
+	conn, err := net.Listen(connType, IpFWQWating+":"+PuertoWaiting)
 	if err != nil {
-		fmt.Println("Error al conectarse:", err.Error())
+		fmt.Println("Error a la hora de escuchar", err.Error())
 		os.Exit(1)
 	}
-	reader := bufio.NewReader(os.Stdin)
+	//Cerramos el listener
+	defer conn.Close()
 	for {
 		fmt.Print("***Actualizando los tiempos de espera***")
-		//Leer entrada hasta nueva linea, introduciendo llave
-		input, _ := reader.ReadString('\n')
-		//Enviamos la conexion del socket
-		conn.Write([]byte(input))
-		//Escuchando por el relay
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		//Print server relay
-		log.Print("Server relay:", message)
+		//Atendemos las conexiones entrantes
+		c, err := conn.Accept()
+		if err != nil {
+			fmt.Println("Error a la hora de conectarse:", err.Error())
+		}
+		fmt.Println("Servidor de tiempos de espera" + c.RemoteAddr().String() + "conectado")
+		//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
+		manejoConexion(c)
 	}
 }
 
@@ -302,6 +303,7 @@ func tiempoEspera(IpFWQWating, PuertoWaiting string) {
 * Función que conecta el engine con el kafka
 **/
 func consumidorEngineKafka() {
+	//Aqui crea los topicos, asigna canales y envia
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
@@ -317,7 +319,7 @@ func consumidorEngineKafka() {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 			continue
 		}
-		fmt.Println("El mensaje es desde el terminal wilmer : ", string(m.Value))
+		fmt.Println("Mensaje desde el gestor de colas: ", string(m.Value))
 	}
 }
 
@@ -347,4 +349,21 @@ func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBrok
 		time.Sleep(time.Second)
 	}
 
+}
+
+/*
+* Función que maneja la conexión con el servidor de tiempo
+ */
+func manejoConexion(conexion net.Conn) {
+	//leer del buffer hasta el final de línea
+	id, err := bufio.NewReader(conexion).ReadBytes('\n')
+	//Cerramos la conexión con el servidor de tiempo
+	if err != nil {
+		fmt.Println("Servidor de tiempo desconectado.")
+		conexion.Close()
+		return
+	}
+	conexion.Write(id)
+	//Reiniciamos el proceso
+	manejoConexion(conexion)
 }
