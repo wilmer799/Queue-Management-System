@@ -302,12 +302,14 @@ func conexionTiempoEspera(IpFWQWating, PuertoWaiting string) {
 /**
 * Función que conecta el engine con el kafka
 **/
-func consumidorEngineKafka() {
+func consumidorEngineKafka(IpKafka, PuertoKafka string) {
+	var puertoKafka string
+	puertoKafka = IpKafka + ":" + PuertoKafka
 	//Aqui crea los topicos, asigna canales y envia
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
-		Brokers:  []string{"localhost:9092"},
+		Brokers:  []string{puertoKafka},
 		Topic:    "sd-events", //Topico que hemos creado
 		GroupID:  "g1",
 		MaxBytes: 10,
