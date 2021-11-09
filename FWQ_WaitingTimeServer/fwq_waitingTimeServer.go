@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/segmentio/kafka-go"
@@ -66,7 +67,39 @@ func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atracc
 
 		infoSensor := strings.Split(string(m.Value), ":")
 
+		idAtraccion := infoSensor[0]
+		personasEnCola, _ := strconv.Atoi(infoSensor[1])
+
+		encontrado := false
+
+		// Buscamos la atracción indicada por el sensor para calcular su tiempo de espera actual
+		for i := 0; i < len(atracciones) && !encontrado; i++ {
+
+			if atracciones[i].ID == idAtraccion {
+				encontrado = true
+				atracciones[i].TiempoEspera = calculaTiempoEspera(atracciones[i], personasEnCola)
+			}
+
+		}
+
 	}
+
+}
+
+/* Función que calcula el tiempo de espera de una atracción dada una cantidad de personas en la cola */
+func calculaTiempoEspera(a atraccion, personasEnCola int) int {
+
+	tiempoEspera := 0
+
+	// Mientras queden personas en la cola de la atracción
+	for personasEnCola > a.NVisitantes {
+
+		tiempoEspera += a.TCiclo
+		personasEnCola -= a.NVisitantes
+
+	}
+
+	return tiempoEspera
 
 }
 
@@ -87,9 +120,9 @@ func conexionBD() *sql.DB {
 }
 
 /*
-* Función que obtiene todas las atracciones de la BD
-* @return []atraccion : Array de los visitantes obtenidos en la sentencia
-* @return error : Error en caso de que no se haya podido obtener ninguno
+* Función que obtiene las atracciones del parque
+* @return []atraccion : Array con las atracciones del parque
+* @return error : Error en caso de que no se ha podido obtener las atracciones
  */
 func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
@@ -102,11 +135,12 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 	//Cerramos la base de datos
 	defer results.Close()
 
-	//Declaramos el array de atracciones
+	//Declaramos el array de visitantes
 	var atraccionesParque []atraccion
 
 	//Recorremos los resultados obtenidos por la consulta
 	for results.Next() {
+		//   var nombreVariable tipoVariable
 		//Variable donde guardamos la información de cada una filas de la sentencia
 		var fwq_atraccion atraccion
 		if err := results.Scan(&fwq_atraccion.ID, &fwq_atraccion.TCiclo,
@@ -122,7 +156,6 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 	if err = results.Err(); err != nil {
 		return atraccionesParque, err
 	}
-
 	return atraccionesParque, nil
 
 }
