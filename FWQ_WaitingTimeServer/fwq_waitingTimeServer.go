@@ -56,9 +56,8 @@ func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atracc
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "sensor-servidorTiempos",
-		// Para que empiece a leer desde el último registro
+		Brokers:     []string{broker},
+		Topic:       "sensor-servidorTiempos",
 		StartOffset: kafka.LastOffset,
 	})
 
