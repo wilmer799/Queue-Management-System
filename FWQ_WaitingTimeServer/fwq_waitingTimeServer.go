@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -23,6 +25,11 @@ type atraccion struct {
 	TiempoEspera int    `json:"tiempoEspera"`
 	Parque       string `json:"parqueAtracciones"`
 }
+
+const (
+	host         = "localhost"
+	tipoConexion = "tcp"
+)
 
 func main() {
 
@@ -160,6 +167,75 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
 }
 
-func atiendeEngine(puertoEscuha string, atracciones []atraccion) {
+/* Función que permanece a la escucha indefinidamente esperando a que la aplicación
+FWQ_Engine le solicite los tiempos de espera de todas las atracciones. */
+func atiendeEngine(puertoEscucha string, atracciones []atraccion) {
+
+	// Arrancamos el servidor y atendemos conexiones entrantes
+	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)
+
+	l, err := net.Listen(tipoConexion, host+":"+puertoEscucha)
+
+	if err != nil {
+		fmt.Println("Error escuchando", err.Error())
+		os.Exit(1)
+	}
+
+	// Cerramos el listener cuando se cierra la aplicación
+	defer l.Close()
+
+	// Bucle infinito hasta la salida del programa
+	for {
+
+		// Atendemos conexiones entrantes
+		c, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error conectando con el engine:", err.Error())
+		}
+
+		// Imprimimos la dirección de conexión del cliente
+		fmt.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.")
+
+		// Manejamos las conexiones de forma concurrente
+		go manejoConexion(c, atracciones)
+
+	}
+
+}
+
+// Función que maneja la lógica para una única petición de conexión
+func manejoConexion(conn net.Conn, atracciones []atraccion) {
+
+	// Lectura del buffer de entrada hasta el final de línea
+	_, err := bufio.NewReader(conn).ReadBytes('\n')
+
+	// Cerrar las conexiones con engines desconectados
+	if err != nil {
+		fmt.Println("Engine desconectado.")
+		conn.Close()
+		return
+	}
+
+	// Print response message, stripping newline character.
+	//log.Println("Client message:", string(buffer[:len(buffer)-1]))
+
+	var tiemposEspera string
+
+	// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
+	for i := 0; i < len(atracciones); i++ {
+
+		if atracciones[i].TiempoEspera > 0 {
+			tiemposEspera += strconv.Itoa(atracciones[i].TiempoEspera) + "|"
+		} else {
+			tiemposEspera += "-1|"
+		}
+
+	}
+
+	// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
+	conn.Write([]byte(tiemposEspera))
+
+	// Reiniciamos el proceso
+	manejoConexion(conn, atracciones)
 
 }

@@ -54,11 +54,11 @@ func main() {
 		// Atendemos conexiones entrantes
 		c, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error conectando:", err.Error())
+			fmt.Println("Error conectando con el visitante:", err.Error())
 		}
 
 		// Imprimimos la dirección de conexión del cliente
-		fmt.Println("Cliente " + c.RemoteAddr().String() + " conectado.")
+		fmt.Println("Visitante " + c.RemoteAddr().String() + " conectado.")
 
 		// Manejamos las conexiones de forma concurrente
 		go manejoConexion(c)
@@ -74,7 +74,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Cliente desconectado.")
+		fmt.Println("Visitante desconectado.")
 		conexion.Close()
 		return
 	}
@@ -86,7 +86,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Cliente desconectado.")
+		fmt.Println("Visitante desconectado.")
 		conexion.Close()
 		return
 	}
@@ -98,7 +98,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Cliente desconectado.")
+		fmt.Println("Visitante desconectado.")
 		conexion.Close()
 		return
 	}
