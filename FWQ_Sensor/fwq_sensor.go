@@ -12,7 +12,7 @@ import (
 )
 
 type sensor struct {
-	IdAtraccion int
+	IdAtraccion string
 	Personas    int
 }
 
@@ -22,11 +22,7 @@ func main() {
 
 	puertoBrokerGestorColas := os.Args[2]
 
-	idAtraccion, err := strconv.Atoi(os.Args[3]) // Convertimos a entero
-
-	if err != nil {
-		panic("Error: Introduzca por parámetros IP, PUERTO e ID " + err.Error())
-	}
+	idAtraccion := os.Args[3] // Convertimos a entero
 
 	brokerAddress := ipBrokerGestorColas + ":" + puertoBrokerGestorColas
 
@@ -39,7 +35,7 @@ func main() {
 	min := 0
 	max := 10
 	s.Personas = (rand.Intn(max-min+1) + min)
-	fmt.Printf("Sensor creado para la atracción (%d) en la que inicialmente hay %d personas en cola\n", s.IdAtraccion, s.Personas)
+	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " en cola")
 
 	// Generamos un tiempo aleatorio entre 1 y 3 segundos
 	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
@@ -57,7 +53,7 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 
 	// Inicializamos el escritor
 	escritor := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{"localhost:9094"},
+		Brokers: []string{brokerAddress},
 		Topic:   "sensor-servidorTiempos",
 	})
 
@@ -65,8 +61,8 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 
 		err := escritor.WriteMessages(context.Background(),
 			kafka.Message{
-				Key:   []byte("Atraccion " + strconv.Itoa(s.IdAtraccion)),
-				Value: []byte(strconv.Itoa(s.IdAtraccion) + ":" + strconv.Itoa(s.Personas)),
+				Key:   []byte("Atraccion " + s.IdAtraccion),
+				Value: []byte(s.IdAtraccion + ":" + strconv.Itoa(s.Personas)),
 			})
 
 		if err != nil {

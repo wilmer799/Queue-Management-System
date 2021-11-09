@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -44,7 +45,7 @@ func main() {
 
 	go recibeInformacionSensor(ipBrokerGestorColas, puertoBrokerGestorColas, atracciones)
 
-	go atiendeEngine(puertoEscucha, atracciones)
+	atiendeEngine(puertoEscucha, atracciones)
 
 }
 
