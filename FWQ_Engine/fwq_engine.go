@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -275,7 +276,7 @@ func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []at
 /*
 * Función que se conecta al servidor de tiempo de espera
  */
-func conexionTiempoEspera(IpFWQWating, PuertoWaiting string) {
+func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
 	fmt.Println("Arrancando el engine para atender los tiempos en el puerot" + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
@@ -295,7 +296,7 @@ func conexionTiempoEspera(IpFWQWating, PuertoWaiting string) {
 		}
 		fmt.Println("Servidor de tiempos de espera" + c.RemoteAddr().String() + "conectado")
 		//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
-		manejoConexion(c)
+		manejoConexion(db, c)
 	}
 }
 
@@ -354,16 +355,66 @@ func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBrok
 /*
 * Función que maneja la conexión con el servidor de tiempo
  */
-func manejoConexion(conexion net.Conn) {
+func manejoConexion(db *sql.DB, conexion net.Conn) {
+
 	//leer del buffer hasta el final de línea
-	id, err := bufio.NewReader(conexion).ReadBytes('\n')
+	buffer, err := bufio.NewReader(conexion).ReadBytes('\n')
 	//Cerramos la conexión con el servidor de tiempo
 	if err != nil {
 		fmt.Println("Servidor de tiempo desconectado.")
 		conexion.Close()
 		return
 	}
-	conexion.Write(id)
+
+	// Obtenemos los tiempos de espera proporcionados por el servidor de tiempo
+	tiemposEspera := strings.Split(string(buffer[:len(buffer)-1]), "|")
+
+	// Actualizamos los tiempos de espera de las atracciones en la BD
+	actualizaTiemposEsperaBD(db, tiemposEspera)
+
+	conexion.Write(buffer)
+
 	//Reiniciamos el proceso
-	manejoConexion(conexion)
+	manejoConexion(db, conexion)
+}
+
+/* Función que actualiza los tiempos de espera de las atracciones en la BD*/
+func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
+
+	results, err := db.Query("SELECT * FROM atraccion")
+
+	// Comrpobamos que no se produzcan errores al hacer la consulta
+	if err != nil {
+		panic("Error al hacer la consulta a la BD: " + err.Error())
+	}
+
+	defer results.Close() // Nos aseguramos de cerrar
+
+	i := 0
+
+	// Comprobamos que la consulta haya devuelto alguna fila de la BD
+	// Si el visitante existe en la BD
+	if results.Next() {
+
+		// MODIFICAMOS la información de dicho visitante en la BD
+		// Preparamos para prevenir inyecciones SQL
+		sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET tiempoEspera = ? WHERE id = ?")
+		if err != nil {
+			panic("Error al preparar la sentencia de modificación: " + err.Error())
+		}
+
+		defer sentenciaPreparada.Close()
+
+		// Ejecutar sentencia, un valor por cada '?'
+		_, err = sentenciaPreparada.Exec(tiemposEspera[i], "atraccion"+strconv.Itoa(i))
+		if err != nil {
+			panic("Error al modificar el tiempo de espera de la atracción: " + err.Error())
+		}
+
+		fmt.Println("Atracción modificada.")
+
+		i++
+
+	}
+
 }
