@@ -82,6 +82,8 @@ func main() {
 	var atraccionesFinales []atraccion
 	var parqueTematico []parque
 	var conn = conexionBD()
+	numero, _ := strconv.Atoi(numeroVisitantes)
+	establecerMaxVisitantes(conn, numero)
 	visitantesFinales, _ = obtenerVisitantesBD(conn)
 	atraccionesFinales, _ = obtenerAtraccionesBD(conn)
 	parqueTematico, _ = obtenerParqueDB(conn)
@@ -299,6 +301,39 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 		//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
 		manejoConexion(db, c)
 	}
+}
+
+/*
+*
+ */
+func establecerMaxVisitantes(db *sql.DB, numero int) {
+	//Ejecutamos la sentencia
+	results, err := db.Query("SELECT * FROM parque")
+
+	if err != nil {
+		panic("Error al hacer la consulta del parque" + err.Error()) //devolvera nil y error en caso de que no se pueda hacer la consulta
+	}
+	//Cerramos la base de datos
+	defer results.Close()
+
+	//Recorremos los resultados obtenidos por la consulta
+	if results.Next() {
+		//   var nombreVariable tipoVariable
+		//Variable donde guardamos la información de cada una filas de la sentencia
+		sentenciaPreparada, err := db.Prepare("UPDATE parque SET aforoMaximo=? WHERE id = ?")
+
+		if err != nil {
+			panic("Error al preparar la sentencia" + err.Error()) //devolvera nil y error en caso de que no se pueda hacer la consulta
+		}
+		defer sentenciaPreparada.Close()
+
+		_, err = sentenciaPreparada.Exec(numero, "SDpark")
+		if err = results.Err(); err != nil {
+			panic("Error al establecer el tamaño maximo del parque" + err.Error())
+		}
+
+	}
+
 }
 
 /**
