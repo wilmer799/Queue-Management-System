@@ -27,8 +27,8 @@ type visitante struct {
 }
 
 const (
-	host = "localhost"
-	tipo = "tcp"
+	host         = "localhost"
+	tipoConexion = "tcp"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el registrador atendiendo en " + host + ":" + puerto)
 
-	l, err := net.Listen(tipo, host+":"+puerto)
+	l, err := net.Listen(tipoConexion, host+":"+puerto)
 
 	if err != nil {
 		fmt.Println("Error escuchando", err.Error())
