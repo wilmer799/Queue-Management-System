@@ -333,7 +333,7 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBroker string, ctx context.Context) {
 	var broker1Addres string = IpBroker + ":" + PuertoBroker
 	var broker2Addres string = IpBroker + ":" + PuertoBroker
-	var topic string = "sd-events"
+	var topic string = "visitantes-engine"
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{broker1Addres, broker2Addres},
 		Topic:   topic,

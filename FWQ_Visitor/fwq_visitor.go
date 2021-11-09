@@ -168,7 +168,7 @@ func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "sd-events",
+		Topic:   "visitantes-engine",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		StartOffset: kafka.LastOffset,
 	})
