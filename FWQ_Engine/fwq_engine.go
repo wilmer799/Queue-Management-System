@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -63,11 +62,6 @@ func main() {
 	IpFWQWating := os.Args[4]
 	PuertoWaiting := os.Args[5]
 
-	//Minimo del rand
-	min := 0
-	//Maximo del rand
-	max := 1
-	fmt.Println(rand.Intn(max-min) + min)
 	fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
 	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
@@ -105,12 +99,14 @@ func main() {
 			")" + "   #" + "	(" + strconv.Itoa(visitantesFinales[i].Destinox) + "," + strconv.Itoa(visitantesFinales[i].Destinoy) +
 			")")
 	}
+	//******1.Primera iteración del bucle
 	//Obtenido todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
 	mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
 	//Para empezar con el kafka
 	ctx := context.Background()
-	//Enviamos la información al gestor de colas
-	productorEngineKafkaVisitantes(visitantesFinales, IpKafka, PuertoKafka, ctx)
+	var conexion = conexionBD()
+	//Función que envia la información al kafka
+	conexionTiempoEspera(conexion, IpFWQWating, PuertoKafka)
 	//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 	//Matriz transversal bidimensional
 	for i := 0; i < len(mapa); i++ {
@@ -121,9 +117,18 @@ func main() {
 		}
 		fmt.Println()
 	}
-	var conexion = conexionBD()
-	//Función que envia la información al kafka
-	conexionTiempoEspera(conexion, IpFWQWating, PuertoKafka)
+
+	//Enviamos la información al gestor de colas
+	productorEngineKafkaVisitantes(visitantesFinales, IpKafka, PuertoKafka, ctx)
+
+}
+func convertirMapa(mapa [20][20]string) []byte {
+	var mapaOneD []byte
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa); j++ {
+			mapaOneD := append(mapaOneD, []byte(mapa[i][j]))
+		}
+	}
 
 }
 
@@ -283,23 +288,24 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
 	fmt.Println("Arrancando el engine para atender los tiempos en el puerot" + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
-	conn, err := net.Listen(connType, IpFWQWating+":"+PuertoWaiting)
+	conn, err := net.Dial(connType, IpFWQWating+":"+PuertoWaiting)
 	if err != nil {
 		fmt.Println("Error a la hora de escuchar", err.Error())
 		os.Exit(1)
 	}
-	//Cerramos el listener
-	defer conn.Close()
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("***Actualizando los tiempos de espera***")
 		//Atendemos las conexiones entrantes
-		c, err := conn.Accept()
+		input, _ := reader.ReadString('\n')
+		conn.Write([]byte(input))
 		if err != nil {
 			fmt.Println("Error a la hora de conectarse:", err.Error())
 		}
-		fmt.Println("Servidor de tiempos de espera" + c.RemoteAddr().String() + "conectado")
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		fmt.Print("Server relay:" + message)
 		//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
-		manejoConexion(db, c)
+		go manejoConexion(db, conn)
 	}
 }
 
@@ -347,7 +353,7 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
 		Brokers:  []string{puertoKafka},
-		Topic:    "sd-events", //Topico que hemos creado
+		Topic:    "visitantes-engine", //Topico que hemos creado
 		GroupID:  "g1",
 		MaxBytes: 10,
 	}
@@ -363,23 +369,29 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 }
 
 /*
-* Función que envia la información de los visitantes al gestor de colas Apache Kafka
+* Función que envia el mapa a los visitantes
  */
-func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBroker string, ctx context.Context) {
+func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 	var broker1Addres string = IpBroker + ":" + PuertoBroker
 	var broker2Addres string = IpBroker + ":" + PuertoBroker
-	var topic string = "visitantes-engine"
+	var topic string = "mapa-visitantes"
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{broker1Addres, broker2Addres},
-		Topic:   topic,
+		Brokers:          []string{broker1Addres, broker2Addres},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 	for {
+
+		//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
+		//https://docs.confluent.io/clients-confluent-kafka-go/current/overview.html
+		//https://www.confluent.io/blog/5-things-every-kafka-developer-should-know/
+
+		//https://en.m.wikipedia.org/wiki/SerDes
+		//Compresion de mensajes
+		//https://developer.ibm.com/articles/benefits-compression-kafka-messaging/
 		err := w.WriteMessages(ctx, kafka.Message{
-			Key: []byte("Key-A"), //[]byte(strconv.Itoa(i)),
-			Value: []byte("Información del visitante: " + visitantes[0].ID + " " + visitantes[0].Nombre + " " +
-				"(" + strconv.Itoa(visitantes[0].Posicionx) + "," + strconv.Itoa(visitantes[0].Posiciony) + ")" + " " +
-				"(" + strconv.Itoa(visitantes[0].Destinox) + "," + strconv.Itoa(visitantes[0].Destinoy) + ")"), //strconv.Itoa(i)),
-			//Value es lo que envia el productor
+			Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
+			Value: []byte("Mapa en tiempo real" + mapa),
 		})
 		if err != nil {
 			panic("No se puede escribir mensaje" + err.Error())

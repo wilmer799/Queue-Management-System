@@ -15,6 +15,8 @@ const (
 	connType = "tcp"
 )
 
+var idUsuario string
+
 /**
 * Función main de los visitantes
 **/
@@ -24,27 +26,39 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	var opcion int
-
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+}
 
-	fmt.Print("Elige la opción que quieras realizar:")
+/*
+* Función que pinta el menu del parque
+ */
+func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
+	var opcion int
+	//Guardamos la opcion elegida
+	for {
+		fmt.Println("***Menu parque de atracciones***")
+		fmt.Println("1.Crear perfil")
+		fmt.Println("2.Editar perfil")
+		fmt.Println("3.Moverse por el parque")
+		fmt.Println("4.Salir del parque")
+		fmt.Print("Elige la acción a realizar:")
+		fmt.Scanln(&opcion)
 
-	fmt.Scanln(&opcion)
-	switch os := opcion; os {
-	case 1:
-		CrearPerfil(IpFWQ_Registry, PuertoFWQ)
-	case 2:
-		EditarPerfil(IpFWQ_Registry, PuertoFWQ)
-	case 3:
-		EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-	case 4:
-		SalidaParque(IpFWQ_Registry, PuertoFWQ)
-
-	default:
-		fmt.Println("Opción invalida, elige otra opción")
+		switch os := opcion; os {
+		case 1:
+			CrearPerfil(IpFWQ_Registry, PuertoFWQ)
+		case 2:
+			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
+		case 3:
+			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+		case 4:
+			SalidaParque(IpFWQ_Registry, PuertoFWQ, idUsuario)
+		default:
+			fmt.Println("Opción invalida, elige otra opción")
+		}
 	}
 }
 
@@ -61,8 +75,8 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 		fmt.Print("Introduce tu ID:")
 		//Leer entrada hasta nueva linea, introduciendo llave
 		//input es el string que se ha escrito
-
 		id, _ := reader.ReadString('\n')
+		idUsuario = id
 		conn.Write([]byte(id))
 		fmt.Print("Introduce tu nombre:")
 		nombre, _ := reader.ReadString('\n')
@@ -123,7 +137,8 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		conn.Write([]byte(input))
 		conn.Write([]byte(salida))
 		//Llama al kafka para dibujar el mapa y la información del visitantes
-		ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
+		//ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
+		//ProductorKafkaVisitantes(IpBroker,PuertoBroker,mensaje, ctx)
 		/*
 			message, _ := bufio.NewReader(conn).ReadString('\n')
 			log.Print("Server relay:", message) */
@@ -131,14 +146,19 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 }
 
-func SalidaParque(ipRegistry, puertoRegistry string) {
+func SalidaParque(ipRegistry, puertoRegistry, idUsuario string) {
+	//aqui le pasamos el id del usuario
+	//El cual se buscara en la bd y se eliminara al usuario
 	fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
 }
 
+/*
+* Función que envian la información de los movimientos de los visitantes
+ */
 func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx context.Context) {
 	var broker1Addres string = IpBroker + ":" + PuertoBroker
 	var broker2Addres string = IpBroker + ":" + PuertoBroker
-	var topic string = "sd-events"
+	var topic string = "movimientos-visitantes"
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{broker1Addres, broker2Addres},
 		Topic:   topic,
@@ -181,5 +201,13 @@ func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
 		}
 		fmt.Println("[", string(m.Value), "]")
 	}
+}
 
+func movimientoParque() {
+	//Primero el engine enviara el mapa con los visitantes y las atracciones.
+	//Con esa información los visitantes se empezaran a mover
+	//while
+	//1. enviar mapa por el topic a los visitantes
+	//2. mover los visitantes
+	//3. Enviar información de movimiento por el topic
 }

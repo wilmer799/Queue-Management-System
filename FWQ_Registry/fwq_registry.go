@@ -26,8 +26,17 @@ type visitante struct {
 	Parque    string `json:"parqueAtracciones"`
 }
 
+/*
+* Estructura del parque
+ */
+type parque struct {
+	ID          string `json:"id"`
+	AforoMaximo int    `json:"aforoMaximo"`
+	AforoActual int    `json:"aforoActual"`
+}
+
 const (
-	host         = "localhost"
+	host         = "192.168.43.201"
 	tipoConexion = "tcp"
 )
 
