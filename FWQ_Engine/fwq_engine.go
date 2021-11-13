@@ -61,6 +61,8 @@ func main() {
 	numeroVisitantes := os.Args[3]
 	IpFWQWating := os.Args[4]
 	PuertoWaiting := os.Args[5]
+	//Creamos el topic
+	crearTopics(IpKafka, PuertoKafka)
 
 	fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
@@ -85,6 +87,7 @@ func main() {
 	fmt.Println(visitantesFinales)
 	fmt.Println(atraccionesFinales)
 	fmt.Println(parqueTematico)
+	//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
 	//Ahora obtendremos el visitante y lo mostraremos en el mapa
 	//Cada una de las casillas, su valor entero representa el tiempo en minutos de una atracción
 	//Cada uno de los personajes tenemos que representarlo por algo
@@ -104,9 +107,9 @@ func main() {
 	mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
 	//Para empezar con el kafka
 	ctx := context.Background()
-	var conexion = conexionBD()
+	//var conexion = conexionBD()
 	//Función que envia la información al kafka
-	conexionTiempoEspera(conexion, IpFWQWating, PuertoKafka)
+	//conexionTiempoEspera(conexion, IpFWQWating, PuertoKafka)
 	//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 	//Matriz transversal bidimensional
 	for i := 0; i < len(mapa); i++ {
@@ -118,18 +121,27 @@ func main() {
 		fmt.Println()
 	}
 
-	//Enviamos la información al gestor de colas
-	productorEngineKafkaVisitantes(visitantesFinales, IpKafka, PuertoKafka, ctx)
+	//Enviamos el mapa con los visitantes y las atracciones
+	//al gestor de colas convertido en []byte
+	var mapa1D []byte = convertirMapa(mapa)
+	productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
 
 }
+
+/*
+* Función que convierte el mapa de tipo string en []byte
+* @return []mapa : Retorna un array de bytes que van a hacer enviados a los visitantes
+ */
 func convertirMapa(mapa [20][20]string) []byte {
 	var mapaOneD []byte
+	var cadenaMapa []byte
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa); j++ {
-			mapaOneD := append(mapaOneD, []byte(mapa[i][j]))
+			cadenaMapa = []byte(mapa[i][j])
+			mapaOneD = append(mapaOneD, cadenaMapa...)
 		}
 	}
-
+	return mapaOneD
 }
 
 /*
@@ -371,7 +383,7 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 /*
 * Función que envia el mapa a los visitantes
  */
-func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
+func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 	var broker1Addres string = IpBroker + ":" + PuertoBroker
 	var broker2Addres string = IpBroker + ":" + PuertoBroker
 	var topic string = "mapa-visitantes"
@@ -391,15 +403,14 @@ func productorEngineKafkaVisitantes(visitantes []visitante, IpBroker, PuertoBrok
 		//https://developer.ibm.com/articles/benefits-compression-kafka-messaging/
 		err := w.WriteMessages(ctx, kafka.Message{
 			Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
-			Value: []byte("Mapa en tiempo real" + mapa),
+			Value: []byte(mapa),
 		})
 		if err != nil {
 			panic("No se puede escribir mensaje" + err.Error())
 		}
-		//Descanso
+		//Descansoj
 		time.Sleep(time.Second)
 	}
-
 }
 
 /*
@@ -464,7 +475,45 @@ func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 		fmt.Println("Atracción modificada.")
 
 		i++
-
 	}
+}
 
+func crearTopics(IpBroker, PuertoBroker string) {
+	topic := "mapa-visitantes"
+	//Holaa
+	//partition := 0
+	//Broker1 se sustituira en localhost:9092
+	//var broker1 string = IpBroker + ":" + PuertoBroker
+	//el localhost:9092 cambiara y sera pasado por parametro
+	conn, err := kafka.Dial("tcp", "localhost:9092")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer conn.Close()
+
+	controller, err := conn.Controller()
+
+	if err != nil {
+		panic(err.Error())
+	}
+	//Creamos una variable del tipo kafka.Conn
+	var controllerConn *kafka.Conn
+	//Le damos los valores necesarios para crear el controllerConn
+	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer controllerConn.Close()
+	//Configuración del topic mapa-visitantes
+	topicConfigs := []kafka.TopicConfig{
+		kafka.TopicConfig{
+			Topic:             topic,
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		},
+	}
+	err = controllerConn.CreateTopics(topicConfigs...)
+	if err != nil {
+		panic(err.Error())
+	}
 }

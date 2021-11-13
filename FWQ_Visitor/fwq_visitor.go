@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -26,6 +27,7 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
+	crearTopic(IpBroker, PuertoBroker)
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
@@ -188,7 +190,7 @@ func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "visitantes-engine",
+		Topic:   "mapa-visitantes",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		StartOffset: kafka.LastOffset,
 	})
@@ -210,4 +212,47 @@ func movimientoParque() {
 	//1. enviar mapa por el topic a los visitantes
 	//2. mover los visitantes
 	//3. Enviar información de movimiento por el topic
+}
+
+/*
+* Función que crea el topic para el envio de los movimientos de los visitantes
+ */
+func crearTopic(IpBroker, PuertoBroker string) {
+	topic := "movimientos-visitantes"
+	//partition := 0
+	//Broker1 se sustituira en localhost:9092
+	//var broker1 string = IpBroker + ":" + PuertoBroker
+	//el localhost:9092 cambiara y sera pasado por parametro
+	conn, err := kafka.Dial("tcp", "localhost:9092")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer conn.Close()
+
+	controller, err := conn.Controller()
+
+	if err != nil {
+		panic(err.Error())
+	}
+	//Creamos una variable del tipo kafka.Conn
+	var controllerConn *kafka.Conn
+	//Le damos los valores necesarios para crear el controllerConn
+	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer controllerConn.Close()
+	//Configuración del topic mapa-visitantes
+	topicConfigs := []kafka.TopicConfig{
+		kafka.TopicConfig{
+			Topic:             topic,
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		},
+	}
+	err = controllerConn.CreateTopics(topicConfigs...)
+	if err != nil {
+		panic(err.Error())
+	}
+
 }
