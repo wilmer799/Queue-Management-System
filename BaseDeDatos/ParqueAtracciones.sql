@@ -9,8 +9,8 @@ nombre varchar(30) NOT NULL,
 contraseña varchar(30) NOT NULL, 
 posicionx int DEFAULT 0, 
 posiciony int DEFAULT 0,
-destinox int,
-destinoy int,
+destinox int DEFAULT -1,
+destinoy int DEFAULT -1,
 parqueAtracciones varchar(30), 
 CONSTRAINT fk_visitantes_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
