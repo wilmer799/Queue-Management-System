@@ -24,6 +24,21 @@ func main() {
 
 	idAtraccion := os.Args[3] // Convertimos a entero
 
+	// Comprobamos que el id de la atracción sea válido
+	valido := false
+	for i := 1; !valido && i < 17; i++ {
+
+		if idAtraccion == "atraccion"+strconv.Itoa(i) {
+			valido = true
+		}
+
+	}
+
+	// Si el id pasado por parámetro no es válido
+	if !valido {
+		panic("Error: El id de la atracción no es válido. Introduzca atraccion1...16)")
+	}
+
 	brokerAddress := ipBrokerGestorColas + ":" + puertoBrokerGestorColas
 
 	// Creamos un sensor
