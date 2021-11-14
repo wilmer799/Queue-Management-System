@@ -70,55 +70,62 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 	//var informacionVisitante string
 	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
 	if err != nil {
-		fmt.Println("Error al conectarse:", err.Error())
-		os.Exit(1)
+		fmt.Println("Error al conectarse al Registry:", err.Error())
+		//os.Exit(1)
+	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+		reader := bufio.NewReader(os.Stdin)
+
+		fmt.Print("Introduce tu ID:")
+		//Leer entrada hasta nueva linea, introduciendo llave
+		//input es el string que se ha escrito
+		id, _ := reader.ReadString('\n')
+		idUsuario = id
+		conn.Write([]byte(id))
+		fmt.Print("Introduce tu nombre:")
+		nombre, _ := reader.ReadString('\n')
+		conn.Write([]byte(nombre))
+		fmt.Print("Introduce tu contraseña:")
+		password, _ := reader.ReadString('\n')
+		conn.Write([]byte(password))
+
+		//Solo nos interesa que llegue la información y se pueda dar de alta
+		//Con la función TrimSpace eliminamos los saltos de linea de input, nombre y contraseña
+		//informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
+
+		//Escuchando por el relay
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		//Print server relay
+		log.Print("Respuesta del Registry: ", message)
 	}
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Print("Introduce tu ID:")
-	//Leer entrada hasta nueva linea, introduciendo llave
-	//input es el string que se ha escrito
-	id, _ := reader.ReadString('\n')
-	idUsuario = id
-	conn.Write([]byte(id))
-	fmt.Print("Introduce tu nombre:")
-	nombre, _ := reader.ReadString('\n')
-	conn.Write([]byte(nombre))
-	fmt.Print("Introduce tu contraseña:")
-	password, _ := reader.ReadString('\n')
-	conn.Write([]byte(password))
-	//Solo nos interesa que llegue la información y se pueda dar de alta
-	//Con la función TrimSpace eliminamos los saltos de linea de input, nombre y contraseña
-	//informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
-
-	//Escuchando por el relay
-	message, _ := bufio.NewReader(conn).ReadString('\n')
-	//Print server relay
-	log.Print("Respuesta del Registry: ", message)
 
 }
 
 func EditarPerfil(ipRegistry, puertoRegistry string) {
+
 	fmt.Println("Has entrado a editar perfil")
 	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
-	if err != nil {
-		fmt.Println("Error al conectarse:", err.Error())
-		os.Exit(1)
-	}
-	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Println("Información del cliente que se quiere modificar:")
-	fmt.Print("Introduce el ID:")
-	id, _ := reader.ReadString('\n')
-	conn.Write([]byte(id))
-	fmt.Print("Introduce el nombre:")
-	nombre, _ := reader.ReadString('\n')
-	conn.Write([]byte(nombre))
-	fmt.Print("Introduce la contraseña:")
-	password, _ := reader.ReadString('\n')
-	conn.Write([]byte(password))
-	message, _ := bufio.NewReader(conn).ReadString('\n')
-	log.Print("Respuesta del Registry:", message)
+	if err != nil {
+		fmt.Println("Error al conectarse al Registry:", err.Error())
+		//os.Exit(1)
+	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+
+		reader := bufio.NewReader(os.Stdin)
+
+		fmt.Println("Información del cliente que se quiere modificar:")
+		fmt.Print("Introduce el ID:")
+		id, _ := reader.ReadString('\n')
+		conn.Write([]byte(id))
+		fmt.Print("Introduce el nombre:")
+		nombre, _ := reader.ReadString('\n')
+		conn.Write([]byte(nombre))
+		fmt.Print("Introduce la contraseña:")
+		password, _ := reader.ReadString('\n')
+		conn.Write([]byte(password))
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		log.Print("Respuesta del Registry: ", message)
+
+	}
 
 }
 

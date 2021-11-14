@@ -27,15 +27,6 @@ type visitante struct {
 	Parque    string `json:"parqueAtracciones"`
 }
 
-/*
-* Estructura del parque
- */
-/*type parque struct {
-	ID          string `json:"id"`
-	AforoMaximo int    `json:"aforoMaximo"`
-	AforoActual int    `json:"aforoActual"`
-}*/
-
 const (
 	tipoConexion = "tcp"
 )
@@ -90,9 +81,6 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		return
 	}
 
-	// Mandamos un mensaje de respuesta al cliente
-	//conexion.Write(id)
-
 	nombre, err := bufio.NewReader(conexion).ReadBytes('\n')
 
 	// Cerramos la conexión de los clientes que se han desconectado
@@ -101,9 +89,6 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		conexion.Close()
 		return
 	}
-
-	// Mandamos un mensaje de respuesta al cliente
-	//conexion.Write(nombre)
 
 	password, err := bufio.NewReader(conexion).ReadBytes('\n')
 
@@ -114,16 +99,8 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		return
 	}
 
-	// Mandamos un mensaje de respuesta al cliente
-	//conexion.Write(password)
-
-	//vis := strings.Split(string(buffer[:len(buffer)-1]), "|")
-
 	// Imprimimos la información del visitante a registrar o editar en la base de datos
 	log.Println("Visitante a registrar/editar -> ID: " + strings.TrimSpace(string(id)) + " | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
-
-	// Mandamos un mensaje de respuesta al cliente
-	//conexion.Write(buffer)
 
 	// Accedemos a la base de datos, empezando por abrir la conexión
 	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
@@ -158,7 +135,7 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		// Preparamos para prevenir inyecciones SQL
 		sentenciaPreparada, err := db.Prepare("UPDATE visitante SET nombre = ?, contraseña = ? WHERE id = ?")
 		if err != nil {
-			panic("Error al preparar la sentencia de modificación: " + err.Error())
+			panic("Error al preparar la sentencia de actualización: " + err.Error())
 		}
 
 		defer sentenciaPreparada.Close()
@@ -174,7 +151,7 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 
 	} else { // Sino existe en la BD
 
-		results, err = db.Query("SELECT COUNT(*) FROM visitante") // Devuelve el número de visitantes actualmente en el parque
+		results, err = db.Query("SELECT * FROM visitante") // Devuelve el número de visitantes actualmente en el parque
 
 		// Comrpobamos que no se produzcan errores al hacer la consulta
 		if err != nil {
@@ -188,12 +165,9 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 			visitantesActuales += 1
 		}
 
-		fmt.Println("Visitantes actuales en el parque: " + strconv.Itoa(visitantesActuales))
-
 		// Comprobamos que el aforo del parque no esté completo
 		if visitantesActuales >= maxVisitantes {
 
-			fmt.Println("No se puede registrar el visitante, el aforo del parque está completo")
 			conexion.Write([]byte("No se puede registrar el visitante, el aforo del parque está completo"))
 			conexion.Close()
 
@@ -213,8 +187,24 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
 
-			conexion.Write([]byte("Visitante registrado en el parque"))
+			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales) + " visitantes en el parque."))
 			conexion.Close()
+
+			// Actualizamos el número de visitantes que se encuentran en el parque
+			// Preparamos para prevenir inyecciones SQL
+			sentenciaPreparada, err = db.Prepare("UPDATE parque SET aforoActual = ? + 1 WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de actualización del aforo del parque: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(visitantesActuales, "SDPark")
+			if err != nil {
+				panic("Error al modificar el aforo actual del parque: " + err.Error())
+			}
+
 		}
 
 	}
