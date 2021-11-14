@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -23,6 +24,8 @@ func main() {
 	puertoBrokerGestorColas := os.Args[2]
 
 	idAtraccion := os.Args[3] // Convertimos a entero
+
+	crearTopic(ipBrokerGestorColas, puertoBrokerGestorColas)
 
 	// Comprobamos que el id de la atracción sea válido
 	valido := false
@@ -92,6 +95,49 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 
 		// Cada x segundos el sensor envía la información al servidor de tiempos
 		time.Sleep(time.Duration(tiempoAleatorio) * time.Second)
+	}
+
+}
+
+/*
+* Función que crea el topic para el envio de los movimientos de los visitantes
+ */
+func crearTopic(IpBroker, PuertoBroker string) {
+	topic := "sensor-servidorTiempos"
+	//partition := 0
+	//Broker1 se sustituira en localhost:9092
+	//var broker1 string = IpBroker + ":" + PuertoBroker
+	//el localhost:9092 cambiara y sera pasado por parametro
+	conn, err := kafka.Dial("tcp", "localhost:9092")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer conn.Close()
+
+	controller, err := conn.Controller()
+
+	if err != nil {
+		panic(err.Error())
+	}
+	//Creamos una variable del tipo kafka.Conn
+	var controllerConn *kafka.Conn
+	//Le damos los valores necesarios para crear el controllerConn
+	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer controllerConn.Close()
+	//Configuración del topic mapa-visitantes
+	topicConfigs := []kafka.TopicConfig{
+		kafka.TopicConfig{
+			Topic:             topic,
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		},
+	}
+	err = controllerConn.CreateTopics(topicConfigs...)
+	if err != nil {
+		panic(err.Error())
 	}
 
 }
