@@ -81,6 +81,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 		id, _ := reader.ReadString('\n')
 		idUsuario = id
 		conn.Write([]byte(id))
+		fmt.Print()
 		fmt.Print("Introduce tu nombre:")
 		nombre, _ := reader.ReadString('\n')
 		conn.Write([]byte(nombre))

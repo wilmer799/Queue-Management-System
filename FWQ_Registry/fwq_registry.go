@@ -52,13 +52,13 @@ func main() {
 		// Atendemos conexiones entrantes
 		c, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error conectando con el visitante: ", err.Error())
+			fmt.Println("Error conectando con un visitante: ", err.Error())
 		}
 
 		// Imprimimos la dirección de conexión del cliente
 		fmt.Println("Visitante " + c.RemoteAddr().String() + " conectado.")
 
-		// Manejamos las conexiones de forma concurrente
+		// Llamamos a la función de forma asíncrona y manejamos las conexiones de forma concurrente
 		go manejoConexion(c, maxVisitantes)
 
 	}
@@ -67,30 +67,32 @@ func main() {
 
 func manejoConexion(conexion net.Conn, maxVisitantes int) {
 
-	// Lecturas del buffer hasta el final de línea
+	// Lectura del id del visistante hasta final de línea
 	id, err := bufio.NewReader(conexion).ReadBytes('\n')
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante desconectado.")
+		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
 
+	// Lectura del nombre del visitante hasta final de línea
 	nombre, err := bufio.NewReader(conexion).ReadBytes('\n')
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante desconectado.")
+		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
 
+	// Lectura del password del visitante hasta final de línea
 	password, err := bufio.NewReader(conexion).ReadBytes('\n')
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante desconectado.")
+		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
