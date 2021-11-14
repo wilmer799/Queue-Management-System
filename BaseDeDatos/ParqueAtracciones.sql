@@ -26,22 +26,22 @@ CONSTRAINT fk_atracciones_parque FOREIGN KEY (parqueAtracciones) REFERENCES parq
 
 /* Inserciones en las tablas */ 
 INSERT INTO parque (id, aforoActual) VALUES ('SDpark', 0);
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion1", 5, 6, 10, 14, "SDpark"); 
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion2", 9, 7, 1, 4, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion3", 7, 12, 6, 6, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion4", 18, 18, 10, 20, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion5", 4, 10, 9, 17, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion6", 10, 11, 3, 18, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion7", 11, 17, 9, 2, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion8", 20, 13, 2, 3, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion9", 14, 13, 7, 8, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion10", 15, 8, 18, 11, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion11", 17, 14, 17, 5, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion12", 7, 16, 6, 5, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion13", 8, 5, 16, 17, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion14", 12, 9, 20, 18, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion15", 13, 19, 4, 15, "SDpark");
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion16", 19, 20, 15, 15, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion1", 5, 3, 10, 14, "SDpark"); 
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion2", 9, 4, 1, 4, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion3", 7, 6, 6, 6, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion4", 18, 9, 10, 20, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion5", 4, 5, 9, 17, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion6", 10, 6, 3, 18, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion7", 11, 8, 9, 2, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion8", 20, 7, 2, 3, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion9", 14, 6, 7, 8, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion10", 15, 4, 18, 11, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion11", 17, 7, 17, 5, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion12", 7, 8, 6, 5, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion13", 8, 2, 16, 17, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion14", 12, 4, 20, 18, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, "SDpark");
 /* Visitantes */
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy,parqueAtracciones)
 VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,"SDpark");
