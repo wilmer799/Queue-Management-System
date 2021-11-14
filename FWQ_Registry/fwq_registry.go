@@ -27,10 +27,6 @@ type visitante struct {
 	Parque    string `json:"parqueAtracciones"`
 }
 
-const (
-	tipoConexion = "tcp"
-)
-
 func main() {
 
 	host := os.Args[1]
@@ -40,7 +36,7 @@ func main() {
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el Registry, atendiendo en " + host + ":" + puerto)
 
-	l, err := net.Listen(tipoConexion, host+":"+puerto)
+	l, err := net.Listen("tcp", host+":"+puerto)
 
 	if err != nil {
 		fmt.Println("Error escuchando", err.Error())
