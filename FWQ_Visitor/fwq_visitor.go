@@ -28,7 +28,7 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	//crearTopic(IpBroker, PuertoBroker)
+	crearTopic(IpBroker, PuertoBroker)
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
@@ -159,7 +159,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		conn.Write([]byte(input))
 		conn.Write([]byte(salida))
 		//Llama al kafka para dibujar el mapa y la información del visitantes
-		//ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
+		ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
 		//ProductorKafkaVisitantes(IpBroker,PuertoBroker,mensaje, ctx)
 		/*
 			message, _ := bufio.NewReader(conn).ReadString('\n')
