@@ -89,7 +89,7 @@ func main() {
 	fmt.Println(parqueTematico)
 	//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
 	//Ahora obtendremos el visitante y lo mostraremos en el mapa
-	//Cada una de las casillas, su valor entero representa el tiempo en minutos de una atracción
+	//Cada una de las casillas, s valor entero representa el tiempo en minutos de una atracción
 	//Cada uno de los personajes tenemos que representarlo por algo
 	//Esto se le asignara cuando entre al parque
 	//El mapa se carga de la base de datos al arrancar la aplicación
