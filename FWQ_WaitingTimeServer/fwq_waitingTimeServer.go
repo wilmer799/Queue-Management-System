@@ -27,16 +27,12 @@ type atraccion struct {
 	Parque       string `json:"parqueAtracciones"`
 }
 
-const (
-	host         = "localhost"
-	tipoConexion = "tcp"
-)
-
 func main() {
 
-	puertoEscucha := os.Args[1]
-	ipBrokerGestorColas := os.Args[2]
-	puertoBrokerGestorColas := os.Args[3]
+	host := os.Args[1]
+	puertoEscucha := os.Args[2]
+	ipBrokerGestorColas := os.Args[3]
+	puertoBrokerGestorColas := os.Args[4]
 
 	var conexionBD = conexionBD()
 	var atracciones []atraccion
@@ -45,7 +41,7 @@ func main() {
 
 	go recibeInformacionSensor(ipBrokerGestorColas, puertoBrokerGestorColas, atracciones)
 
-	atiendeEngine(puertoEscucha, atracciones)
+	atiendeEngine(host, puertoEscucha, atracciones)
 
 }
 
@@ -169,12 +165,12 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
 /* Función que permanece a la escucha indefinidamente esperando a que la aplicación
 FWQ_Engine le solicite los tiempos de espera de todas las atracciones. */
-func atiendeEngine(puertoEscucha string, atracciones []atraccion) {
+func atiendeEngine(host string, puertoEscucha string, atracciones []atraccion) {
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)
 
-	l, err := net.Listen(tipoConexion, host+":"+puertoEscucha)
+	l, err := net.Listen("tcp", host+":"+puertoEscucha)
 
 	if err != nil {
 		fmt.Println("Error escuchando", err.Error())
