@@ -95,8 +95,14 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 		//Escuchando por el relay
 		message, _ := bufio.NewReader(conn).ReadString('\n')
-		//Print server relay
-		log.Print("Respuesta del Registry: ", message)
+
+		// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+		if message != "" {
+			log.Print("Respuesta del Registry: ", message)
+		} else {
+			log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+		}
+
 	}
 
 }
@@ -124,7 +130,13 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 		password, _ := reader.ReadString('\n')
 		conn.Write([]byte(password))
 		message, _ := bufio.NewReader(conn).ReadString('\n')
-		log.Print("Respuesta del Registry: ", message)
+
+		// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+		if message != "" {
+			log.Print("Respuesta del Registry: ", message)
+		} else {
+			log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+		}
 
 	}
 
