@@ -56,7 +56,7 @@ func main() {
 		}
 
 		// Imprimimos la dirección de conexión del cliente
-		fmt.Println("Visitante " + c.RemoteAddr().String() + " conectado.")
+		log.Println("Visitante " + c.RemoteAddr().String() + " conectado.")
 
 		// Llamamos a la función de forma asíncrona y manejamos las conexiones de forma concurrente
 		go manejoConexion(c, maxVisitantes)
@@ -65,6 +65,7 @@ func main() {
 
 }
 
+/* Función que procesa concurrentemente los registros o actualizaciones de los visitantes */
 func manejoConexion(conexion net.Conn, maxVisitantes int) {
 
 	// Lectura del id del visistante hasta final de línea
@@ -98,7 +99,8 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 	}
 
 	// Imprimimos la información del visitante a registrar o editar en la base de datos
-	log.Println("Visitante a registrar/editar -> ID: " + strings.TrimSpace(string(id)) + " | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
+	fmt.Println("Visitante a registrar/editar -> ID: " + strings.TrimSpace(string(id)) +
+		" | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
 
 	// Accedemos a la base de datos, empezando por abrir la conexión
 	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
@@ -158,6 +160,7 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 
 		defer results.Close() // Nos aseguramos de cerrar
 
+		// Nos guardamos el nº actual de visitantes en el parque
 		visitantesActuales := 0
 		for results.Next() {
 			visitantesActuales += 1
@@ -185,7 +188,7 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
 
-			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales) + " visitantes en el parque."))
+			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes en el parque."))
 			conexion.Close()
 
 			// Actualizamos el número de visitantes que se encuentran en el parque
