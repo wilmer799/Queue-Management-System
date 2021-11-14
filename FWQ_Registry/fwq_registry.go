@@ -29,20 +29,20 @@ type visitante struct {
 /*
 * Estructura del parque
  */
-type parque struct {
+/*type parque struct {
 	ID          string `json:"id"`
 	AforoMaximo int    `json:"aforoMaximo"`
 	AforoActual int    `json:"aforoActual"`
-}
+}*/
 
 const (
-	host         = "192.168.43.201"
 	tipoConexion = "tcp"
 )
 
 func main() {
 
-	puerto := os.Args[1]
+	host := os.Args[1]
+	puerto := os.Args[2]
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el registrador atendiendo en " + host + ":" + puerto)
