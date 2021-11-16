@@ -110,7 +110,7 @@ func main() {
 		mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
 		//Para empezar con el kafka
 		ctx := context.Background()
-		tiempo := "s"
+		tiempo := "peticion"
 		var mapa1D []byte = convertirMapa(mapa)
 		productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
 		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
@@ -309,21 +309,21 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string)
 		fmt.Println("Error a la hora de escuchar", err.Error())
 		os.Exit(1)
 	}
-	for {
-		fmt.Print("***Actualizando los tiempos de espera***")
-		//Atendemos las conexiones entrantes
-		//Introducimos la letra s para llamar al servidor de tiempo de espera
-		input := tiempo //reader.ReadString('\n')
-		conn.Write([]byte(input))
-		if err != nil {
-			fmt.Println("Error a la hora de conectarse:", err.Error())
-		}
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		fmt.Print("Server relay:" + message)
 
-		//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
-		go manejoConexion(db, conn)
+	fmt.Print("***Actualizando los tiempos de espera***")
+	//Atendemos las conexiones entrantes
+	//Introducimos la letra s para llamar al servidor de tiempo de espera
+	input := tiempo //reader.ReadString('\n')
+	conn.Write([]byte(input))
+	if err != nil {
+		fmt.Println("Error a la hora de conectarse:", err.Error())
 	}
+	message, _ := bufio.NewReader(conn).ReadString('\n')
+	fmt.Print("Server relay:" + message)
+
+	//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
+	go manejoConexion(db, conn)
+
 }
 
 /*
