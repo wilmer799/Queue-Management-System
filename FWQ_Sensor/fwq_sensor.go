@@ -53,7 +53,7 @@ func main() {
 	min := 0
 	max := 40
 	s.Personas = (rand.Intn(max-min+1) + min)
-	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " en cola")
+	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " personas en cola")
 
 	// Generamos un tiempo aleatorio entre 1 y 3 segundos
 	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
@@ -63,6 +63,10 @@ func main() {
 
 	// Envíamos al servidor de tiempos el número de personas que se encuentra en la cola de la atracción
 	enviaInformacion(s, brokerAddress, tiempoAleatorio)
+
+	defer func() {
+		fmt.Println("El sensor ha sido apagado.")
+	}()
 
 }
 
@@ -84,7 +88,7 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 			})
 
 		if err != nil {
-			panic("Error: No se puede escribir el mensaje: " + err.Error())
+			panic("Error al conectarse al gestor de colas - No se puede mandar la información al servidor de tiempos de espera: " + err.Error())
 		}
 
 		// Generamos un número aleatorio de personas en cola
@@ -95,6 +99,9 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 
 		// Cada x segundos el sensor envía la información al servidor de tiempos
 		time.Sleep(time.Duration(tiempoAleatorio) * time.Second)
+
+		fmt.Println("Ahora hay " + strconv.Itoa(s.Personas) + " personas en cola")
+
 	}
 
 }
@@ -108,7 +115,7 @@ func crearTopic(IpBroker, PuertoBroker string) {
 	//Broker1 se sustituira en localhost:9092
 	//var broker1 string = IpBroker + ":" + PuertoBroker
 	//el localhost:9092 cambiara y sera pasado por parametro
-	conn, err := kafka.Dial("tcp", "localhost:9092")
+	conn, err := kafka.Dial("tcp", IpBroker+":"+PuertoBroker)
 	if err != nil {
 		panic(err.Error())
 	}

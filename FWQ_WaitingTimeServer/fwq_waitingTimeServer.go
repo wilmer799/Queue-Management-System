@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -33,6 +34,8 @@ func main() {
 	puertoEscucha := os.Args[2]
 	ipBrokerGestorColas := os.Args[3]
 	puertoBrokerGestorColas := os.Args[4]
+
+	crearTopic(ipBrokerGestorColas, puertoBrokerGestorColas)
 
 	var conexionBD = conexionBD()
 	var atracciones []atraccion
@@ -66,7 +69,7 @@ func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atracc
 			continue
 		}
 
-		fmt.Println("[", string(m.Value), "]")
+		fmt.Println("[", string(m.Value)+" personas en cola", "]")
 
 		infoSensor := strings.Split(string(m.Value), ":")
 
@@ -189,8 +192,11 @@ func atiendeEngine(host string, puertoEscucha string, atracciones []atraccion) {
 			fmt.Println("Error conectando con el engine:", err.Error())
 		}
 
+		message, _ := bufio.NewReader(c).ReadString('\n')
+		fmt.Println("Petición del engine:" + message)
+
 		// Imprimimos la dirección de conexión del cliente
-		fmt.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.")
+		log.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.")
 
 		// Manejamos las conexiones de forma concurrente
 		go manejoConexion(c, atracciones)
@@ -220,7 +226,7 @@ func manejoConexion(conn net.Conn, atracciones []atraccion) {
 	// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
 	for i := 0; i < len(atracciones); i++ {
 
-		if atracciones[i].TiempoEspera > 0 {
+		if atracciones[i].TiempoEspera >= 0 {
 			tiemposEspera += strconv.Itoa(atracciones[i].TiempoEspera) + "|"
 		} else {
 			tiemposEspera += "-1|"
@@ -233,5 +239,48 @@ func manejoConexion(conn net.Conn, atracciones []atraccion) {
 
 	// Reiniciamos el proceso
 	manejoConexion(conn, atracciones)
+
+}
+
+/*
+* Función que crea el topic para el envio de los movimientos de los visitantes
+ */
+func crearTopic(IpBroker, PuertoBroker string) {
+	topic := "sensor-servidorTiempos"
+	//partition := 0
+	//Broker1 se sustituira en localhost:9092
+	//var broker1 string = IpBroker + ":" + PuertoBroker
+	//el localhost:9092 cambiara y sera pasado por parametro
+	conn, err := kafka.Dial("tcp", IpBroker+":"+PuertoBroker)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer conn.Close()
+
+	controller, err := conn.Controller()
+
+	if err != nil {
+		panic(err.Error())
+	}
+	//Creamos una variable del tipo kafka.Conn
+	var controllerConn *kafka.Conn
+	//Le damos los valores necesarios para crear el controllerConn
+	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer controllerConn.Close()
+	//Configuración del topic mapa-visitantes
+	topicConfigs := []kafka.TopicConfig{
+		kafka.TopicConfig{
+			Topic:             topic,
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		},
+	}
+	err = controllerConn.CreateTopics(topicConfigs...)
+	if err != nil {
+		panic(err.Error())
+	}
 
 }
