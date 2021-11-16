@@ -245,9 +245,9 @@ func crearTopic(IpBroker, PuertoBroker string) {
 	topic := "movimientos-visitantes"
 	//partition := 0
 	//Broker1 se sustituira en localhost:9092
-	//var broker1 string = IpBroker + ":" + PuertoBroker
+	var broker1 string = IpBroker + ":" + PuertoBroker
 	//el localhost:9092 cambiara y sera pasado por parametro
-	conn, err := kafka.Dial("tcp", "localhost:9092")
+	conn, err := kafka.Dial("tcp", broker1)
 	if err != nil {
 		panic(err.Error())
 	}
