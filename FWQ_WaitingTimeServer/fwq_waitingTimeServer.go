@@ -213,7 +213,7 @@ func manejoConexion(conn net.Conn, atracciones []atraccion) {
 
 	// Cerrar las conexiones con engines desconectados
 	if err != nil {
-		log.Println("Engine" + conn.RemoteAddr().String() + "desconectado.")
+		log.Println("Engine" + conn.RemoteAddr().String() + " desconectado.")
 		conn.Close()
 		return
 	}
@@ -236,6 +236,7 @@ func manejoConexion(conn net.Conn, atracciones []atraccion) {
 
 	// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
 	conn.Write([]byte(tiemposEspera))
+	conn.Close()
 
 	// Reiniciamos el proceso
 	manejoConexion(conn, atracciones)
