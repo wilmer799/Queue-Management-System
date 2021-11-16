@@ -150,6 +150,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		os.Exit(1)
 	}
 	reader := bufio.NewReader(os.Stdin)
+	//Este bucle tambien tiene que terminar
 	for {
 		fmt.Print("Por favor introduce tu alias:")
 		input, _ := reader.ReadString('\n')

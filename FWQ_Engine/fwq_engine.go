@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -113,8 +114,12 @@ func main() {
 		tiempo := "peticion"
 		var mapa1D []byte = convertirMapa(mapa)
 		productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
-		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
-		continue
+		var opcion string
+		fmt.Print("¿Desea actualizar los tiempos de espera?: ")
+		fmt.Scanln(&opcion)
+		if opcion == "SI" || opcion == "si" || opcion == "s" || opcion == "S" {
+			conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
+		}
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
@@ -302,28 +307,29 @@ func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []at
  */
 func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string) {
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
-	fmt.Println("Arrancando el engine para atender los tiempos en el puerot" + IpFWQWating + ":" + PuertoWaiting)
+	fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
 	conn, err := net.Dial(connType, IpFWQWating+":"+PuertoWaiting)
 	if err != nil {
 		fmt.Println("Error a la hora de escuchar", err.Error())
-		os.Exit(1)
+	} else {
+		fmt.Println("***Actualizando los tiempos de espera***")
+		//Atendemos las conexiones entrantes
+		//Introducimos la letra s para llamar al servidor de tiempo de espera
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Introduce el caracter:")
+		input, _ := reader.ReadString('\n')
+		conn.Write([]byte(input))
+		if err != nil {
+			fmt.Println("Error a la hora de conectarse:", err.Error())
+		}
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		if message != "" {
+			log.Print("Tiempos de espera actualizado:" + message)
+		} else {
+			log.Print("Servidor de tiempos no disponible.")
+		}
 	}
-
-	fmt.Print("***Actualizando los tiempos de espera***")
-	//Atendemos las conexiones entrantes
-	//Introducimos la letra s para llamar al servidor de tiempo de espera
-	input := tiempo //reader.ReadString('\n')
-	conn.Write([]byte(input))
-	if err != nil {
-		fmt.Println("Error a la hora de conectarse:", err.Error())
-	}
-	message, _ := bufio.NewReader(conn).ReadString('\n')
-	fmt.Print("Server relay:" + message)
-
-	//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
-	go manejoConexion(db, conn)
-
 }
 
 /*
@@ -444,9 +450,6 @@ func manejoConexion(db *sql.DB, conexion net.Conn) {
 	actualizaTiemposEsperaBD(db, tiemposEspera)
 
 	conexion.Write(buffer)
-
-	//Reiniciamos el proceso
-	manejoConexion(db, conexion)
 }
 
 /* Función que actualiza los tiempos de espera de las atracciones en la BD*/
