@@ -213,7 +213,7 @@ func manejoConexion(conn net.Conn, atracciones []atraccion) {
 
 	// Cerrar las conexiones con engines desconectados
 	if err != nil {
-		fmt.Println("Engine desconectado.")
+		log.Println("Engine" + conn.RemoteAddr().String() + "desconectado.")
 		conn.Close()
 		return
 	}
