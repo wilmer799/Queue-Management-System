@@ -61,8 +61,10 @@ func main() {
 	numeroVisitantes := os.Args[3]
 	IpFWQWating := os.Args[4]
 	PuertoWaiting := os.Args[5]
-	//Creamos el topic
-	crearTopics(IpKafka, PuertoKafka)
+	//Creamos el topic...Cambiar la Ipkafka en la función principal
+	//Si no se ejecuta el programa, se cierra el kafka?
+	crearTopics(IpKafka, PuertoKafka, "mapa-visitantes")
+	crearTopics(IpKafka, PuertoKafka, "movimientos-visitantes")
 
 	fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
@@ -77,54 +79,56 @@ func main() {
 	var visitantesFinales []visitante
 	var atraccionesFinales []atraccion
 	var parqueTematico []parque
-	var conn = conexionBD()
-	numero, _ := strconv.Atoi(numeroVisitantes)
-	establecerMaxVisitantes(conn, numero)
-	visitantesFinales, _ = obtenerVisitantesBD(conn)
-	atraccionesFinales, _ = obtenerAtraccionesBD(conn)
-	parqueTematico, _ = obtenerParqueDB(conn)
+	for {
+		var conn = conexionBD()
+		numero, _ := strconv.Atoi(numeroVisitantes)
+		establecerMaxVisitantes(conn, numero)
+		visitantesFinales, _ = obtenerVisitantesBD(conn)
+		atraccionesFinales, _ = obtenerAtraccionesBD(conn)
+		parqueTematico, _ = obtenerParqueDB(conn)
 
-	fmt.Println(visitantesFinales)
-	fmt.Println(atraccionesFinales)
-	fmt.Println(parqueTematico)
-	//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
-	//Ahora obtendremos el visitante y lo mostraremos en el mapa
-	//Cada una de las casillas, s valor entero representa el tiempo en minutos de una atracción
-	//Cada uno de los personajes tenemos que representarlo por algo
-	//Esto se le asignara cuando entre al parque
-	//El mapa se carga de la base de datos al arrancar la aplicación
-	fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
-	fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino")
-	//La función Itoa convierte un int a string esto es para que se pueda imprimir por pantalla
-	for i := 0; i < len(visitantesFinales); i++ {
-		fmt.Println(visitantesFinales[i].ID + "#		" + visitantesFinales[i].Nombre +
-			"   #" + "	(" + strconv.Itoa(visitantesFinales[i].Posicionx) + "," + strconv.Itoa(visitantesFinales[i].Posiciony) +
-			")" + "   #" + "	(" + strconv.Itoa(visitantesFinales[i].Destinox) + "," + strconv.Itoa(visitantesFinales[i].Destinoy) +
-			")")
-	}
-	//******1.Primera iteración del bucle
-	//Obtenido todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
-	mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
-	//Para empezar con el kafka
-	ctx := context.Background()
-	//var conexion = conexionBD()
-	//Función que envia la información al kafka
-	//conexionTiempoEspera(conexion, IpFWQWating, PuertoKafka)
-	//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
-	//Matriz transversal bidimensional
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
-
-			fmt.Print(mapa[i][j], " ")
-
+		fmt.Println(visitantesFinales)
+		fmt.Println(atraccionesFinales)
+		fmt.Println(parqueTematico)
+		//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
+		//Ahora obtendremos el visitante y lo mostraremos en el mapa
+		//Cada una de las casillas, s valor entero representa el tiempo en minutos de una atracción
+		//Cada uno de los personajes tenemos que representarlo por algo
+		//Esto se le asignara cuando entre al parque
+		//El mapa se carga de la base de datos al arrancar la aplicación
+		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
+		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino")
+		//La función Itoa convierte un int a string esto es para que se pueda imprimir por pantalla
+		for i := 0; i < len(visitantesFinales); i++ {
+			fmt.Println(visitantesFinales[i].ID + "#		" + visitantesFinales[i].Nombre +
+				"   #" + "	(" + strconv.Itoa(visitantesFinales[i].Posicionx) + "," + strconv.Itoa(visitantesFinales[i].Posiciony) +
+				")" + "   #" + "	(" + strconv.Itoa(visitantesFinales[i].Destinox) + "," + strconv.Itoa(visitantesFinales[i].Destinoy) +
+				")")
 		}
-		fmt.Println()
-	}
+		//******1.Primera iteración del bucle
+		//Obtenido todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
+		mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
+		//Para empezar con el kafka
+		ctx := context.Background()
+		tiempo := "s"
+		var mapa1D []byte = convertirMapa(mapa)
+		productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
+		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
+		continue
 
-	//Enviamos el mapa con los visitantes y las atracciones
-	//al gestor de colas convertido en []byte
-	var mapa1D []byte = convertirMapa(mapa)
-	productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
+		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
+		//Matriz transversal bidimensional
+		/*
+			for i := 0; i < len(mapa); i++ {
+				for j := 0; j < len(mapa[i]); j++ {
+
+					fmt.Print(mapa[i][j], " ")
+
+				}
+				fmt.Println()
+			}
+		*/
+	}
 
 }
 
@@ -296,7 +300,7 @@ func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []at
 /*
 * Función que se conecta al servidor de tiempo de espera
  */
-func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
+func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string) {
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
 	fmt.Println("Arrancando el engine para atender los tiempos en el puerot" + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
@@ -305,17 +309,18 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 		fmt.Println("Error a la hora de escuchar", err.Error())
 		os.Exit(1)
 	}
-	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("***Actualizando los tiempos de espera***")
 		//Atendemos las conexiones entrantes
-		input, _ := reader.ReadString('\n')
+		//Introducimos la letra s para llamar al servidor de tiempo de espera
+		input := tiempo //reader.ReadString('\n')
 		conn.Write([]byte(input))
 		if err != nil {
 			fmt.Println("Error a la hora de conectarse:", err.Error())
 		}
 		message, _ := bufio.NewReader(conn).ReadString('\n')
 		fmt.Print("Server relay:" + message)
+
 		//Manejamos las conexiones del servidor de tiempo de espera de forma concurrente
 		go manejoConexion(db, conn)
 	}
@@ -370,13 +375,15 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 		MaxBytes: 10,
 	}
 	reader := kafka.NewReader(conf)
-	for {
+	sigue := true
+	for sigue == true {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 			continue
 		}
 		fmt.Println("Mensaje desde el gestor de colas: ", string(m.Value))
+		sigue = false
 	}
 }
 
@@ -392,7 +399,9 @@ func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.C
 		Topic:            topic,
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
-	for {
+	//Para finalizar la iteración del bucle
+	sigue := true
+	for sigue == true {
 
 		//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
 		//https://docs.confluent.io/clients-confluent-kafka-go/current/overview.html
@@ -410,6 +419,7 @@ func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.C
 		}
 		//Descansoj
 		time.Sleep(time.Second)
+		sigue = false
 	}
 }
 
@@ -478,10 +488,11 @@ func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 	}
 }
 
-func crearTopics(IpBroker, PuertoBroker string) {
-	topic := "mapa-visitantes"
-	//Holaa
-	//partition := 0
+/*
+* Función que crea un topic para el envio de los visitantes
+ */
+func crearTopics(IpBroker, PuertoBroker, nombre string) {
+	/**** IMPORTANTE CAMBIAR*/
 	//Broker1 se sustituira en localhost:9092
 	//var broker1 string = IpBroker + ":" + PuertoBroker
 	//el localhost:9092 cambiara y sera pasado por parametro
@@ -507,7 +518,7 @@ func crearTopics(IpBroker, PuertoBroker string) {
 	//Configuración del topic mapa-visitantes
 	topicConfigs := []kafka.TopicConfig{
 		kafka.TopicConfig{
-			Topic:             topic,
+			Topic:             nombre,
 			NumPartitions:     1,
 			ReplicationFactor: 1,
 		},

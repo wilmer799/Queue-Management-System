@@ -168,7 +168,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
 /* Función que permanece a la escucha indefinidamente esperando a que la aplicación
 FWQ_Engine le solicite los tiempos de espera de todas las atracciones. */
-func atiendeEngine(host string, puertoEscucha string, atracciones []atraccion) {
+func atiendeEngine(host, puertoEscucha string, atracciones []atraccion) {
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)

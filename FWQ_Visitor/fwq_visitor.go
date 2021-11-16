@@ -185,7 +185,8 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 		Brokers: []string{broker1Addres, broker2Addres},
 		Topic:   topic,
 	})
-	for {
+	sigue := true
+	for sigue == true {
 		err := w.WriteMessages(ctx, kafka.Message{
 			Key:   []byte("Key-A"),                                 //[]byte(strconv.Itoa(i)),
 			Value: []byte("Información del visitante: " + mensaje), //strconv.Itoa(i)),
@@ -198,6 +199,7 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 		fmt.Println("Escribiendo:", mensaje)
 		//Descanso
 		time.Sleep(time.Second)
+		sigue = false
 	}
 
 }
@@ -215,13 +217,15 @@ func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
 		StartOffset: kafka.LastOffset,
 	})
 	reader := kafka.NewReader(r)
-	for {
+	sigue := true
+	for sigue == true {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 			continue
 		}
 		fmt.Println("[", string(m.Value), "]")
+		sigue = false
 	}
 }
 
