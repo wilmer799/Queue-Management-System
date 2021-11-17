@@ -42,16 +42,42 @@ func main() {
 
 	atracciones, _ = obtenerAtraccionesBD(conexionBD)
 
-	go recibeInformacionSensor(ipBrokerGestorColas, puertoBrokerGestorColas, atracciones)
+	// Arrancamos el servidor y atendemos conexiones entrantes
+	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)
 
-	atiendeEngine(host, puertoEscucha, atracciones)
+	l, err := net.Listen("tcp", host+":"+puertoEscucha)
+
+	if err != nil {
+		fmt.Println("Error escuchando", err.Error())
+		os.Exit(1)
+	}
+
+	// Cerramos el listener cuando se cierra la aplicación
+	defer l.Close()
+
+	// Bucle infinito hasta la salida del programa
+	for {
+
+		// Atendemos conexiones entrantes
+		c, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error conectando con el engine:", err.Error())
+		}
+
+		// Imprimimos la dirección de conexión del cliente
+		log.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.")
+
+		// Manejamos las conexiones de forma concurrente
+		go manejoConexion(ipBrokerGestorColas, puertoBrokerGestorColas, c, atracciones)
+
+	}
 
 }
 
 /*
 * Consumidor de kafka para recibir la información de los sensores
  */
-func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atraccion) {
+/*func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atraccion) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -61,8 +87,9 @@ func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atracc
 	})
 
 	reader := kafka.NewReader(r)
+	sigue := true
 
-	for {
+	for sigue {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
@@ -87,10 +114,11 @@ func recibeInformacionSensor(IpBroker, PuertoBroker string, atracciones []atracc
 			}
 
 		}
+		sigue = false
 
 	}
 
-}
+}*/
 
 /* Función que calcula el tiempo de espera de una atracción dada una cantidad de personas en la cola */
 func calculaTiempoEspera(a atraccion, personasEnCola int) int {
@@ -115,7 +143,7 @@ func calculaTiempoEspera(a atraccion, personasEnCola int) int {
 func conexionBD() *sql.DB {
 	//Accediendo a la base de datos
 	//Abrimos la conexion con la base de datos
-	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	db, err := sql.Open("mysql", "root:1234@tcp(192.168.43.201:3306)/parque_atracciones")
 	//Si la conexión falla mostrara este error
 	if err != nil {
 		panic(err.Error())
@@ -168,7 +196,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
 /* Función que permanece a la escucha indefinidamente esperando a que la aplicación
 FWQ_Engine le solicite los tiempos de espera de todas las atracciones. */
-func atiendeEngine(host, puertoEscucha string, atracciones []atraccion) {
+/*func atiendeEngine(host, puertoEscucha string, atracciones []atraccion) {
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)
@@ -203,13 +231,15 @@ func atiendeEngine(host, puertoEscucha string, atracciones []atraccion) {
 
 	}
 
-}
+}*/
 
 // Función que maneja la lógica para una única petición de conexión
-func manejoConexion(conn net.Conn, atracciones []atraccion) {
+func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []atraccion) {
 
 	// Lectura del buffer de entrada hasta el final de línea
-	_, err := bufio.NewReader(conn).ReadBytes('\n')
+	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
+
+	fmt.Println("Petición del Engine: " + string(buffer))
 
 	// Cerrar las conexiones con engines desconectados
 	if err != nil {
@@ -218,28 +248,69 @@ func manejoConexion(conn net.Conn, atracciones []atraccion) {
 		return
 	}
 
-	// Print response message, stripping newline character.
-	//log.Println("Client message:", string(buffer[:len(buffer)-1]))
+	broker := IpBroker + ":" + PuertoBroker
+	r := kafka.ReaderConfig(kafka.ReaderConfig{
+		Brokers: []string{broker},
+		Topic:   "sensor-servidorTiempos",
+		//StartOffset: kafka.LastOffset,
+	})
 
-	var tiemposEspera string
+	reader := kafka.NewReader(r)
+	//1sigue := true
 
-	// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
-	for i := 0; i < len(atracciones); i++ {
+	for {
 
-		if atracciones[i].TiempoEspera >= 0 {
-			tiemposEspera += strconv.Itoa(atracciones[i].TiempoEspera) + "|"
-		} else {
-			tiemposEspera += "-1|"
+		//for {
+		m, err := reader.ReadMessage(context.Background())
+		if err != nil {
+			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
+			//continue
 		}
+
+		fmt.Println("[", string(m.Value)+" personas en cola", "]")
+
+		infoSensor := strings.Split(string(m.Value), ":")
+
+		idAtraccion := infoSensor[0]
+		personasEnCola, _ := strconv.Atoi(infoSensor[1])
+
+		encontrado := false
+
+		// Buscamos la atracción indicada por el sensor para calcular su tiempo de espera actual
+		for i := 0; i < len(atracciones) && !encontrado; i++ {
+
+			if atracciones[i].ID == idAtraccion {
+				encontrado = true
+				atracciones[i].TiempoEspera = calculaTiempoEspera(atracciones[i], personasEnCola)
+			}
+
+		}
+		//sigue = false
+
+		var tiemposEspera string
+
+		// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
+		for i := 0; i < len(atracciones); i++ {
+
+			if atracciones[i].TiempoEspera >= 0 {
+				tiemposEspera += strconv.Itoa(atracciones[i].TiempoEspera) + "|"
+			} else {
+				tiemposEspera += "-1|"
+			}
+
+		}
+
+		// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
+		conn.Write([]byte(tiemposEspera))
+		conn.Close()
 
 	}
 
-	// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
-	conn.Write([]byte(tiemposEspera))
-	conn.Close()
+	// Print response message, stripping newline character.
+	//log.Println("Client message:", string(buffer[:len(buffer)-1]))
 
 	// Reiniciamos el proceso
-	manejoConexion(conn, atracciones)
+	//manejoConexion(IpBroker, PuertoBroker, conn, atracciones)
 
 }
 
