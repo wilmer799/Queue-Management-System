@@ -97,7 +97,7 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		max := 40
 		s.Personas = (rand.Intn(max-min+1) + min)
 
-		// Cada x segundos el sensor envía la información al servidor de tiempos
+		// Cada 1 a 3 segundos el sensor envía la información al servidor de tiempos
 		time.Sleep(time.Duration(tiempoAleatorio) * time.Second)
 
 		fmt.Println("Ahora hay " + strconv.Itoa(s.Personas) + " personas en cola")

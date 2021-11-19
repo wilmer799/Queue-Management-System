@@ -57,11 +57,13 @@ type parque struct {
  * @Author : Wilmer Fabricio Bravo Shuira
  */
 func main() {
+
 	IpKafka := os.Args[1]
 	PuertoKafka := os.Args[2]
 	numeroVisitantes := os.Args[3]
 	IpFWQWating := os.Args[4]
 	PuertoWaiting := os.Args[5]
+
 	//Creamos el topic...Cambiar la Ipkafka en la función principal
 	//Si no se ejecuta el programa, se cierra el kafka?
 	crearTopics(IpKafka, PuertoKafka, "mapa-visitantes")
@@ -76,11 +78,14 @@ func main() {
 
 	//Reserva de memoria para el mapa
 	var mapa [20][20]string
+
 	//Array de visitantes que se encuentran en el parque
 	var visitantesFinales []visitante
 	var atraccionesFinales []atraccion
 	var parqueTematico []parque
+
 	for {
+
 		var conn = conexionBD()
 		numero, _ := strconv.Atoi(numeroVisitantes)
 		establecerMaxVisitantes(conn, numero)
@@ -115,12 +120,10 @@ func main() {
 		var mapa1D []byte = convertirMapa(mapa)
 		//consumidorEngineKafka(IpKafka, PuertoKafka)
 		productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
-		var opcion string
-		fmt.Print("¿Desea actualizar los tiempos de espera?: ")
-		fmt.Scanln(&opcion)
-		if opcion == "SI" || opcion == "si" || opcion == "s" || opcion == "S" {
-			conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
-		}
+
+		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
+		time.Sleep(time.Duration(5 * time.Second))
+		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
@@ -304,31 +307,34 @@ func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []at
 }
 
 /*
-* Función que se conecta al servidor de tiempo de espera
+* Función que se conecta al servidor de tiempos para obtener los tiempos de espera actualizados
  */
 func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string) {
+
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
 	fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
 	conn, err := net.Dial(connType, IpFWQWating+":"+PuertoWaiting)
+
 	if err != nil {
 		fmt.Println("Error a la hora de escuchar", err.Error())
 	} else {
 		fmt.Println("***Actualizando los tiempos de espera***")
 		//Atendemos las conexiones entrantes
 		//Introducimos la letra s para llamar al servidor de tiempo de espera
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Introduce el caracter:")
-		input, _ := reader.ReadString('\n')
-		conn.Write([]byte(input))
-		message, _ := bufio.NewReader(conn).ReadString('\n')
+		//reader := bufio.NewReader(os.Stdin)
+		//fmt.Print("Introduce el caracter:")
+		//input, _ := reader.ReadString('\n')
+		conn.Write([]byte("Mándame los tiempos de espera actualizados" + "\n")) // Mandamos la petición
+		message, _ := bufio.NewReader(conn).ReadString('\n')                    // Obtenemos los tiempos de espera actualizados
 
 		if message != "" {
-			log.Print("Tiempos de espera actualizado:" + message)
+			log.Println("Tiempos de espera actualizados: " + message)
 		} else {
-			log.Print("Servidor de tiempos no disponible.")
+			log.Println("Servidor de tiempos no disponible.")
 		}
 	}
+
 }
 
 /*
@@ -368,6 +374,7 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 * Función que conecta el engine con el kafka
 **/
 func consumidorEngineKafka(IpKafka, PuertoKafka string) {
+
 	var puertoKafka string
 	puertoKafka = IpKafka + ":" + PuertoKafka
 	//Aqui crea los topicos, asigna canales y envia
@@ -380,7 +387,7 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 	}
 	reader := kafka.NewReader(conf)
 	sigue := true
-	for sigue == true {
+	for sigue {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
@@ -405,7 +412,7 @@ func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.C
 	})
 	//Para finalizar la iteración del bucle
 	sigue := true
-	for sigue == true {
+	for sigue {
 
 		//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
 		//https://docs.confluent.io/clients-confluent-kafka-go/current/overview.html
@@ -465,7 +472,6 @@ func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 	i := 0
 
 	// Comprobamos que la consulta haya devuelto alguna fila de la BD
-	// Si el visitante existe en la BD
 	if results.Next() {
 
 		// MODIFICAMOS la información de dicho visitante en la BD

@@ -165,9 +165,9 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "sensor-servidorTiempos",
-		//StartOffset: kafka.LastOffset,
+		Brokers:     []string{broker},
+		Topic:       "sensor-servidorTiempos",
+		StartOffset: kafka.LastOffset,
 	})
 
 	reader := kafka.NewReader(r)
@@ -203,13 +203,7 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 
 		// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
 		for i := 0; i < len(atracciones); i++ {
-
-			if atracciones[i].TiempoEspera >= 0 {
-				tiemposEspera += atracciones[i].ID + ":" + strconv.Itoa(atracciones[i].TiempoEspera) + "|"
-			} else {
-				tiemposEspera += "-1|"
-			}
-
+			tiemposEspera += atracciones[i].ID + ":" + strconv.Itoa(atracciones[i].TiempoEspera) + "|"
 		}
 
 		// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
@@ -217,9 +211,6 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 		conn.Close()
 
 	}
-
-	// Reiniciamos el proceso
-	//manejoConexion(IpBroker, PuertoBroker, conn, atracciones)
 
 }
 
