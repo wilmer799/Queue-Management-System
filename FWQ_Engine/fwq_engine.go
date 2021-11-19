@@ -113,6 +113,7 @@ func main() {
 		ctx := context.Background()
 		tiempo := "peticion"
 		var mapa1D []byte = convertirMapa(mapa)
+		//consumidorEngineKafka(IpKafka, PuertoKafka)
 		productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
 		var opcion string
 		fmt.Print("¿Desea actualizar los tiempos de espera?: ")
@@ -320,10 +321,8 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string)
 		fmt.Print("Introduce el caracter:")
 		input, _ := reader.ReadString('\n')
 		conn.Write([]byte(input))
-		if err != nil {
-			fmt.Println("Error a la hora de conectarse:", err.Error())
-		}
 		message, _ := bufio.NewReader(conn).ReadString('\n')
+
 		if message != "" {
 			log.Print("Tiempos de espera actualizado:" + message)
 		} else {
@@ -377,7 +376,6 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 		//El broker habra que cambiarlo por otro
 		Brokers:  []string{puertoKafka},
 		Topic:    "visitantes-engine", //Topico que hemos creado
-		GroupID:  "g1",
 		MaxBytes: 10,
 	}
 	reader := kafka.NewReader(conf)

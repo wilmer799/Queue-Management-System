@@ -103,7 +103,7 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		" | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
 
 	// Accedemos a la base de datos, empezando por abrir la conexión
-	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	db, err := sql.Open("mysql", "root:1234@tcp(localhost:3306)/parque_atracciones")
 
 	// Comprobamos que no haya error al conectarse
 	if err != nil {

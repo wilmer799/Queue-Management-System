@@ -161,7 +161,9 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		conn.Write([]byte(salida))
 		//Llama al kafka para dibujar el mapa y la información del visitantes
 		ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
-		//ProductorKafkaVisitantes(IpBroker,PuertoBroker,mensaje, ctx)
+		//	ctx := context.Background()
+		//	mensaje := "Hola engine"
+		//	ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
 		/*
 			message, _ := bufio.NewReader(conn).ReadString('\n')
 			log.Print("Server relay:", message) */
