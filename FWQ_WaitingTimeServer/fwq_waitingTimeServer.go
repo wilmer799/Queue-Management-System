@@ -199,7 +199,7 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 
 		}
 
-		var tiemposEspera string
+		tiemposEspera := ""
 
 		// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
 		for i := 0; i < len(atracciones); i++ {

@@ -124,7 +124,6 @@ func main() {
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
 		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
-
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
 		/*
@@ -326,13 +325,19 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string)
 		//fmt.Print("Introduce el caracter:")
 		//input, _ := reader.ReadString('\n')
 		conn.Write([]byte("Mándame los tiempos de espera actualizados" + "\n")) // Mandamos la petición
-		message, _ := bufio.NewReader(conn).ReadString('\n')                    // Obtenemos los tiempos de espera actualizados
+		tiemposEspera, _ := bufio.NewReader(conn).ReadString('\n')              // Obtenemos los tiempos de espera actualizados
 
-		if message != "" {
-			log.Println("Tiempos de espera actualizados: " + message)
+		arrayTiemposEspera := strings.Split(tiemposEspera[:len(tiemposEspera)-1], "|")
+
+		// Actualizamos los tiempos de espera de las atracciones en la BD
+		actualizaTiemposEsperaBD(db, arrayTiemposEspera)
+
+		if tiemposEspera != "" {
+			log.Println("Tiempos de espera actualizados: " + tiemposEspera)
 		} else {
 			log.Println("Servidor de tiempos no disponible.")
 		}
+
 	}
 
 }
@@ -434,29 +439,6 @@ func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.C
 	}
 }
 
-/*
-* Función que maneja la conexión con el servidor de tiempo
- */
-func manejoConexion(db *sql.DB, conexion net.Conn) {
-
-	//leer del buffer hasta el final de línea
-	buffer, err := bufio.NewReader(conexion).ReadBytes('\n')
-	//Cerramos la conexión con el servidor de tiempo
-	if err != nil {
-		fmt.Println("Servidor de tiempo desconectado.")
-		conexion.Close()
-		return
-	}
-
-	// Obtenemos los tiempos de espera proporcionados por el servidor de tiempo
-	tiemposEspera := strings.Split(string(buffer[:len(buffer)-1]), "|")
-
-	// Actualizamos los tiempos de espera de las atracciones en la BD
-	actualizaTiemposEsperaBD(db, tiemposEspera)
-
-	conexion.Write(buffer)
-}
-
 /* Función que actualiza los tiempos de espera de las atracciones en la BD*/
 func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 
@@ -471,8 +453,8 @@ func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 
 	i := 0
 
-	// Comprobamos que la consulta haya devuelto alguna fila de la BD
-	if results.Next() {
+	// Recorremos todas las filas de la consulta
+	for results.Next() {
 
 		// MODIFICAMOS la información de dicho visitante en la BD
 		// Preparamos para prevenir inyecciones SQL
@@ -483,8 +465,18 @@ func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 
 		defer sentenciaPreparada.Close()
 
+		infoAtraccion := strings.Split(tiemposEspera[i], ":") // Extraemos el id y el tiempo de espera de la atracción
+
+		idAtraccion := infoAtraccion[0]
+
+		nuevoTiempo, err := strconv.Atoi(infoAtraccion[1])
+
+		if err != nil {
+			panic("Error al convertir la cadena con el nuevo tiempo de la atracción")
+		}
+
 		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(tiemposEspera[i], "atraccion"+strconv.Itoa(i))
+		_, err = sentenciaPreparada.Exec(nuevoTiempo, idAtraccion)
 		if err != nil {
 			panic("Error al modificar el tiempo de espera de la atracción: " + err.Error())
 		}
