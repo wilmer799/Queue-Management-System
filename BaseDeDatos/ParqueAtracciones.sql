@@ -44,10 +44,10 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspe
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, 74, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, 23, "SDpark");
 /* Visitantes */
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy,parqueAtracciones)
-VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,"SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy,parqueAtracciones)
-VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,"SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
+VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
+VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"SDpark");
 /*Actualizar algunos valores */
 UPDATE parque SET aforoMaximo=10 WHERE id = "SDpark";
 UPDATE atraccion SET tiempoEspera = 7 WHERE id = "atraccion1";

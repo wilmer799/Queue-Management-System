@@ -30,8 +30,8 @@ func main() {
 	PuertoBroker := os.Args[4]
 	crearTopic(IpBroker, PuertoBroker)
 	fmt.Println("**Bienvenido al parque de atracciones**")
-	//fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
-	//fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
+	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
 }

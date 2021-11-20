@@ -20,14 +20,15 @@ import (
 * Estructura del visitante
  */
 type visitante struct {
-	ID        string `json:"id"`
-	Nombre    string `json:"nombre"`
-	Password  string `json:"contraseña"`
-	Posicionx int    `json:"posicionx"`
-	Posiciony int    `json:"posiciony"`
-	Destinox  int    `json:"destinox"`
-	Destinoy  int    `json:"destinoy"`
-	Parque    string `json:"parqueAtracciones"`
+	ID           string `json:"id"`
+	Nombre       string `json:"nombre"`
+	Password     string `json:"contraseña"`
+	Posicionx    int    `json:"posicionx"`
+	Posiciony    int    `json:"posiciony"`
+	Destinox     int    `json:"destinox"`
+	Destinoy     int    `json:"destinoy"`
+	DentroParque int    `json:"dentroParque"`
+	Parque       string `json:"parqueAtracciones"`
 }
 
 /*
@@ -75,45 +76,50 @@ func main() {
 	fmt.Println("El número máximo de visitantes es el siguiente:" + numeroVisitantes)
 	fmt.Println("La ip del servidor de espera es el siguiente:" + IpFWQWating)
 	fmt.Println("El puerto del servidor de tiempo es el siguiente:" + PuertoWaiting)
+	fmt.Println()
 
 	//Reserva de memoria para el mapa
 	var mapa [20][20]string
 
 	//Array de visitantes que se encuentran en el parque
-	var visitantesFinales []visitante
-	var atraccionesFinales []atraccion
+	var visitantes []visitante
+	var atracciones []atraccion
 	var parqueTematico []parque
 
 	for {
 
 		var conn = conexionBD()
-		numero, _ := strconv.Atoi(numeroVisitantes)
-		establecerMaxVisitantes(conn, numero)
-		visitantesFinales, _ = obtenerVisitantesBD(conn)
-		atraccionesFinales, _ = obtenerAtraccionesBD(conn)
+		maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
+		establecerMaxVisitantes(conn, maxVisitantes)
+		visitantes, _ = obtenerVisitantesBD(conn)
+		atracciones, _ = obtenerAtraccionesBD(conn)
 		parqueTematico, _ = obtenerParqueDB(conn)
 
-		fmt.Println(visitantesFinales)
-		fmt.Println(atraccionesFinales)
+		fmt.Println(visitantes)
+		fmt.Println(atracciones)
 		fmt.Println(parqueTematico)
+
 		//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
 		//Ahora obtendremos el visitante y lo mostraremos en el mapa
 		//Cada una de las casillas, s valor entero representa el tiempo en minutos de una atracción
 		//Cada uno de los personajes tenemos que representarlo por algo
 		//Esto se le asignara cuando entre al parque
 		//El mapa se carga de la base de datos al arrancar la aplicación
+
 		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
 		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino")
-		//La función Itoa convierte un int a string esto es para que se pueda imprimir por pantalla
-		for i := 0; i < len(visitantesFinales); i++ {
-			fmt.Println(visitantesFinales[i].ID + "#		" + visitantesFinales[i].Nombre +
-				"   #" + "	(" + strconv.Itoa(visitantesFinales[i].Posicionx) + "," + strconv.Itoa(visitantesFinales[i].Posiciony) +
-				")" + "   #" + "	(" + strconv.Itoa(visitantesFinales[i].Destinox) + "," + strconv.Itoa(visitantesFinales[i].Destinoy) +
+
+		// Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
+		for i := 0; i < len(visitantes); i++ {
+			fmt.Println(strings.TrimSpace(visitantes[i].ID) + " 		" + strings.TrimSpace(visitantes[i].Nombre) +
+				"    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantes[i].Posicionx)) + "," + strings.TrimSpace(strconv.Itoa(visitantes[i].Posiciony)) +
+				")" + "    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantes[i].Destinox)) + "," + strings.TrimSpace(strconv.Itoa(visitantes[i].Destinoy)) +
 				")")
 		}
+
 		//******1.Primera iteración del bucle
-		//Obtenido todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
-		mapa = asignacionPosiciones(visitantesFinales, atraccionesFinales, mapa)
+		//Obtenidos todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
+		mapa = asignacionPosiciones(visitantes, atracciones, mapa)
 		//Para empezar con el kafka
 		ctx := context.Background()
 		tiempo := "peticion"
@@ -124,6 +130,7 @@ func main() {
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
 		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
+
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
 		/*
@@ -178,31 +185,42 @@ func conexionBD() *sql.DB {
 * @return error : Error en caso de que no se pueda obtener parques
  */
 func obtenerParqueDB(db *sql.DB) ([]parque, error) {
+
 	//Cada parque sera un grupo // Idea
 	results, err := db.Query("SELECT * FROM parque")
+
 	if err != nil {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
 	}
+
 	//Cerramos la base de datos
 	defer results.Close()
+
 	//Declaramos el array de visitantes
 	var parquesTematicos []parque
+
 	//Recorremos los resultados obtenidos por la consulta
 	for results.Next() {
-		//   var nombreVariable tipoVariable
+
 		//Variable donde guardamos la información de cada una filas de la sentencia
 		var parqueTematico parque
+
 		if err := results.Scan(&parqueTematico.ID, &parqueTematico.AforoMaximo,
 			&parqueTematico.AforoActual); err != nil {
 			return parquesTematicos, err
 		}
+
 		//Vamos añadiendo los visitantes al array
 		parquesTematicos = append(parquesTematicos, parqueTematico)
+
 	}
+
 	if err = results.Err(); err != nil {
 		return parquesTematicos, err
 	}
+
 	return parquesTematicos, nil
+
 }
 
 /*
@@ -211,33 +229,43 @@ func obtenerParqueDB(db *sql.DB) ([]parque, error) {
 * @return error : Error en caso de que no se haya podido obtener ninguno
  */
 func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
+
 	//Ejecutamos la sentencia
 	results, err := db.Query("SELECT * FROM visitante")
+
 	if err != nil {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
 	}
+
 	//Cerramos la base de datos
 	defer results.Close()
+
 	//Declaramos el array de visitantes
 	var visitantesParque []visitante
+
 	//Recorremos los resultados obtenidos por la consulta
 	for results.Next() {
-		//   var nombreVariable tipoVariable
+
 		//Variable donde guardamos la información de cada una filas de la sentencia
 		var fwq_visitante visitante
+
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.Parque); err != nil {
 			return visitantesParque, err
 		}
+
 		//Vamos añadiendo los visitantes al array
 		visitantesParque = append(visitantesParque, fwq_visitante)
 	}
+
 	if err = results.Err(); err != nil {
 		return visitantesParque, err
 	}
+
 	return visitantesParque, nil
+
 }
 
 /*
@@ -246,33 +274,44 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 * @return error : Error en caso de que no se ha podido obtener las atracciones
  */
 func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
+
 	//Ejecutamos la sentencia
 	results, err := db.Query("SELECT * FROM atraccion")
+
 	if err != nil {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
 	}
+
 	//Cerramos la base de datos
 	defer results.Close()
-	//Declaramos el array de visitantes
+
+	//Declaramos el array de atracciones
 	var atraccionesParque []atraccion
+
 	//Recorremos los resultados obtenidos por la consulta
 	for results.Next() {
-		//   var nombreVariable tipoVariable
+
 		//Variable donde guardamos la información de cada una filas de la sentencia
 		var fwq_atraccion atraccion
+
 		if err := results.Scan(&fwq_atraccion.ID, &fwq_atraccion.TCiclo,
 			&fwq_atraccion.NVisitantes, &fwq_atraccion.Posicionx,
 			&fwq_atraccion.Posiciony, &fwq_atraccion.TiempoEspera,
 			&fwq_atraccion.Parque); err != nil {
 			return atraccionesParque, err
 		}
+
 		//Vamos añadiendo las atracciones al array
 		atraccionesParque = append(atraccionesParque, fwq_atraccion)
+
 	}
+
 	if err = results.Err(); err != nil {
 		return atraccionesParque, err
 	}
+
 	return atraccionesParque, nil
+
 }
 
 /*
@@ -355,7 +394,7 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 	if results.Next() {
 		//   var nombreVariable tipoVariable
 		//Variable donde guardamos la información de cada una filas de la sentencia
-		sentenciaPreparada, err := db.Prepare("UPDATE parque SET aforoMaximo=? WHERE id = ?")
+		sentenciaPreparada, err := db.Prepare("UPDATE parque SET aforoMaximo = ? WHERE id = ?")
 
 		if err != nil {
 			panic("Error al preparar la sentencia" + err.Error()) //devolvera nil y error en caso de que no se pueda hacer la consulta
@@ -363,8 +402,9 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 		defer sentenciaPreparada.Close()
 
 		_, err = sentenciaPreparada.Exec(numero, "SDpark")
-		if err = results.Err(); err != nil {
-			panic("Error al establecer el tamaño maximo del parque" + err.Error())
+
+		if err != nil {
+			panic("Error al establecer el número máximo de visitantes" + err.Error())
 		}
 
 	}
