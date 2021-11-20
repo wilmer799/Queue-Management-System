@@ -34,6 +34,7 @@ func main() {
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+	defer SalidaParque(idUsuario)
 }
 
 /*
@@ -59,7 +60,7 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 		case 3:
 			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
 		case 4:
-			SalidaParque(IpFWQ_Registry, PuertoFWQ, idUsuario)
+			SalidaParque(idUsuario)
 		default:
 			fmt.Println("Opción invalida, elige otra opción")
 		}
@@ -82,7 +83,6 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 		fmt.Print("Introduce tu ID:")
 		id, _ := reader.ReadString('\n')
-		idUsuario = id
 		conn.Write([]byte(id))
 
 		fmt.Print("Introduce tu nombre:")
@@ -147,36 +147,48 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 
 }
 
+/* Función que envía las credenciales de acceso del visitante para entrar en el parque */
 func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
+
 	fmt.Println("*Bienvenido al parque de atracciones*")
-	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
-	if err != nil {
-		fmt.Println("Error al conectarse:", err.Error())
-		os.Exit(1)
-	}
+
 	reader := bufio.NewReader(os.Stdin)
-	//Este bucle tambien tiene que terminar
+
 	for {
+
 		fmt.Print("Por favor introduce tu alias:")
-		input, _ := reader.ReadString('\n')
+		alias, _ := reader.ReadString('\n')
+		idUsuario = string(alias) // Nos guardamos el id del visitante para cuando quiera salir del parque
 		fmt.Print("y tu password:")
-		salida, _ := reader.ReadString('\n')
-		//Enviamos la conexion del socket
-		conn.Write([]byte(input))
-		conn.Write([]byte(salida))
-		//Llama al kafka para dibujar el mapa y la información del visitantes
-		ConsumidorKafkaVisitante(IpBroker, PuertoBroker)
-		//	ctx := context.Background()
-		//	mensaje := "Hola engine"
-		//	ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
-		/*
-			message, _ := bufio.NewReader(conn).ReadString('\n')
-			log.Print("Server relay:", message) */
+		password, _ := reader.ReadString('\n')
+
+		ctx := context.Background()
+		mensaje := string(alias) + string(password)
+
+		// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
+		ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
+
+		salir := false
+		for !salir {
+			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
+			ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
+
+			fmt.Println("Desea abandonar el parque (si/no): ")
+			abandonar, _ := reader.ReadString('\n')
+
+			if string(abandonar) == "s" || string(abandonar) == "si" || string(abandonar) == "SI" || string(abandonar) == "sI" || string(abandonar) == "Si" {
+				SalidaParque(idUsuario)
+				salir = true
+			}
+
+		}
+
 	}
 
 }
 
-func SalidaParque(ipRegistry, puertoRegistry, idUsuario string) {
+/* Función que permite a un visitante abandonar el parque */
+func SalidaParque(idUsuario string) {
 	//aqui le pasamos el id del usuario
 	//El cual se buscara en la bd y se eliminara al usuario
 	fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
@@ -194,7 +206,7 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 		Topic:   topic,
 	})
 	sigue := true
-	for sigue == true {
+	for sigue {
 		err := w.WriteMessages(ctx, kafka.Message{
 			Key:   []byte("Key-A"),                                 //[]byte(strconv.Itoa(i)),
 			Value: []byte("Información del visitante: " + mensaje), //strconv.Itoa(i)),
@@ -215,7 +227,7 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 /*
 * Consumidor de kafka para un visitante en un grupo
  */
-func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
+func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -226,7 +238,7 @@ func ConsumidorKafkaVisitante(IpBroker, PuertoBroker string) {
 	})
 	reader := kafka.NewReader(r)
 	sigue := true
-	for sigue == true {
+	for sigue {
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
