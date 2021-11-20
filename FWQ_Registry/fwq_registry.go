@@ -147,7 +147,7 @@ func manejoConexion(conexion net.Conn) {
 	// Si se ha solicitado un registro
 	if opcionElegida == "1" {
 
-		results, err := db.Query("SELECT * FROM visitante") // Devuelve el número de visitantes que hay registrados en la aplicación
+		results, err := db.Query("SELECT * FROM visitante") // Devuelve los visitantes que hay registrados en la aplicación
 
 		// Comrpobamos que no se produzcan errores al hacer la consulta
 		if err != nil {
@@ -197,23 +197,40 @@ func manejoConexion(conexion net.Conn) {
 
 	} else { // Si se ha solicitado una actualización
 
-		// MODIFICAMOS la información de dicho visitante en la BD
-		// Preparamos para prevenir inyecciones SQL
-		sentenciaPreparada, err := db.Prepare("UPDATE visitante SET nombre = ?, contraseña = ? WHERE id = ?")
+		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Devuelve los visitantes que hay registrados en la aplicación
+
+		// Comprobamos que no se produzcan errores al hacer la consulta
 		if err != nil {
-			panic("Error al preparar la sentencia de actualización: " + err.Error())
+			panic("Error al hacer la consulta de la información del visitante indicado: " + err.Error())
 		}
 
-		defer sentenciaPreparada.Close()
+		defer results.Close() // Nos aseguramos de cerrar
 
-		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(v.Nombre, v.Password, v.ID)
-		if err != nil {
-			panic("Error al modificar el visitante: " + err.Error())
+		// Si el ID del visitante indicado por el cliente existe
+		if results.Next() {
+
+			// MODIFICAMOS la información de dicho visitante en la BD
+			// Preparamos para prevenir inyecciones SQL
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET nombre = ?, contraseña = ? WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de actualización: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.Nombre, v.Password, v.ID)
+			if err != nil {
+				panic("Error al modificar el visitante: " + err.Error())
+			}
+
+			conexion.Write([]byte("Visitante actualizado correctamente"))
+			conexion.Close()
+
+		} else {
+			conexion.Write([]byte("El id del visitante no existe"))
+			conexion.Close()
 		}
-
-		conexion.Write([]byte("Visitante actualizado correctamente"))
-		conexion.Close()
 
 	}
 
