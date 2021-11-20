@@ -319,11 +319,7 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string)
 		fmt.Println("Error a la hora de escuchar", err.Error())
 	} else {
 		fmt.Println("***Actualizando los tiempos de espera***")
-		//Atendemos las conexiones entrantes
-		//Introducimos la letra s para llamar al servidor de tiempo de espera
-		//reader := bufio.NewReader(os.Stdin)
-		//fmt.Print("Introduce el caracter:")
-		//input, _ := reader.ReadString('\n')
+
 		conn.Write([]byte("Mándame los tiempos de espera actualizados" + "\n")) // Mandamos la petición
 		tiemposEspera, _ := bufio.NewReader(conn).ReadString('\n')              // Obtenemos los tiempos de espera actualizados
 

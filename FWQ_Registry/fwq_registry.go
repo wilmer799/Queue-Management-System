@@ -31,7 +31,6 @@ func main() {
 
 	host := os.Args[1]
 	puerto := os.Args[2]
-	maxVisitantes, _ := strconv.Atoi(os.Args[3])
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el Registry, atendiendo en " + host + ":" + puerto)
@@ -59,14 +58,26 @@ func main() {
 		log.Println("Visitante " + c.RemoteAddr().String() + " conectado.")
 
 		// Llamamos a la función de forma asíncrona y manejamos las conexiones de forma concurrente
-		go manejoConexion(c, maxVisitantes)
+		go manejoConexion(c)
 
 	}
 
 }
 
 /* Función que procesa concurrentemente los registros o actualizaciones de los visitantes */
-func manejoConexion(conexion net.Conn, maxVisitantes int) {
+func manejoConexion(conexion net.Conn) {
+
+	// Lectura de la opción elegida por el visitante
+	opcion, err := bufio.NewReader(conexion).ReadBytes('\n')
+
+	// Cerramos la conexión de los clientes que se han desconectado
+	if err != nil {
+		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
+		conexion.Close()
+		return
+	}
+
+	opcionElegida := strings.TrimSpace(string(opcion))
 
 	// Lectura del id del visistante hasta final de línea
 	id, err := bufio.NewReader(conexion).ReadBytes('\n')
@@ -98,9 +109,24 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		return
 	}
 
-	// Imprimimos la información del visitante a registrar o editar en la base de datos
-	fmt.Println("Visitante a registrar/editar -> ID: " + strings.TrimSpace(string(id)) +
-		" | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
+	// Si se ha solicitado un registro de usuario
+	if opcionElegida == "1" {
+
+		// Imprimimos la información del visitante a registrar
+		fmt.Println("Visitante a registrar -> ID: " + strings.TrimSpace(string(id)) +
+			" | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
+
+		// Si se ha solicitado editar/actualizar un perfil de usuario existente
+	} else if opcionElegida == "2" {
+
+		// Imprimimos la información del visitante a editar
+		fmt.Println("Visitante a editar -> ID: " + strings.TrimSpace(string(id)) +
+			" | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
+
+	} else {
+		conexion.Write([]byte("La opción elegida no es válida"))
+		conexion.Close()
+	}
 
 	// Accedemos a la base de datos, empezando por abrir la conexión
 	db, err := sql.Open("mysql", "root:1234@tcp(localhost:3306)/parque_atracciones")
@@ -112,24 +138,64 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 
 	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
 
-	results, err := db.Query("SELECT * FROM visitante WHERE id = ?", string(id))
-
-	// Comrpobamos que no se produzcan errores al hacer la consulta
-	if err != nil {
-		panic("Error al hacer la consulta a la BD: " + err.Error())
-	}
-
-	defer results.Close() // Nos aseguramos de cerrar
-
 	v := visitante{
 		ID:       string(id),
 		Nombre:   string(nombre),
 		Password: string(password),
 	}
 
-	// Comprobamos que la consulta haya devuelto alguna fila de la BD
-	// Si el visitante existe en la BD
-	if results.Next() {
+	// Si se ha solicitado un registro
+	if opcionElegida == "1" {
+
+		results, err := db.Query("SELECT * FROM visitante") // Devuelve el número de visitantes que hay registrados en la aplicación
+
+		// Comrpobamos que no se produzcan errores al hacer la consulta
+		if err != nil {
+			panic("Error al hacer la consulta a la BD: " + err.Error())
+		}
+
+		defer results.Close() // Nos aseguramos de cerrar
+
+		// Nos guardamos el nº actual de visitantes registrados en la aplicación
+		visitantesActuales := 0
+		for results.Next() {
+			visitantesActuales += 1
+		}
+
+		// INSERTAMOS el nuevo visitante en la BD
+		// Preparamos para prevenir inyecciones SQL
+		sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña) VALUES(?, ?, ?)")
+		if err != nil {
+			panic("Error al preparar la sentencia de inserción: " + err.Error())
+		}
+
+		defer sentenciaPreparada.Close()
+
+		// Ejecutar sentencia, un valor por cada '?'
+		_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password)
+		if err != nil {
+			panic("Error al registrar el visitante: " + err.Error())
+		}
+
+		conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
+		conexion.Close()
+
+		// Actualizamos el número de visitantes que se encuentran en el parque
+		// Preparamos para prevenir inyecciones SQL
+		/*sentenciaPreparada, err = db.Prepare("UPDATE parque SET aforoActual = ? + 1 WHERE id = ?")
+		if err != nil {
+			panic("Error al preparar la sentencia de actualización del aforo del parque: " + err.Error())
+		}
+
+		defer sentenciaPreparada.Close()
+
+		// Ejecutar sentencia, un valor por cada '?'
+		_, err = sentenciaPreparada.Exec(visitantesActuales, "SDPark")
+		if err != nil {
+			panic("Error al modificar el aforo actual del parque: " + err.Error())
+		}*/
+
+	} else { // Si se ha solicitado una actualización
 
 		// MODIFICAMOS la información de dicho visitante en la BD
 		// Preparamos para prevenir inyecciones SQL
@@ -149,68 +215,9 @@ func manejoConexion(conexion net.Conn, maxVisitantes int) {
 		conexion.Write([]byte("Visitante actualizado correctamente"))
 		conexion.Close()
 
-	} else { // Sino existe en la BD
-
-		results, err = db.Query("SELECT * FROM visitante") // Devuelve el número de visitantes actualmente en el parque
-
-		// Comrpobamos que no se produzcan errores al hacer la consulta
-		if err != nil {
-			panic("Error al hacer la consulta a la BD: " + err.Error())
-		}
-
-		defer results.Close() // Nos aseguramos de cerrar
-
-		// Nos guardamos el nº actual de visitantes en el parque
-		visitantesActuales := 0
-		for results.Next() {
-			visitantesActuales += 1
-		}
-
-		// Comprobamos que el aforo del parque no esté completo
-		if visitantesActuales >= maxVisitantes {
-
-			conexion.Write([]byte("No se puede registrar el visitante, el aforo del parque está completo"))
-			conexion.Close()
-
-		} else {
-			// INSERTAMOS el nuevo visitante en la BD
-			// Preparamos para prevenir inyecciones SQL
-			sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña) VALUES(?, ?, ?)")
-			if err != nil {
-				panic("Error al preparar la sentencia de inserción: " + err.Error())
-			}
-
-			defer sentenciaPreparada.Close()
-
-			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password)
-			if err != nil {
-				panic("Error al registrar el visitante: " + err.Error())
-			}
-
-			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes en el parque."))
-			conexion.Close()
-
-			// Actualizamos el número de visitantes que se encuentran en el parque
-			// Preparamos para prevenir inyecciones SQL
-			sentenciaPreparada, err = db.Prepare("UPDATE parque SET aforoActual = ? + 1 WHERE id = ?")
-			if err != nil {
-				panic("Error al preparar la sentencia de actualización del aforo del parque: " + err.Error())
-			}
-
-			defer sentenciaPreparada.Close()
-
-			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(visitantesActuales, "SDPark")
-			if err != nil {
-				panic("Error al modificar el aforo actual del parque: " + err.Error())
-			}
-
-		}
-
 	}
 
 	// Reiniciamos el proceso
-	manejoConexion(conexion, maxVisitantes)
+	manejoConexion(conexion)
 
 }

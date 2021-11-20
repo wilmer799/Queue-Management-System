@@ -30,8 +30,9 @@ func main() {
 	PuertoBroker := os.Args[4]
 	crearTopic(IpBroker, PuertoBroker)
 	fmt.Println("**Bienvenido al parque de atracciones**")
-	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
-	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+	//fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
+	//fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
 }
 
@@ -65,35 +66,34 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 	}
 }
 
+/* Función que se conecta al módulo FWQ_Registry para crear un nuevo usuario */
 func CrearPerfil(ipRegistry, puertoRegistry string) {
+
 	fmt.Println("**********Creación de perfil***********")
-	//var informacionVisitante string
 	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
+
 	if err != nil {
 		fmt.Println("Error al conectarse al Registry:", err.Error())
-		//os.Exit(1)
 	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+
+		conn.Write([]byte("1" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+
 		reader := bufio.NewReader(os.Stdin)
 
 		fmt.Print("Introduce tu ID:")
-		//Leer entrada hasta nueva linea, introduciendo llave
-		//input es el string que se ha escrito
 		id, _ := reader.ReadString('\n')
 		idUsuario = id
 		conn.Write([]byte(id))
-		fmt.Print()
+
 		fmt.Print("Introduce tu nombre:")
 		nombre, _ := reader.ReadString('\n')
 		conn.Write([]byte(nombre))
+
 		fmt.Print("Introduce tu contraseña:")
 		password, _ := reader.ReadString('\n')
 		conn.Write([]byte(password))
 
-		//Solo nos interesa que llegue la información y se pueda dar de alta
-		//Con la función TrimSpace eliminamos los saltos de linea de input, nombre y contraseña
-		//informacionVisitante = strings.TrimSpace(id) + "|" + strings.TrimSpace(nombre) + "|" + strings.TrimSpace(password)
-
-		//Escuchando por el relay
+		//Escuchando por el relay el mensaje de respuesta del Registry
 		message, _ := bufio.NewReader(conn).ReadString('\n')
 
 		// Comprobamos si el Registry nos devuelve un mensaje de respuesta
@@ -107,6 +107,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 }
 
+/* Función que se conecta al módulo FWQ_Registry para editar o actualizar el perfil de un usuario existente */
 func EditarPerfil(ipRegistry, puertoRegistry string) {
 
 	fmt.Println("Has entrado a editar perfil")
@@ -114,21 +115,25 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 
 	if err != nil {
 		fmt.Println("Error al conectarse al Registry:", err.Error())
-		//os.Exit(1)
 	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+
+		conn.Write([]byte("2" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
 
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Println("Información del cliente que se quiere modificar:")
+		fmt.Println("Información del visitante que se quiere modificar:")
 		fmt.Print("Introduce el ID:")
 		id, _ := reader.ReadString('\n')
 		conn.Write([]byte(id))
+
 		fmt.Print("Introduce el nombre:")
 		nombre, _ := reader.ReadString('\n')
 		conn.Write([]byte(nombre))
+
 		fmt.Print("Introduce la contraseña:")
 		password, _ := reader.ReadString('\n')
 		conn.Write([]byte(password))
+
 		message, _ := bufio.NewReader(conn).ReadString('\n')
 
 		// Comprobamos si el Registry nos devuelve un mensaje de respuesta
