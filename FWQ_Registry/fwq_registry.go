@@ -139,9 +139,9 @@ func manejoConexion(conexion net.Conn) {
 	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
 
 	v := visitante{
-		ID:       string(id),
-		Nombre:   string(nombre),
-		Password: string(password),
+		ID:       strings.TrimSpace(string(id)),
+		Nombre:   strings.TrimSpace(string(nombre)),
+		Password: strings.TrimSpace(string(password)),
 	}
 
 	// Si se ha solicitado un registro

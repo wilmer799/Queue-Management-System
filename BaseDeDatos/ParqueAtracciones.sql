@@ -48,9 +48,18 @@ INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, 
 VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"SDpark");
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
 VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"SDpark");
+
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
+VALUES ("rafajaja", "rafa","1234",13,7,17,9,1,"SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
+VALUES ("hcarlos", "carlos","1234",19,20,6,11,1,"SDpark");
+
+delete from visitante;
+
 /*Actualizar algunos valores */
 UPDATE parque SET aforoMaximo=10 WHERE id = "SDpark";
 UPDATE atraccion SET tiempoEspera = 7 WHERE id = "atraccion1";
 UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
 
 select * from atraccion;
+select * from visitante;

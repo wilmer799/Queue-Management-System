@@ -183,7 +183,8 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	mensaje := string(alias) + ":" + string(password)
 
 	var mapa string // Variable donde almacenaremos el mapa pasado por el engine
-	v := visitante{ // Guardamos la información del visitante
+
+	v := visitante{ // Guardamos la información del visitante que nos hace falta
 		ID:           string(alias),
 		Password:     string(password),
 		Posicionx:    0,
@@ -192,6 +193,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		Destinoy:     -1,
 		DentroParque: 0,
 	}
+
 	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
 	ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
 
@@ -293,9 +295,16 @@ func movimientoVisitante(v visitante, mapa string, IpBroker string, PuertoBroker
 
 	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
 
-		// Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+		// Si el visitante no sabe a qué atracción dirigirse
+		if v.Destinox == -1 && v.Destinoy == -1 {
 
-		// Actualizamos la coordenadas de destino del visitante
+			//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+
+			// Actualizamos la coordenadas de destino del visitante
+
+		}
+
+		// El visitante realiza un movimiento para acercarse a su destino
 
 		movimiento := "N"
 
@@ -304,12 +313,18 @@ func movimientoVisitante(v visitante, mapa string, IpBroker string, PuertoBroker
 		// Enviamos el movimiento al engine
 		ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
 
-		// Si el visitante se encuentra en la atracción esperamos un tiempo para simular el tiempo de ciclo de la atracción
+		// Si el visitante se encuentra en la atracción
 		if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
-			time.Sleep(10 * time.Second)
+
+			time.Sleep(10 * time.Second) // Esperamos un tiempo para simular el tiempo de ciclo de la atracción
+			// Ahora el visitante vuelve a desconocer su destino
+			v.Destinox = -1
+			v.Destinoy = -1
+
 		}
 
 		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
+
 	}
 
 }
