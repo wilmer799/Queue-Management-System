@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -163,15 +164,35 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		password, _ := reader.ReadString('\n')
 
 		ctx := context.Background()
-		mensaje := string(alias) + string(password)
+
+		mensaje := string(alias) + ":" + string(password)
 
 		// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
 		ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
 
+		// Recibe del engine la posición actual y la posición de destino
+		posiciones := ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
+
+		posicionesVisitante := strings.Split(posiciones, "|")
+
+		posicionActual := strings.Split(posicionesVisitante[0], ",")
+		posicionDestino := strings.Split(posicionesVisitante[1], ",")
+
+		posicionx, _ := strconv.Atoi(posicionActual[0])
+		posiciony, _ := strconv.Atoi(posicionActual[1])
+		destinox, _ := strconv.Atoi(posicionDestino[0])
+		destinoy, _ := strconv.Atoi(posicionDestino[1])
+
 		salir := false
 		for !salir {
+
+			movimientoVisitante(posicionx, posiciony, destinox, destinoy) // El visitante se desplaza una posición para alcanzar la atracción
+
 			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-			ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
+			respuestaEngine := ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
+
+			// Mostramos el mapa o el mensaje de error
+			fmt.Println(respuestaEngine)
 
 			fmt.Println("Desea abandonar el parque (si/no): ")
 			abandonar, _ := reader.ReadString('\n')
@@ -180,6 +201,8 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 				SalidaParque(idUsuario)
 				salir = true
 			}
+
+			time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
 
 		}
 
@@ -198,18 +221,17 @@ func SalidaParque(idUsuario string) {
 * Función que envian la información de los movimientos de los visitantes
  */
 func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx context.Context) {
-	var broker1Addres string = IpBroker + ":" + PuertoBroker
-	var broker2Addres string = IpBroker + ":" + PuertoBroker
+	var brokerAddres string = IpBroker + ":" + PuertoBroker
 	var topic string = "movimientos-visitantes"
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{broker1Addres, broker2Addres},
+		Brokers: []string{brokerAddres},
 		Topic:   topic,
 	})
 	sigue := true
 	for sigue {
 		err := w.WriteMessages(ctx, kafka.Message{
-			Key:   []byte("Key-A"),                                 //[]byte(strconv.Itoa(i)),
-			Value: []byte("Información del visitante: " + mensaje), //strconv.Itoa(i)),
+			Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
+			Value: []byte(mensaje), //strconv.Itoa(i)),
 		})
 		if err != nil {
 			panic("No se puede escribir mensaje" + err.Error())
@@ -227,7 +249,7 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 /*
 * Consumidor de kafka para un visitante en un grupo
  */
-func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) {
+func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) string {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -236,20 +258,22 @@ func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) {
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		StartOffset: kafka.LastOffset,
 	})
+
 	reader := kafka.NewReader(r)
-	sigue := true
-	for sigue {
-		m, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
-			continue
-		}
-		fmt.Println("[", string(m.Value), "]")
-		sigue = false
+
+	m, err := reader.ReadMessage(context.Background())
+	if err != nil {
+		fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 	}
+
+	fmt.Println("[", string(m.Value), "]")
+
+	return string(m.Value)
+
 }
 
-func movimientoParque() {
+/* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
+func movimientoVisitante(posicionx, posiciony, destinox, destinoy int) {
 	//Primero el engine enviara el mapa con los visitantes y las atracciones.
 	//Con esa información los visitantes se empezaran a mover
 	//while
