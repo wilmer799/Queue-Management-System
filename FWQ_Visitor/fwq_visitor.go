@@ -49,7 +49,8 @@ func main() {
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-	defer SalidaParque(v)
+	ctx := context.Background()
+	defer SalidaParque(v, IpBroker, PuertoBroker, ctx)
 
 }
 
@@ -204,10 +205,9 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		v.DentroParque = 1 // El visitante está dentro del parque
 	}
 
-	if v.DentroParque == 1 {
-
-		go movimientoVisitante(v, mapa) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
-
+	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
+		go movimientoVisitante(v, mapa, IpBroker, PuertoBroker, ctx) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
+		time.Sleep(1 * time.Second)                                  // Esperamos un segundo hasta volver a enviar el movimiento del visitante
 	}
 
 }
@@ -289,17 +289,25 @@ func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) string {
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func movimientoVisitante(v visitante, mapa string) {
-	//Primero el engine enviara el mapa con los visitantes y las atracciones.
-	//Con esa información los visitantes se empezaran a mover
-	//while
-	//1. enviar mapa por el topic a los visitantes
-	//2. mover los visitantes
-	//3. Enviar información de movimiento por el topic
+func movimientoVisitante(v visitante, mapa string, IpBroker string, PuertoBroker string, ctx context.Context) {
 
-	for {
+	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
 
 		// Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+
+		// Actualizamos la coordenadas de destino del visitante
+
+		movimiento := "N"
+
+		mensaje := v.ID + ":" + movimiento
+
+		// Enviamos el movimiento al engine
+		ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
+
+		// Si el visitante se encuentra en la atracción esperamos un tiempo para simular el tiempo de ciclo de la atracción
+		if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
+			time.Sleep(10 * time.Second)
+		}
 
 		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
 	}
