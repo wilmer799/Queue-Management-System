@@ -125,7 +125,7 @@ func main() {
 				")")
 		}
 
-		//Obtenidos todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
+		//Obtenidos todos los visitantes y las atracciones del parque en la BD, asignamos cada uno a la posición que debe tener
 		mapa = asignacionPosiciones(visitantes, atracciones, mapa)
 
 		//Para empezar con el kafka
@@ -145,7 +145,7 @@ func main() {
 		for i := 0; i < len(mapa); i++ {
 			for j := 0; j < len(mapa[i]); j++ {
 
-				fmt.Print(mapa[i][j], " ")
+				fmt.Print(" " + mapa[i][j])
 
 			}
 			fmt.Println()
@@ -340,14 +340,21 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	}
 
 	//Asignamos los valores de tiempo de espera de las atracciones
-	//Esto para posicionar una vez esta bien pero los tiempos de espera si
-	//que tenemos que actualizarlo
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(atracciones); k++ {
 				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
 					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera)
 				}
+			}
+		}
+	}
+
+	// Las casillas del mapa que no tengan ni visitantes ni atracciones las representamos con una guión
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
+			if len(mapa[i][j]) == 0 {
+				mapa[i][j] = "-"
 			}
 		}
 	}
