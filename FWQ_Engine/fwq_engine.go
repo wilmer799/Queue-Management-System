@@ -81,23 +81,31 @@ func main() {
 	//Reserva de memoria para el mapa
 	var mapa [20][20]string
 
-	//Array de visitantes que se encuentran en el parque
+	// Visitantes, atracciones que se encuentran en el parque
 	var visitantes []visitante
 	var atracciones []atraccion
 	var parqueTematico []parque
 
+	var conn = conexionBD()
+	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
+	establecerMaxVisitantes(conn, maxVisitantes)
+
 	for {
 
-		var conn = conexionBD()
-		maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
-		establecerMaxVisitantes(conn, maxVisitantes)
 		visitantes, _ = obtenerVisitantesBD(conn)
 		atracciones, _ = obtenerAtraccionesBD(conn)
 		parqueTematico, _ = obtenerParqueDB(conn)
 
+		// Esta parte la podemos suprimir, simplemente es a modo de comprobación
+		fmt.Println("Visitantes en el parque: ")
 		fmt.Println(visitantes)
+		fmt.Println() // Para mejorar la salida por pantalla
+		fmt.Println("Atracciones del parque: ")
 		fmt.Println(atracciones)
+		fmt.Println() // Para mejorar la salida por pantalla
+		fmt.Println("Información del parque: ")
 		fmt.Println(parqueTematico)
+		fmt.Println() // Para mejorar la salida por pantalla
 
 		//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
 		//Ahora obtendremos el visitante y lo mostraremos en el mapa
@@ -117,32 +125,32 @@ func main() {
 				")")
 		}
 
-		//******1.Primera iteración del bucle
 		//Obtenidos todos los visitantes y las atracciones, asignamos cada uno a la posición que debe tener
 		mapa = asignacionPosiciones(visitantes, atracciones, mapa)
+
 		//Para empezar con el kafka
-		ctx := context.Background()
-		tiempo := "peticion"
-		var mapa1D []byte = convertirMapa(mapa)
+		//ctx := context.Background()
+		//var mapa1D []byte = convertirMapa(mapa)
 		//consumidorEngineKafka(IpKafka, PuertoKafka)
-		productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
+		//productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
+		tiempo := "Mándame los tiempos de espera actualizados"
 		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
-		/*
-			for i := 0; i < len(mapa); i++ {
-				for j := 0; j < len(mapa[i]); j++ {
 
-					fmt.Print(mapa[i][j], " ")
+		for i := 0; i < len(mapa); i++ {
+			for j := 0; j < len(mapa[i]); j++ {
 
-				}
-				fmt.Println()
+				fmt.Print(mapa[i][j], " ")
+
 			}
-		*/
+			fmt.Println()
+		}
+
 	}
 
 }
@@ -224,14 +232,14 @@ func obtenerParqueDB(db *sql.DB) ([]parque, error) {
 }
 
 /*
-* Función que obtiene todos los visitantes de la bd
+* Función que obtiene aquellos visitantes de la BD que se encuentren en el parque
 * @return []visitante : Arrays de los visitantes obtenidos en la sentencia
 * @return error : Error en caso de que no se haya podido obtener ninguno
  */
 func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 
 	//Ejecutamos la sentencia
-	results, err := db.Query("SELECT * FROM visitante")
+	results, err := db.Query("SELECT * FROM visitante WHERE dentroParque = 1")
 
 	if err != nil {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
@@ -318,30 +326,34 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 * Función que asigna los visitantes y los parques en el mapa
 * @return [20][20]string : Matriz bidimensional representando el mapa
  */
-func asignacionPosiciones(visitantesFinales []visitante, atraccionesFinales []atraccion, mapa [20][20]string) [20][20]string {
+func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string) [20][20]string {
+
 	//Asignamos valores a las posiciones del mapa
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
-			for k := 0; k < len(visitantesFinales); k++ {
-				if i == visitantesFinales[k].Posicionx && j == visitantesFinales[k].Posiciony {
-					mapa[i][j] = "|"
+			for k := 0; k < len(visitantes); k++ {
+				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony {
+					mapa[i][j] = "X"
 				}
 			}
 		}
 	}
+
 	//Asignamos los valores de tiempo de espera de las atracciones
 	//Esto para posicionar una vez esta bien pero los tiempos de espera si
 	//que tenemos que actualizarlo
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
-			for k := 0; k < len(atraccionesFinales); k++ {
-				if i == atraccionesFinales[k].Posicionx && j == atraccionesFinales[k].Posiciony {
-					mapa[i][j] = strconv.Itoa(atraccionesFinales[k].TiempoEspera)
+			for k := 0; k < len(atracciones); k++ {
+				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
+					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera)
 				}
 			}
 		}
 	}
+
 	return mapa
+
 }
 
 /*
@@ -377,28 +389,29 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string)
 
 }
 
-/*
-*
- */
+/* Función que establece en la tabla parque de la BD el aforo máximo permitido */
 func establecerMaxVisitantes(db *sql.DB, numero int) {
+
 	//Ejecutamos la sentencia
 	results, err := db.Query("SELECT * FROM parque")
 
 	if err != nil {
 		panic("Error al hacer la consulta del parque" + err.Error()) //devolvera nil y error en caso de que no se pueda hacer la consulta
 	}
+
 	//Cerramos la base de datos
 	defer results.Close()
 
 	//Recorremos los resultados obtenidos por la consulta
 	if results.Next() {
-		//   var nombreVariable tipoVariable
+
 		//Variable donde guardamos la información de cada una filas de la sentencia
 		sentenciaPreparada, err := db.Prepare("UPDATE parque SET aforoMaximo = ? WHERE id = ?")
 
 		if err != nil {
 			panic("Error al preparar la sentencia" + err.Error()) //devolvera nil y error en caso de que no se pueda hacer la consulta
 		}
+
 		defer sentenciaPreparada.Close()
 
 		_, err = sentenciaPreparada.Exec(numero, "SDpark")
@@ -416,9 +429,8 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 **/
 func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 
-	var puertoKafka string
-	puertoKafka = IpKafka + ":" + PuertoKafka
-	//Aqui crea los topicos, asigna canales y envia
+	puertoKafka := IpKafka + ":" + PuertoKafka
+
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
@@ -426,17 +438,22 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 		Topic:    "visitantes-engine", //Topico que hemos creado
 		MaxBytes: 10,
 	}
+
 	reader := kafka.NewReader(conf)
+
 	sigue := true
 	for sigue {
+
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 			continue
 		}
+
 		fmt.Println("Mensaje desde el gestor de colas: ", string(m.Value))
 		sigue = false
 	}
+
 }
 
 /*
@@ -469,7 +486,7 @@ func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.C
 		if err != nil {
 			panic("No se puede escribir mensaje" + err.Error())
 		}
-		//Descansoj
+		//Descanso
 		time.Sleep(time.Second)
 		sigue = false
 	}
