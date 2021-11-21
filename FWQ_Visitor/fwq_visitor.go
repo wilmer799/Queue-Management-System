@@ -8,17 +8,31 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
+/*
+* Estructura del visitante
+ */
+type visitante struct {
+	ID           string `json:"id"`
+	Nombre       string `json:"nombre"`
+	Password     string `json:"contraseña"`
+	Posicionx    int    `json:"posicionx"`
+	Posiciony    int    `json:"posiciony"`
+	Destinox     int    `json:"destinox"`
+	Destinoy     int    `json:"destinoy"`
+	DentroParque int    `json:"dentroParque"`
+	Parque       string `json:"parqueAtracciones"`
+}
+
 const (
 	connType = "tcp"
 )
 
-var idUsuario string
+var v visitante
 
 /**
 * Función main de los visitantes
@@ -35,7 +49,8 @@ func main() {
 	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-	defer SalidaParque(idUsuario)
+	defer SalidaParque(v)
+
 }
 
 /*
@@ -61,7 +76,8 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 		case 3:
 			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
 		case 4:
-			SalidaParque(idUsuario)
+			ctx := context.Background()
+			SalidaParque(v, IpBroker, PuertoBroker, ctx)
 		default:
 			fmt.Println("Opción invalida, elige otra opción")
 		}
@@ -155,78 +171,81 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	reader := bufio.NewReader(os.Stdin)
 
-	for {
+	fmt.Print("Por favor introduce tu alias:")
+	alias, _ := reader.ReadString('\n')
 
-		fmt.Print("Por favor introduce tu alias:")
-		alias, _ := reader.ReadString('\n')
-		idUsuario = string(alias) // Nos guardamos el id del visitante para cuando quiera salir del parque
-		fmt.Print("y tu password:")
-		password, _ := reader.ReadString('\n')
+	fmt.Print("y tu password:")
+	password, _ := reader.ReadString('\n')
 
-		ctx := context.Background()
+	ctx := context.Background()
 
-		mensaje := string(alias) + ":" + string(password)
+	mensaje := string(alias) + ":" + string(password)
 
-		// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
-		ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
+	var mapa string // Variable donde almacenaremos el mapa pasado por el engine
+	v := visitante{ // Guardamos la información del visitante
+		ID:           string(alias),
+		Password:     string(password),
+		Posicionx:    0,
+		Posiciony:    0,
+		Destinox:     -1,
+		Destinoy:     -1,
+		DentroParque: 0,
+	}
+	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
+	ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
 
-		// Recibe del engine la posición actual y la posición de destino
-		posiciones := ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
+	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
+	respuestaEngine := ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
 
-		posicionesVisitante := strings.Split(posiciones, "|")
+	if respuestaEngine == "Parque cerrado" {
+		fmt.Println("Parque cerrado")
+	} else {
+		mapa = respuestaEngine
+		v.DentroParque = 1 // El visitante está dentro del parque
+	}
 
-		posicionActual := strings.Split(posicionesVisitante[0], ",")
-		posicionDestino := strings.Split(posicionesVisitante[1], ",")
+	if v.DentroParque == 1 {
 
-		posicionx, _ := strconv.Atoi(posicionActual[0])
-		posiciony, _ := strconv.Atoi(posicionActual[1])
-		destinox, _ := strconv.Atoi(posicionDestino[0])
-		destinoy, _ := strconv.Atoi(posicionDestino[1])
-
-		salir := false
-		for !salir {
-
-			movimientoVisitante(posicionx, posiciony, destinox, destinoy) // El visitante se desplaza una posición para alcanzar la atracción
-
-			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-			respuestaEngine := ConsumidorKafkaVisitantes(IpBroker, PuertoBroker)
-
-			// Mostramos el mapa o el mensaje de error
-			fmt.Println(respuestaEngine)
-
-			fmt.Println("Desea abandonar el parque (si/no): ")
-			abandonar, _ := reader.ReadString('\n')
-
-			if string(abandonar) == "s" || string(abandonar) == "si" || string(abandonar) == "SI" || string(abandonar) == "sI" || string(abandonar) == "Si" {
-				SalidaParque(idUsuario)
-				salir = true
-			}
-
-			time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
-
-		}
+		go movimientoVisitante(v, mapa) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
 
 	}
 
 }
 
 /* Función que permite a un visitante abandonar el parque */
-func SalidaParque(idUsuario string) {
-	//aqui le pasamos el id del usuario
-	//El cual se buscara en la bd y se eliminara al usuario
-	fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
+func SalidaParque(v visitante, IpBroker string, PuertoBroker string, ctx context.Context) {
+
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Println("Desea abandonar el parque (si/no): ")
+	abandonar, err := reader.ReadString('\n')
+
+	if err != nil {
+		fmt.Println("Perdone, no entiendo si quiere abandonar el parque o no")
+	}
+
+	if string(abandonar) == "s" || string(abandonar) == "si" || string(abandonar) == "SI" || string(abandonar) == "sI" || string(abandonar) == "Si" {
+		v.DentroParque = 0
+		mensaje := v.ID + ":" + "Salir"
+		ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje, ctx)
+		fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
+	}
+
 }
 
 /*
-* Función que envian la información de los movimientos de los visitantes
+* Función que se encargará de enviar las claves de inicio de sesión y los movimientos de los visitantes
  */
 func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx context.Context) {
+
 	var brokerAddres string = IpBroker + ":" + PuertoBroker
 	var topic string = "movimientos-visitantes"
+
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddres},
 		Topic:   topic,
 	})
+
 	sigue := true
 	for sigue {
 		err := w.WriteMessages(ctx, kafka.Message{
@@ -234,13 +253,10 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 			Value: []byte(mensaje), //strconv.Itoa(i)),
 		})
 		if err != nil {
-			panic("No se puede escribir mensaje" + err.Error())
+			panic("No se puede encolar el mensaje" + err.Error())
 		}
-		//Tenemos que enviar la información de los visitantes
-		//Por lo que llamaremos a esta función desde crear perfil o editar perfil e ingresar en el parque
+
 		fmt.Println("Escribiendo:", mensaje)
-		//Descanso
-		time.Sleep(time.Second)
 		sigue = false
 	}
 
@@ -266,20 +282,28 @@ func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) string {
 		fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 	}
 
-	fmt.Println("[", string(m.Value), "]")
+	//fmt.Println("[", string(m.Value), "]")
 
 	return string(m.Value)
 
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func movimientoVisitante(posicionx, posiciony, destinox, destinoy int) {
+func movimientoVisitante(v visitante, mapa string) {
 	//Primero el engine enviara el mapa con los visitantes y las atracciones.
 	//Con esa información los visitantes se empezaran a mover
 	//while
 	//1. enviar mapa por el topic a los visitantes
 	//2. mover los visitantes
 	//3. Enviar información de movimiento por el topic
+
+	for {
+
+		// Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+
+		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
+	}
+
 }
 
 /*
