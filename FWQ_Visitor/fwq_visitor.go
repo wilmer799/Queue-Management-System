@@ -43,10 +43,11 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	crearTopic(IpBroker, PuertoBroker)
+	crearTopic(IpBroker, PuertoBroker, "inicio-sesion")
+	crearTopic(IpBroker, PuertoBroker, "movimientos-visitantes")
 	fmt.Println("**Bienvenido al parque de atracciones**")
-	fmt.Println("La IP del registro es la siguiente:" + IpFWQ_Registry + ":" + PuertoFWQ)
-	fmt.Println("La IP del Broker es el siguiente:" + IpBroker + ":" + PuertoBroker)
+	fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
+	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
 	ctx := context.Background()
@@ -238,7 +239,36 @@ func SalidaParque(v visitante, IpBroker string, PuertoBroker string, ctx context
 /*
 * Función que se encargará de enviar las claves de inicio de sesión y los movimientos de los visitantes
  */
-func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx context.Context) {
+func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
+
+	var brokerAddres string = IpBroker + ":" + PuertoBroker
+	var topic string = "inicio-sesion"
+
+	w := kafka.NewWriter(kafka.WriterConfig{
+		Brokers: []string{brokerAddres},
+		Topic:   topic,
+	})
+
+	sigue := true
+	for sigue {
+		err := w.WriteMessages(ctx, kafka.Message{
+			Key:   []byte("Key-Login"),
+			Value: []byte(credenciales),
+		})
+		if err != nil {
+			panic("No se puede encolar el mensaje" + err.Error())
+		}
+
+		fmt.Println("Enviando credenciales -> " + credenciales)
+		sigue = false
+	}
+
+}
+
+/*
+* Función que se encargará de enviar las claves de inicio de sesión y los movimientos de los visitantes
+ */
+func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
 	var brokerAddres string = IpBroker + ":" + PuertoBroker
 	var topic string = "movimientos-visitantes"
@@ -251,14 +281,14 @@ func ProductorKafkaVisitantes(IpBroker, PuertoBroker, mensaje string, ctx contex
 	sigue := true
 	for sigue {
 		err := w.WriteMessages(ctx, kafka.Message{
-			Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
-			Value: []byte(mensaje), //strconv.Itoa(i)),
+			Key:   []byte("Key-Moves"),
+			Value: []byte(movimiento),
 		})
 		if err != nil {
 			panic("No se puede encolar el mensaje" + err.Error())
 		}
 
-		fmt.Println("Escribiendo:", mensaje)
+		fmt.Println("Enviando movimiento: " + movimiento)
 		sigue = false
 	}
 
@@ -333,8 +363,8 @@ func movimientoVisitante(v visitante, mapa [][]string, IpBroker string, PuertoBr
 /*
 * Función que crea el topic para el envio de los movimientos de los visitantes
  */
-func crearTopic(IpBroker, PuertoBroker string) {
-	topic := "movimientos-visitantes"
+func crearTopic(IpBroker, PuertoBroker, topic string) {
+
 	//partition := 0
 	//Broker1 se sustituira en localhost:9092
 	var broker1 string = IpBroker + ":" + PuertoBroker
