@@ -81,7 +81,7 @@ func main() {
 	//Reserva de memoria para el mapa
 	var mapa [20][20]string
 
-	// Visitantes, atracciones que se encuentran en el parque
+	// Visitantes, atracciones que se encuentran en la BD
 	var visitantes []visitante
 	var atracciones []atraccion
 	var parqueTematico []parque
@@ -97,7 +97,7 @@ func main() {
 		parqueTematico, _ = obtenerParqueDB(conn)
 
 		// Esta parte la podemos suprimir, simplemente es a modo de comprobación
-		fmt.Println("Visitantes en el parque: ")
+		fmt.Println("Visitantes registrados: ")
 		fmt.Println(visitantes)
 		fmt.Println() // Para mejorar la salida por pantalla
 		fmt.Println("Atracciones del parque: ")
@@ -106,13 +106,6 @@ func main() {
 		fmt.Println("Información del parque: ")
 		fmt.Println(parqueTematico)
 		fmt.Println() // Para mejorar la salida por pantalla
-
-		//QUERY DELETE.....DELETE FROM visitante WHERE id = h7;
-		//Ahora obtendremos el visitante y lo mostraremos en el mapa
-		//Cada una de las casillas, s valor entero representa el tiempo en minutos de una atracción
-		//Cada uno de los personajes tenemos que representarlo por algo
-		//Esto se le asignara cuando entre al parque
-		//El mapa se carga de la base de datos al arrancar la aplicación
 
 		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
 		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino")
@@ -129,10 +122,9 @@ func main() {
 		mapa = asignacionPosiciones(visitantes, atracciones, mapa)
 
 		//Para empezar con el kafka
-		//ctx := context.Background()
-		//var mapa1D []byte = convertirMapa(mapa)
-		//consumidorEngineKafka(IpKafka, PuertoKafka)
-		//productorEngineKafkaVisitantes(IpKafka, PuertoKafka, ctx, mapa1D)
+		ctx := context.Background()
+		var mapa1D []byte = convertirMapa(mapa)
+		go consumidorEngine(IpKafka, PuertoKafka, ctx, mapa1D)
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
@@ -141,7 +133,6 @@ func main() {
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
-
 		for i := 0; i < len(mapa); i++ {
 			for j := 0; j < len(mapa[i]); j++ {
 
@@ -157,7 +148,7 @@ func main() {
 
 /*
 * Función que convierte el mapa de tipo string en []byte
-* @return []mapa : Retorna un array de bytes que van a hacer enviados a los visitantes
+* @return []mapa : Retorna un array de bytes que va a ser enviado a los visitantes que se encuentren en el parque
  */
 func convertirMapa(mapa [20][20]string) []byte {
 	var mapaOneD []byte
@@ -232,14 +223,14 @@ func obtenerParqueDB(db *sql.DB) ([]parque, error) {
 }
 
 /*
-* Función que obtiene aquellos visitantes de la BD que se encuentren en el parque
+* Función que obtiene todos los visitantes que se encuentran la BD
 * @return []visitante : Arrays de los visitantes obtenidos en la sentencia
 * @return error : Error en caso de que no se haya podido obtener ninguno
  */
 func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 
 	//Ejecutamos la sentencia
-	results, err := db.Query("SELECT * FROM visitante WHERE dentroParque = 1")
+	results, err := db.Query("SELECT * FROM visitante")
 
 	if err != nil {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
@@ -249,7 +240,7 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 	defer results.Close()
 
 	//Declaramos el array de visitantes
-	var visitantesParque []visitante
+	var visitantes []visitante
 
 	//Recorremos los resultados obtenidos por la consulta
 	for results.Next() {
@@ -261,18 +252,18 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
 			&fwq_visitante.DentroParque, &fwq_visitante.Parque); err != nil {
-			return visitantesParque, err
+			return visitantes, err
 		}
 
 		//Vamos añadiendo los visitantes al array
-		visitantesParque = append(visitantesParque, fwq_visitante)
+		visitantes = append(visitantes, fwq_visitante)
 	}
 
 	if err = results.Err(); err != nil {
-		return visitantesParque, err
+		return visitantes, err
 	}
 
-	return visitantesParque, nil
+	return visitantes, nil
 
 }
 
@@ -323,7 +314,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 }
 
 /*
-* Función que asigna los visitantes y los parques en el mapa
+* Función que forma el mapa del parque conteniendo a los visitantes y las atracciones
 * @return [20][20]string : Matriz bidimensional representando el mapa
  */
 func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string) [20][20]string {
@@ -332,7 +323,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(visitantes); k++ {
-				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony {
+				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony && visitantes[k].DentroParque == 1 {
 					mapa[i][j] = "X"
 				}
 			}
@@ -434,31 +425,71 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 /**
 * Función que conecta el engine con el kafka
 **/
-func consumidorEngineKafka(IpKafka, PuertoKafka string) {
+func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, mapa []byte) {
 
-	puertoKafka := IpKafka + ":" + PuertoKafka
+	direccionKafka := IpKafka + ":" + PuertoKafka
 
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
-		Brokers:  []string{puertoKafka},
-		Topic:    "visitantes-engine", //Topico que hemos creado
-		MaxBytes: 10,
+		Brokers: []string{direccionKafka},
+		Topic:   "movimientos-visitantes", //Topico que hemos creado
+		//MaxBytes: 10,
 	}
 
 	reader := kafka.NewReader(conf)
 
-	sigue := true
-	for sigue {
+	for {
 
 		m, err := reader.ReadMessage(context.Background())
+
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
 			continue
 		}
 
 		fmt.Println("Mensaje desde el gestor de colas: ", string(m.Value))
-		sigue = false
+
+		mensaje := strings.Split(string(m.Value), ":")
+
+		idVisitante := mensaje[0]
+		peticion := mensaje[1]
+
+		// Si un visitante nos ha indicado un movimiento
+		if mensaje[1] == "N" || mensaje[1] == "S" || mensaje[1] == "W" || mensaje[1] == "E" ||
+			mensaje[1] == "NW" || mensaje[1] == "NE" || mensaje[1] == "SW" || mensaje[1] == "SE" {
+			enviarMapa(mapa)
+		} else if mensaje[1] == "Salir" { // Si un visitante nos ha pedido salir del parque
+			salirVisitanteParque(idVisitante)
+		} else if len(mensaje[1]) > 0 { // Sino, entonces se nos ha mandado el password de inicio de sesión
+			introducirVisitanteParque(idVisitante, string(peticion[1]))
+		} else { // Petición errónea, informar al visitante
+
+			envioError(IpKafka, PuertoKafka)
+		}
+
+	}
+
+}
+
+func envioError(IpBroker, PuertoBroker string, ctx context.Context) {
+
+	var brokerAddress string = IpBroker + ":" + PuertoBroker
+	var topic string = "mapa-visitantes"
+
+	w := kafka.NewWriter(kafka.WriterConfig{
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
+	})
+
+	err := w.WriteMessages(ctx, kafka.Message{
+		Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
+		Value: []byte("Parque cerrado"),
+	})
+
+	if err != nil {
+		panic("No se puede escribir el mensaje de error: " + err.Error())
 	}
 
 }
@@ -466,36 +497,30 @@ func consumidorEngineKafka(IpKafka, PuertoKafka string) {
 /*
 * Función que envia el mapa a los visitantes
  */
-func productorEngineKafkaVisitantes(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
-	var broker1Addres string = IpBroker + ":" + PuertoBroker
-	var broker2Addres string = IpBroker + ":" + PuertoBroker
+func envioMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
+
+	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "mapa-visitantes"
+
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:          []string{broker1Addres, broker2Addres},
+		Brokers:          []string{brokerAddress},
 		Topic:            topic,
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
-	//Para finalizar la iteración del bucle
-	sigue := true
-	for sigue {
 
-		//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
-		//https://docs.confluent.io/clients-confluent-kafka-go/current/overview.html
-		//https://www.confluent.io/blog/5-things-every-kafka-developer-should-know/
+	//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
+	//https://docs.confluent.io/clients-confluent-kafka-go/current/overview.html
+	//https://www.confluent.io/blog/5-things-every-kafka-developer-should-know/
 
-		//https://en.m.wikipedia.org/wiki/SerDes
-		//Compresion de mensajes
-		//https://developer.ibm.com/articles/benefits-compression-kafka-messaging/
-		err := w.WriteMessages(ctx, kafka.Message{
-			Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
-			Value: []byte(mapa),
-		})
-		if err != nil {
-			panic("No se puede escribir mensaje" + err.Error())
-		}
-		//Descanso
-		time.Sleep(time.Second)
-		sigue = false
+	//https://en.m.wikipedia.org/wiki/SerDes
+	//Compresion de mensajes
+	//https://developer.ibm.com/articles/benefits-compression-kafka-messaging/
+	err := w.WriteMessages(ctx, kafka.Message{
+		Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
+		Value: []byte(mapa),
+	})
+	if err != nil {
+		panic("No se puede mandar el mapa: " + err.Error())
 	}
 }
 
