@@ -203,7 +203,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	if respuestaEngine == "Parque cerrado" {
 		fmt.Println("Parque cerrado")
 	} else {
-		mapa = respuestaEngine
+		mapa = formarMapa(respuestaEngine)
 		v.DentroParque = 1 // El visitante está dentro del parque
 	}
 
@@ -280,8 +280,9 @@ func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) string {
 	reader := kafka.NewReader(r)
 
 	m, err := reader.ReadMessage(context.Background())
+
 	if err != nil {
-		fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
+		panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 	}
 
 	//fmt.Println("[", string(m.Value), "]")
@@ -291,7 +292,7 @@ func ConsumidorKafkaVisitantes(IpBroker, PuertoBroker string) string {
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func movimientoVisitante(v visitante, mapa string, IpBroker string, PuertoBroker string, ctx context.Context) {
+func movimientoVisitante(v visitante, mapa [][]string, IpBroker string, PuertoBroker string, ctx context.Context) {
 
 	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
 

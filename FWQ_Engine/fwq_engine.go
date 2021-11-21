@@ -474,6 +474,8 @@ func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Conte
 /* Función que permite el inicio de sesión de un visitante en el parque */
 func inicioSesionVisitante(id, password string) {
 
+	// Comprobamos que el id y el password se corresponden con un visitante registrado
+
 }
 
 /* Función que se encarga de que un visitante salga del parque */
