@@ -124,7 +124,7 @@ func main() {
 		//Para empezar con el kafka
 		ctx := context.Background()
 		var mapa1D []byte = convertirMapa(mapa)
-		go consumidorEngine(IpKafka, PuertoKafka, ctx, mapa1D)
+		go consumidorEngine(conn, IpKafka, PuertoKafka, ctx, mapa1D)
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
@@ -425,7 +425,7 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 /**
 * Función que conecta el engine con el kafka
 **/
-func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, mapa []byte) {
+func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, mapa []byte) {
 
 	direccionKafka := IpKafka + ":" + PuertoKafka
 
@@ -458,21 +458,44 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, mapa []b
 		// Si un visitante nos ha indicado un movimiento
 		if mensaje[1] == "N" || mensaje[1] == "S" || mensaje[1] == "W" || mensaje[1] == "E" ||
 			mensaje[1] == "NW" || mensaje[1] == "NE" || mensaje[1] == "SW" || mensaje[1] == "SE" {
-			enviarMapa(mapa)
+			enviarMapa(IpKafka, PuertoKafka, ctx, mapa)
 		} else if mensaje[1] == "Salir" { // Si un visitante nos ha pedido salir del parque
-			salirVisitanteParque(idVisitante)
+			salirVisitanteParque(db, idVisitante)
 		} else if len(mensaje[1]) > 0 { // Sino, entonces se nos ha mandado el password de inicio de sesión
-			introducirVisitanteParque(idVisitante, string(peticion[1]))
+			inicioSesionVisitante(idVisitante, string(peticion[1]))
 		} else { // Petición errónea, informar al visitante
-
-			envioError(IpKafka, PuertoKafka)
+			enviarError(IpKafka, PuertoKafka, ctx)
 		}
 
 	}
 
 }
 
-func envioError(IpBroker, PuertoBroker string, ctx context.Context) {
+/* Función que permite el inicio de sesión de un visitante en el parque */
+func inicioSesionVisitante(id, password string) {
+
+}
+
+/* Función que se encarga de que un visitante salga del parque */
+func salirVisitanteParque(db *sql.DB, idVisitante string) {
+
+	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0 WHERE id = ?")
+	if err != nil {
+		panic("Error al preparar la sentencia de modificación: " + err.Error())
+	}
+
+	defer sentenciaPreparada.Close()
+
+	// Ejecutar sentencia, un valor por cada '?'
+	_, err = sentenciaPreparada.Exec(idVisitante)
+	if err != nil {
+		panic("Error al modificar el estado del visitante en el parque: " + err.Error())
+	}
+
+}
+
+/* Función que informa a un visitante que no puede entrar al parque */
+func enviarError(IpBroker, PuertoBroker string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "mapa-visitantes"
@@ -494,10 +517,8 @@ func envioError(IpBroker, PuertoBroker string, ctx context.Context) {
 
 }
 
-/*
-* Función que envia el mapa a los visitantes
- */
-func envioMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
+/* Función que envia el mapa a los visitantes */
+func enviarMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "mapa-visitantes"
