@@ -202,17 +202,19 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
 	respuestaEngine := consumidorLogin(IpBroker, PuertoBroker)
 
-	if respuestaEngine == "Parque cerrado" {
-		fmt.Println("Parque cerrado")
-	} else {
-		//mapa = formarMapa(respuestaEngine)
+	if respuestaEngine == "Acceso concedido" {
 		v.DentroParque = 1 // El visitante está dentro del parque
+	} else if respuestaEngine == "Parque cerrado" {
+		return // Volvemos al menú
+	} else {
+		fmt.Println("Error: El mensaje recibido del engine no es válido")
+		return // Volvemos al menú
 	}
 
-	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
+	/*for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
 		//go movimientoVisitante(v, mapa, IpBroker, PuertoBroker, ctx) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
 		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
-	}
+	}*/
 
 }
 
@@ -260,6 +262,34 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 
 }
 
+/* Función que recibe el mensaje de parque cerrado por parte del engine o no */
+func consumidorLogin(IpBroker, PuertoBroker string) string {
+
+	respuesta := ""
+
+	broker := IpBroker + ":" + PuertoBroker
+	r := kafka.ReaderConfig(kafka.ReaderConfig{
+		Brokers: []string{broker},
+		Topic:   "inicio-sesion",
+		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
+		StartOffset: kafka.LastOffset,
+	})
+
+	reader := kafka.NewReader(r)
+
+	m, err := reader.ReadMessage(context.Background())
+
+	if err != nil {
+		panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
+	}
+
+	respuesta = string(m.Value)
+	fmt.Println(respuesta)
+
+	return respuesta
+
+}
+
 /* Función que se encarga de enviar los movimientos de los visitantes al engine */
 func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
@@ -303,35 +333,6 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 	}
 
 	fmt.Println("Enviando solicitud -> " + peticion)
-
-}
-
-/* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpBroker, PuertoBroker string) string {
-
-	respuesta := ""
-
-	broker := IpBroker + ":" + PuertoBroker
-	r := kafka.ReaderConfig(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "inicio-sesion",
-		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
-		StartOffset: kafka.LastOffset,
-	})
-
-	reader := kafka.NewReader(r)
-
-	m, err := reader.ReadMessage(context.Background())
-
-	if err != nil {
-		panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
-	}
-
-	if m.Value != nil {
-		respuesta = string(m.Value)
-	}
-
-	return respuesta
 
 }
 
