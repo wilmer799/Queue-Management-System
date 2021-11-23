@@ -122,7 +122,7 @@ func main() {
 		//Para empezar con el kafka
 		ctx := context.Background()
 
-		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, visitantesRegistrados)
+		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
 
 		//Obtenidos todos los visitantes y las atracciones del parque en la BD, asignamos cada uno a la posición que debe tener
 		mapa = asignacionPosiciones(visitantesRegistrados, atracciones, mapa)
@@ -151,16 +151,39 @@ func main() {
 }
 
 /* Función que comprueba si el aforo del parque está completo o no */
-func compruebaAforo() bool {
+func compruebaAforo(db *sql.DB, maxAforo int) bool {
 
-	var completo bool = false
+	var lleno bool = false
 
-	return completo
+	// Comprobamos si las credenciales de acceso son válidas
+	results, err := db.Query("SELECT * FROM visitante WHERE id = ?, contraseña = ?", alias, password)
+
+	if err != nil {
+		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
+	}
+
+	// Cerramos la base de datos
+	defer results.Close()
+
+	i := 0
+
+	// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
+	for results.Next() {
+
+		i++
+
+	}
+
+	if i >= maxAforo {
+
+	}
+
+	return lleno
 
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante) {
+func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante, maxVisitantes int) {
 
 	direccionKafka := IpKafka + ":" + PuertoKafka
 
@@ -188,7 +211,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	password := credenciales[1]
 
 	// Comprobamos si las credenciales de acceso son válidas
-	results, err := db.Query("SELECT COUNT(*) FROM visitante WHERE id = ?, contraseña = ?", alias, password)
+	results, err := db.Query("SELECT * FROM visitante WHERE id = ?, contraseña = ?", alias, password)
 
 	if err != nil {
 		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
@@ -200,7 +223,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	var respuesta string = ""
 
 	// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
-	if results.Next() && !compruebaAforo() {
+	if results.Next() && !compruebaAforo(maxVisitantes) {
 
 		// Actualizamos el estado del visitante en la BD
 		sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
