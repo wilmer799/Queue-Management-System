@@ -68,8 +68,8 @@ func main() {
 	//Creamos el topic...Cambiar la Ipkafka en la función principal
 	//Si no se ejecuta el programa, se cierra el kafka?
 	crearTopics(IpKafka, PuertoKafka, "inicio-sesion")
-	crearTopics(IpKafka, PuertoKafka, "mapa-visitantes")
 	crearTopics(IpKafka, PuertoKafka, "movimientos-visitantes")
+	crearTopics(IpKafka, PuertoKafka, "salir-parque")
 
 	fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
@@ -189,8 +189,9 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
-		Brokers: []string{direccionKafka},
-		Topic:   "inicio-sesion", //Topico que hemos creado
+		Brokers:     []string{direccionKafka},
+		Topic:       "inicio-sesion", //Topico que hemos creado
+		StartOffset: kafka.LastOffset,
 		//MaxBytes: 10,
 	}
 
@@ -209,8 +210,16 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	alias := credenciales[0]
 	password := credenciales[1]
 
+	v := visitante{
+		ID:       alias,
+		Password: password,
+	}
+
+	fmt.Println("El alias recibido es: " + alias)
+	fmt.Println("El password recibido es: " + password)
+
 	// Comprobamos si las credenciales de acceso son válidas
-	results, err := db.Query("SELECT * FROM visitante WHERE id = ?, contraseña = ?", alias, password)
+	results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
 
 	if err != nil {
 		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
@@ -233,7 +242,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 		defer sentenciaPreparada.Close()
 
 		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(alias)
+		_, err = sentenciaPreparada.Exec(v.ID)
 		if err != nil {
 			panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 		}
@@ -250,6 +259,8 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 
 /* Función que envía el mensaje de respuesta a la petición de login de un visitante */
 func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
+
+	fmt.Println("Respuesta a enviar: " + respuesta)
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "inicio-sesion"

@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -182,7 +183,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	ctx := context.Background()
 
-	mensaje := string(alias) + ":" + string(password)
+	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password))
 
 	//var mapa string // Variable donde almacenaremos el mapa pasado por el engine
 
@@ -200,16 +201,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
 
 	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-	respuestaEngine := consumidorLogin(IpBroker, PuertoBroker)
-
-	if respuestaEngine == "Acceso concedido" {
-		v.DentroParque = 1 // El visitante está dentro del parque
-	} else if respuestaEngine == "Parque cerrado" {
-		return // Volvemos al menú
-	} else {
-		fmt.Println("Error: El mensaje recibido del engine no es válido")
-		return // Volvemos al menú
-	}
+	go consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, v)
 
 	/*for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
 		//go movimientoVisitante(v, mapa, IpBroker, PuertoBroker, ctx) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
@@ -263,9 +255,9 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpBroker, PuertoBroker string) string {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante) string {
 
-	respuesta := ""
+	respuestaEngine := ""
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -283,8 +275,19 @@ func consumidorLogin(IpBroker, PuertoBroker string) string {
 		panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 	}
 
-	respuesta = string(m.Value)
-	fmt.Println(respuesta)
+	respuestaEngine = string(m.Value)
+	fmt.Println(respuestaEngine)
+
+	if respuestaEngine == "Acceso concedido" {
+		v.DentroParque = 1 // El visitante está dentro del parque
+		fmt.Println("El visitante está dentro del parque")
+	} else if respuestaEngine == "Parque cerrado" {
+
+		MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Nos muestra el menú de nuevo
+	} else {
+		fmt.Println("Error: El engine no está disponible")
+		MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Nos muestra el menú de nuevo
+	}
 
 	return respuesta
 
