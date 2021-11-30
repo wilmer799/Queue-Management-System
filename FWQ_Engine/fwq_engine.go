@@ -151,12 +151,12 @@ func main() {
 }
 
 /* Función que comprueba si el aforo del parque está completo o no */
-func compruebaAforo(db *sql.DB, maxAforo int) bool {
+func parqueLleno(db *sql.DB, maxAforo int) bool {
 
 	var lleno bool = false
 
 	// Comprobamos si las credenciales de acceso son válidas
-	results, err := db.Query("SELECT * FROM visitante WHERE id = ?, contraseña = ?", alias, password)
+	results, err := db.Query("SELECT * FROM visitante WHERE dentroParque = 1")
 
 	if err != nil {
 		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
@@ -165,17 +165,16 @@ func compruebaAforo(db *sql.DB, maxAforo int) bool {
 	// Cerramos la base de datos
 	defer results.Close()
 
-	i := 0
+	visitantesDentroParque := 0 // Variable en la que vamos a almacenar el número de visitantes que se encuentran en el parque
 
-	// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
+	// Vamos recorriendo las filas devueltas para obtener el nº de visitanes dentro del parque
 	for results.Next() {
-
-		i++
-
+		visitantesDentroParque++
 	}
 
-	if i >= maxAforo {
-
+	// Si el aforo está al completo
+	if visitantesDentroParque >= maxAforo {
+		lleno = true
 	}
 
 	return lleno
@@ -223,7 +222,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	var respuesta string = ""
 
 	// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
-	if results.Next() && !compruebaAforo(maxVisitantes) {
+	if results.Next() && !parqueLleno(db, maxVisitantes) {
 
 		// Actualizamos el estado del visitante en la BD
 		sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
