@@ -44,9 +44,8 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	crearTopic(IpBroker, PuertoBroker, "inicio-sesion")          // Creamos un topic para el inicio de sesión de los visitantes en el parque
+	crearTopic(IpBroker, PuertoBroker, "peticion-login")         // Creamos un topic para el envío de la petición de login y la recepción de la respuesta
 	crearTopic(IpBroker, PuertoBroker, "movimientos-visitantes") // Creamos un topic para el envío de los movimientos y la recepción del mapa
-	crearTopic(IpBroker, PuertoBroker, "salir-parque")           // Creamos un topic para la solicitud de salida del parque
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)
@@ -255,7 +254,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante) string {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante) {
 
 	respuestaEngine := ""
 
@@ -269,27 +268,29 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 
 	reader := kafka.NewReader(r)
 
-	m, err := reader.ReadMessage(context.Background())
+	for {
 
-	if err != nil {
-		panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
+		m, err := reader.ReadMessage(context.Background())
+
+		if err != nil {
+			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
+		}
+
+		respuestaEngine = string(m.Value)
+		fmt.Println("Respuesta del engine: " + respuestaEngine)
+
+		if respuestaEngine == "Acceso concedido" {
+			v.DentroParque = 1 // El visitante está dentro del parque
+			fmt.Println("El visitante está dentro del parque")
+		} else if respuestaEngine == "Parque cerrado" {
+			fmt.Println("Parque cerrado")
+			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
+		} else {
+			fmt.Println("Error: El engine no está disponible")
+			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
+		}
+
 	}
-
-	respuestaEngine = string(m.Value)
-	fmt.Println(respuestaEngine)
-
-	if respuestaEngine == "Acceso concedido" {
-		v.DentroParque = 1 // El visitante está dentro del parque
-		fmt.Println("El visitante está dentro del parque")
-	} else if respuestaEngine == "Parque cerrado" {
-
-		MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Nos muestra el menú de nuevo
-	} else {
-		fmt.Println("Error: El engine no está disponible")
-		MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Nos muestra el menú de nuevo
-	}
-
-	return respuesta
 
 }
 

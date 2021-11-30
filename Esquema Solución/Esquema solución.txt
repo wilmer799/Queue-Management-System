@@ -1,0 +1,33 @@
+TOPICS y PRODUCTORES-CONSUMIDORES NECESARIOS:
+
+LOGIN: 
+
+Topic "peticion-login" : Productor del visitante = "productorLogin" -> Consumidor del engine = "consumidorLogin"
+Topic "respuesta-login" : Productor del engine = "productorLogin" -> Consumidor del visitante = "consumidorLogin"
+
+MOVIMIENTOS-MAPA: 
+
+Topic "peticion-mapa" : Productor del visitante = "productorMovimiento" -> Consumidor del engine = "consumidorMovimiento"
+Topic "respuesta-mapa" : Productor del engine = "productorMapa" -> Consumidor del visitante = "consumidorMapa"
+
+SALIR-PARQUE:
+
+Topic "peticion-salir" : Productor del visitante = "productorSalir" -> Consumidor del engine = "consumidorSalir"
+Topic "respuesta-salir" : Productor del engine = "productorSalir" -> Consumidor del visitante = "consumidorSalir"
+
+FORMATO DE LOS MENSAJES QUE MANDAN LOS PRODUCTORES:
+
+LOGIN:
+
+Topic "peticion-login" : alias:password
+Topic "respuesta-login" : si OK -> alias:[MAPA] | si NO OK -> alias:"Parque cerrado"
+
+MOVIMIENTOS-MAPA:
+
+Topic "peticion-mapa" : alias:movimiento donde movimiento será uno de estos -> N,S,W,E,NW,NE,SW,SE
+Topic "respuesta-mapa" :  alias:[MAPA ACTUALIZADO]
+
+SALIR-PARQUE:
+
+Topic "peticion-salir" : alias:"Salir"
+Topic "respuesta-salir" : alias:"Parque cerrado"

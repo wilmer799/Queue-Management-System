@@ -247,10 +247,10 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 			panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 		}
 
-		respuesta += "Acceso concedido"
+		respuesta += alias + ":" + "Acceso concedido"
 
 	} else { // Sino entonces le informamos de que el parque está cerrado
-		respuesta += "Parque cerrado"
+		respuesta += alias + ":" + "Parque cerrado"
 	}
 
 	productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
