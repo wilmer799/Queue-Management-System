@@ -188,8 +188,8 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	//var mapa string // Variable donde almacenaremos el mapa pasado por el engine
 
 	v := visitante{ // Guardamos la información del visitante que nos hace falta
-		ID:           string(alias),
-		Password:     string(password),
+		ID:           strings.TrimSpace(string(alias)),
+		Password:     strings.TrimSpace(string(password)),
 		Posicionx:    0,
 		Posiciony:    0,
 		Destinox:     -1,
@@ -280,11 +280,11 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		respuestaEngine = strings.TrimSpace(string(m.Value))
 		//fmt.Println("Respuesta del engine: " + respuestaEngine)
 
-		if respuestaEngine == (strings.TrimSpace(v.ID) + ":" + "Acceso concedido") {
+		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
-		} else if respuestaEngine == (strings.TrimSpace(v.ID) + ":" + "Parque cerrado") {
+		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
 			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
 		}

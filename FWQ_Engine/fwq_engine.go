@@ -213,8 +213,8 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	password := credenciales[1]
 
 	v := visitante{
-		ID:       alias,
-		Password: password,
+		ID:       strings.TrimSpace(alias),
+		Password: strings.TrimSpace(password),
 	}
 
 	//fmt.Println("El alias recibido es: " + alias)

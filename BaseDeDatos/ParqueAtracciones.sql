@@ -12,11 +12,11 @@ posiciony int DEFAULT 0,
 destinox int DEFAULT -1,
 destinoy int DEFAULT -1,
 dentroParque int DEFAULT 0,
-idParque char(2),
+idParque char(1),
 parqueAtracciones varchar(30) default 'SDpark', 
 CONSTRAINT fk_visitantes_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
-CREATE TABLE atraccion(
+CREATE TABLE atraccion(s
 id varchar(30) PRIMARY KEY, 
 tciclo int, 
 nvisitantes int, 
