@@ -71,13 +71,13 @@ func main() {
 	crearTopics(IpKafka, PuertoKafka, "peticion-login")
 	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
 
-	fmt.Println("**Bienvenido al engine de la aplicación**")
+	/*fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
 	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
 	fmt.Println("El número máximo de visitantes es el siguiente:" + numeroVisitantes)
 	fmt.Println("La ip del servidor de espera es el siguiente:" + IpFWQWating)
 	fmt.Println("El puerto del servidor de tiempo es el siguiente:" + PuertoWaiting)
-	fmt.Println()
+	fmt.Println()*/
 
 	//Reserva de memoria para el mapa
 	var mapa [20][20]string
@@ -137,6 +137,8 @@ func main() {
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
+		fmt.Println()
+		fmt.Println("Estado actual del mapa del parque: ")
 		for i := 0; i < len(mapa); i++ {
 			for j := 0; j < len(mapa[i]); j++ {
 
@@ -190,7 +192,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
 		Brokers:     []string{direccionKafka},
-		Topic:       "inicio-sesion", //Topico que hemos creado
+		Topic:       "peticion-login", //Topico que hemos creado
 		StartOffset: kafka.LastOffset,
 		//MaxBytes: 10,
 	}
@@ -203,7 +205,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 		fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
 	}
 
-	fmt.Println("Petición de inicio de sesión del visitante: ", string(m.Value))
+	//fmt.Println("Petición de inicio de sesión del visitante: ", string(m.Value))
 
 	credenciales := strings.Split(string(m.Value), ":")
 
@@ -215,8 +217,8 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 		Password: password,
 	}
 
-	fmt.Println("El alias recibido es: " + alias)
-	fmt.Println("El password recibido es: " + password)
+	//fmt.Println("El alias recibido es: " + alias)
+	//fmt.Println("El password recibido es: " + password)
 
 	// Comprobamos si las credenciales de acceso son válidas
 	results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
@@ -260,15 +262,13 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 /* Función que envía el mensaje de respuesta a la petición de login de un visitante */
 func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
 
-	fmt.Println("Respuesta a enviar: " + respuesta)
-
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "inicio-sesion"
+	var topic string = "respuesta-login"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:          []string{brokerAddress},
-		Topic:            topic,
-		CompressionCodec: kafka.Snappy.Codec(),
+		Brokers: []string{brokerAddress},
+		Topic:   topic,
+		//CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
@@ -387,7 +387,7 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdParque, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
@@ -460,7 +460,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(visitantes); k++ {
 				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony && visitantes[k].DentroParque == 1 {
-					mapa[i][j] = "X"
+					mapa[i][j] = visitantes[k].IdParque
 				}
 			}
 		}
