@@ -12,6 +12,7 @@ posiciony int DEFAULT 0,
 destinox int DEFAULT -1,
 destinoy int DEFAULT -1,
 dentroParque int DEFAULT 0,
+idParque char(2),
 parqueAtracciones varchar(30) default 'SDpark', 
 CONSTRAINT fk_visitantes_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
@@ -44,15 +45,15 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspe
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, 74, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, 23, "SDpark");
 /* Visitantes */
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
-VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
-VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
+VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"w","SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
+VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"e","SDpark");
 
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
-VALUES ("rafajaja", "rafa","1234",13,7,17,9,1,"SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, parqueAtracciones)
-VALUES ("hcarlos", "carlos","1234",19,19,6,11,1,"SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
+VALUES ("rafajaja", "rafa","1234",13,7,17,9,1,"r","SDpark");
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
+VALUES ("hcarlos", "carlos","1234",19,19,6,11,1,"h","SDpark");
 
 delete from visitante;
 

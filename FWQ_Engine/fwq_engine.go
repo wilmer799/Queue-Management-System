@@ -28,6 +28,7 @@ type visitante struct {
 	Destinox     int    `json:"destinox"`
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
+	IdParque     string `json:"idParque"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -67,9 +68,8 @@ func main() {
 
 	//Creamos el topic...Cambiar la Ipkafka en la función principal
 	//Si no se ejecuta el programa, se cierra el kafka?
-	crearTopics(IpKafka, PuertoKafka, "inicio-sesion")
-	crearTopics(IpKafka, PuertoKafka, "movimientos-visitantes")
-	crearTopics(IpKafka, PuertoKafka, "salir-parque")
+	crearTopics(IpKafka, PuertoKafka, "peticion-login")
+	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
 
 	fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)

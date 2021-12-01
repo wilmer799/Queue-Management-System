@@ -26,6 +26,7 @@ type visitante struct {
 	Destinox     int    `json:"destinox"`
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
+	IdParque     string `json:"idParque"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -44,8 +45,8 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	crearTopic(IpBroker, PuertoBroker, "peticion-login")         // Creamos un topic para el envío de la petición de login y la recepción de la respuesta
-	crearTopic(IpBroker, PuertoBroker, "movimientos-visitantes") // Creamos un topic para el envío de los movimientos y la recepción del mapa
+	crearTopic(IpBroker, PuertoBroker, "peticion-login")
+	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)

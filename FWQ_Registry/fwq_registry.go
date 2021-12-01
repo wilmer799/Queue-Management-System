@@ -17,14 +17,16 @@ import (
 * Estructura del visitante
  */
 type visitante struct {
-	ID        string `json:"id"`
-	Nombre    string `json:"nombre"`
-	Password  string `json:"contraseña"`
-	Posicionx int    `json:"posicionx"`
-	Posiciony int    `json:"posiciony"`
-	Destinox  int    `json:"destinox"`
-	Destinoy  int    `json:"destinoy"`
-	Parque    string `json:"parqueAtracciones"`
+	ID           string `json:"id"`
+	Nombre       string `json:"nombre"`
+	Password     string `json:"contraseña"`
+	Posicionx    int    `json:"posicionx"`
+	Posiciony    int    `json:"posiciony"`
+	Destinox     int    `json:"destinox"`
+	Destinoy     int    `json:"destinoy"`
+	DentroParque int    `json:"dentroParque"`
+	IdParque     string `json:"idParque"`
+	Parque       string `json:"parqueAtracciones"`
 }
 
 func main() {
@@ -142,6 +144,7 @@ func manejoConexion(conexion net.Conn) {
 		ID:       strings.TrimSpace(string(id)),
 		Nombre:   strings.TrimSpace(string(nombre)),
 		Password: strings.TrimSpace(string(password)),
+		IdParque: strings.TrimSpace(string(id[0])),
 	}
 
 	// Si se ha solicitado un registro
@@ -164,7 +167,7 @@ func manejoConexion(conexion net.Conn) {
 
 		// INSERTAMOS el nuevo visitante en la BD
 		// Preparamos para prevenir inyecciones SQL
-		sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña) VALUES(?, ?, ?)")
+		sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña, idParque) VALUES(?, ?, ?, ?)")
 		if err != nil {
 			panic("Error al preparar la sentencia de inserción: " + err.Error())
 		}
@@ -172,7 +175,7 @@ func manejoConexion(conexion net.Conn) {
 		defer sentenciaPreparada.Close()
 
 		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password)
+		_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password, v.IdParque)
 		if err != nil {
 			panic("Error al registrar el visitante: " + err.Error())
 		}
