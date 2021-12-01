@@ -199,63 +199,70 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 
 	reader := kafka.NewReader(conf)
 
-	m, err := reader.ReadMessage(context.Background())
+	for {
 
-	if err != nil {
-		fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
-	}
+		m, err := reader.ReadMessage(context.Background())
 
-	//fmt.Println("Petición de inicio de sesión del visitante: ", string(m.Value))
-
-	credenciales := strings.Split(string(m.Value), ":")
-
-	alias := credenciales[0]
-	password := credenciales[1]
-
-	v := visitante{
-		ID:       strings.TrimSpace(alias),
-		Password: strings.TrimSpace(password),
-	}
-
-	//fmt.Println("El alias recibido es: " + alias)
-	//fmt.Println("El password recibido es: " + password)
-
-	// Comprobamos si las credenciales de acceso son válidas
-	results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
-
-	if err != nil {
-		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
-	}
-
-	// Cerramos la base de datos
-	defer results.Close()
-
-	var respuesta string = ""
-
-	// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
-	if results.Next() && !parqueLleno(db, maxVisitantes) {
-
-		// Actualizamos el estado del visitante en la BD
-		sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
 		if err != nil {
-			panic("Error al preparar la sentencia de modificación: " + err.Error())
+			fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
 		}
 
-		defer sentenciaPreparada.Close()
+		//fmt.Println("Petición de inicio de sesión del visitante: ", string(m.Value))
 
-		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(v.ID)
-		if err != nil {
-			panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
+		credenciales := strings.Split(string(m.Value), ":")
+
+		alias := credenciales[0]
+		password := credenciales[1]
+
+		v := visitante{
+			ID:       strings.TrimSpace(alias),
+			Password: strings.TrimSpace(password),
 		}
 
-		respuesta += alias + ":" + "Acceso concedido"
+		//fmt.Println("El alias recibido es: " + alias)
+		//fmt.Println("El password recibido es: " + password)
 
-	} else { // Sino entonces le informamos de que el parque está cerrado
-		respuesta += alias + ":" + "Parque cerrado"
+		// Comprobamos si las credenciales de acceso son válidas
+		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
+
+		if err != nil {
+			fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
+		}
+
+		// Cerramos la base de datos
+		//defer results.Close()
+
+		var respuesta string = ""
+
+		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
+		if results.Next() && !parqueLleno(db, maxVisitantes) {
+
+			// Actualizamos el estado del visitante en la BD
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación: " + err.Error())
+			}
+
+			//defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.ID)
+			if err != nil {
+				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
+			}
+
+			respuesta += alias + ":" + "Acceso concedido"
+
+			results.Close()
+			sentenciaPreparada.Close()
+
+		} else { // Sino entonces le informamos de que el parque está cerrado
+			respuesta += alias + ":" + "Parque cerrado"
+		}
+
+		productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+
 	}
-
-	productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 
 }
 
