@@ -284,7 +284,8 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
-			consumidorMapa(IpBroker, PuertoBroker)
+			go consumidorMapa(IpBroker, PuertoBroker)
+			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
 			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
@@ -341,53 +342,61 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 }
 
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpBroker, PuertoBroker string) [][]string {
+func consumidorMapa(IpBroker, PuertoBroker string) {
 
-	var mapaFormateado [][]string
+	//var mapaFormateado [][]string
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "mapa-visitantes",
+		Topic:   "mapa",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		StartOffset: kafka.LastOffset,
 	})
 
 	reader := kafka.NewReader(r)
 
-	m, err := reader.ReadMessage(context.Background())
+	for {
 
-	if err != nil {
-		panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
+		m, err := reader.ReadMessage(context.Background())
+
+		if err != nil {
+			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
+		}
+
+		// Procesamos el mapa enviado y lo convertimos a un array bidimensional de strings
+		// PARA PROBAR A VER LO QUE MUESTRA EN CADA CASO
+		//fmt.Println(string(m.Value))
+		cadenaProcesada := strings.Split(string(m.Value), "|")
+		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
+		var mapa [][]string = procesarMapa(cadenaProcesada)
+		mostrarMapa(mapa)
+		/*fmt.Println(m.Value)
+		fmt.Println(m.Value[0])
+		fmt.Println(m.Value[1])
+		fmt.Println(string(m.Value[0]))
+		fmt.Println(string(m.Value[1]))*/
+
+		//mapaFormateado = formateaMapa(m)
 	}
 
-	// Procesamos el mapa enviado y lo convertimos a un array bidimensional de strings
-	// PARA PROBAR A VER LO QUE MUESTRA EN CADA CASO
-	fmt.Println(string(m.Value))
-	fmt.Println(m.Value)
-	fmt.Println(m.Value[0])
-	fmt.Println(m.Value[1])
-	fmt.Println(string(m.Value[0]))
-	fmt.Println(string(m.Value[1]))
-
-	//mapaFormateado = formateaMapa(m)
-
-	return mapaFormateado
+	//return mapaFormateado
 
 }
 
 /* Función que formatea el mapa y lo convierte en un array bidimensional de strings */
-/*func formateaMapa(mapa kafka.Message) [][]string {
+func procesarMapa(mapa []string) [][]string {
 
 	var mapaFormateado [][]string
 
-	for i := 0; i < ; i++ {
+	k := 0
 
-		for j := 0; j < ; j++ {
+	for i := 0; i < 20; i++ {
 
-			for k := 0; k < ; k++ {
+		for j := 0; j < 20; j++ {
 
-			}
+			mapaFormateado[i][j] = mapa[k]
+			k++
 
 		}
 
@@ -395,7 +404,18 @@ func consumidorMapa(IpBroker, PuertoBroker string) [][]string {
 
 	return mapaFormateado
 
-}*/
+}
+
+func mostrarMapa(mapa [][]string) {
+
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
+			fmt.Print(mapa[i][j])
+		}
+		fmt.Println()
+	}
+
+}
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
 func movimientoVisitante(v visitante, mapa [][]string, IpBroker string, PuertoBroker string, ctx context.Context) {

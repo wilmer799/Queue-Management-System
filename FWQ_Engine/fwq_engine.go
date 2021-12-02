@@ -149,7 +149,7 @@ func main() {
 		for i := 0; i < len(mapa); i++ {
 			for j := 0; j < len(mapa[i]); j++ {
 
-				fmt.Print(" " + mapa[i][j])
+				fmt.Print(mapa[i][j])
 
 			}
 			fmt.Println()
@@ -519,7 +519,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(visitantes); k++ {
 				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony && visitantes[k].DentroParque == 1 {
-					mapa[i][j] = visitantes[k].IdParque
+					mapa[i][j] = visitantes[k].IdParque + "|"
 				}
 			}
 		}
@@ -530,7 +530,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(atracciones); k++ {
 				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
-					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera)
+					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
 				}
 			}
 		}
@@ -540,7 +540,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
 			if len(mapa[i][j]) == 0 {
-				mapa[i][j] = "-"
+				mapa[i][j] = "-" + "|"
 			}
 		}
 	}
