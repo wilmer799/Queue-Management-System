@@ -48,6 +48,8 @@ func main() {
 	crearTopic(IpBroker, PuertoBroker, "peticion-login")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	crearTopic(IpBroker, PuertoBroker, "mapa")
+	crearTopic(IpBroker, PuertoBroker, "peticion-salir")
+	crearTopic(IpBroker, PuertoBroker, "respuesta-salir")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	/*fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)*/

@@ -71,6 +71,8 @@ func main() {
 	crearTopics(IpKafka, PuertoKafka, "peticion-login")
 	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
 	crearTopics(IpKafka, PuertoKafka, "mapa")
+	crearTopics(IpKafka, PuertoKafka, "peticion-salir")
+	crearTopics(IpKafka, PuertoKafka, "respuesta-salir")
 	/*fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
 	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
