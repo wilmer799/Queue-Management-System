@@ -47,6 +47,7 @@ func main() {
 	PuertoBroker := os.Args[4]
 	crearTopic(IpBroker, PuertoBroker, "peticion-login")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
+	crearTopic(IpBroker, PuertoBroker, "mapa")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	/*fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)*/
@@ -257,7 +258,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
 func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante) {
 
-	var respuestaEngine string = ""
+	respuestaEngine := ""
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -277,63 +278,24 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		respuestaEngine += strings.TrimSpace(string(m.Value))
+		respuestaEngine = strings.TrimSpace(string(m.Value))
+		//fmt.Println("Respuesta del engine: " + respuestaEngine)
 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
-			/*fmt.Println(string(m.Value))
-			mapa2D := convertirMapa(m.Value)
-			mostrarMapa(mapa2D)*/
-			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
+			consumidorMapa(IpBroker, PuertoBroker)
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
 			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
-		} else {
-			fmt.Println("El engine no está disponible en estos momentos.")
-			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
 		}
 
-	}
-
-}
-
-/* Función que se encarga de convertir el mapa 1D a 2D */
-func convertirMapa(mapa []byte) [][]string {
-
-	var mapaConvertido [][]string
-
-	k := 0 // Variable para recorrer la cadena/string con el mapa entero
-
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 20; j++ {
-			mapaConvertido[i][j] = strings.TrimSpace(string(mapa[k]))
-			k++
-		}
-	}
-
-	return mapaConvertido
-
-}
-
-/* Función que se encarga de mostrar por pantalla el mapa recibido del engine */
-func mostrarMapa(mapa [][]string) {
-
-	fmt.Println()
-	fmt.Println("Estado actual del mapa del parque: ")
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 20; j++ {
-
-			fmt.Print(" " + mapa[i][j])
-
-		}
-		fmt.Println()
 	}
 
 }
 
 /* Función que se encarga de enviar los movimientos de los visitantes al engine */
-func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
+func productorMovimiento(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "movimientos-visitantes"
@@ -456,7 +418,7 @@ func movimientoVisitante(v visitante, mapa [][]string, IpBroker string, PuertoBr
 		mensaje := v.ID + ":" + movimiento
 
 		// Enviamos el movimiento al engine
-		productorMovimientos(IpBroker, PuertoBroker, mensaje, ctx)
+		productorMovimiento(IpBroker, PuertoBroker, mensaje, ctx)
 
 		// Si el visitante se encuentra en la atracción
 		if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {

@@ -70,7 +70,7 @@ func main() {
 	//Si no se ejecuta el programa, se cierra el kafka?
 	crearTopics(IpKafka, PuertoKafka, "peticion-login")
 	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
-
+	crearTopics(IpKafka, PuertoKafka, "mapa")
 	/*fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
 	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
@@ -84,6 +84,7 @@ func main() {
 
 	// Visitantes, atracciones que se encuentran en la BD
 	var visitantesRegistrados []visitante
+	var visitantesParque []visitante
 	var atracciones []atraccion
 	var parqueTematico []parque
 
@@ -91,7 +92,7 @@ func main() {
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
 
-	visitantesRegistrados, _ = obtenerVisitantesRegistrados(conn)
+	visitantesRegistrados, _ = obtenerVisitantesBD(conn)
 	atracciones, _ = obtenerAtraccionesBD(conn)
 	parqueTematico, _ = obtenerParqueDB(conn)
 
@@ -122,10 +123,16 @@ func main() {
 		//Para empezar con el kafka
 		ctx := context.Background()
 
-		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, atracciones, mapa, maxVisitantes)
+		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
 
-		//Obtenidos todos los visitantes y las atracciones del parque en la BD, asignamos cada uno a la posición que debe tener
-		//mapa = asignacionPosiciones(visitantesRegistrados, atracciones, mapa)
+		visitantesParque, _ = obtenerVisitantesParque(conn) // Obtenemos los visitantes del parque actualizados
+
+		// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
+		mapa = asignacionPosiciones(visitantesParque, atracciones, mapa)
+
+		mapaConvertido := convertirMapa(mapa)
+
+		go productorMapa(IpKafka, PuertoKafka, ctx, mapaConvertido) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 
 		//var mapa1D []byte = convertirMapa(mapa)
 		//go consumidorEngine(conn, IpKafka, PuertoKafka, ctx, mapa1D)
@@ -137,8 +144,8 @@ func main() {
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
-		/*fmt.Println()
-		fmt.Println("Estado actual del mapa del parque: ")
+		fmt.Println()
+		fmt.Println("Estado actual del parque: ")
 		for i := 0; i < len(mapa); i++ {
 			for j := 0; j < len(mapa[i]); j++ {
 
@@ -146,7 +153,7 @@ func main() {
 
 			}
 			fmt.Println()
-		}*/
+		}
 
 	}
 
@@ -184,7 +191,7 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, atracciones []atraccion, mapa [20][20]string, maxVisitantes int) {
+func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante, maxVisitantes int) {
 
 	direccionKafka := IpKafka + ":" + PuertoKafka
 
@@ -251,47 +258,31 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
 
-			/*visitantesParque, _ := obtenerVisitantesParque(db) // Nos guardamos los visitantes que se encuentran actualmente en el parque
-
-			mapa = asignacionPosiciones(visitantesParque, atracciones, mapa) // Obtenemos el mapa actualizado
-
-			var mapaOneD []byte = convertirMapa(mapa)
-
-			productorLoginMapa(IpKafka, PuertoKafka, ctx, mapaOneD)*/
-
 			respuesta += alias + ":" + "Acceso concedido"
-
-			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
-
-			//respuesta += alias + ":" + mapaOneD
-
-			//fmt.Println(len(mapaOneD))
-
-			//fmt.Println("Respuesta a enviar: " + mapaOneD)
 
 			results.Close()
 			sentenciaPreparada.Close()
 
 		} else { // Sino entonces le informamos de que el parque está cerrado
 			respuesta += alias + ":" + "Parque cerrado"
-			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
-			results.Close()
 		}
+
+		productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 
 	}
 
 }
 
-/* Función que envía el mensaje de "parque cerrado" a la petición de login de un visitante */
+/* Función que envía el mensaje de respuesta a la petición de login de un visitante */
 func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "respuesta-login"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:          []string{brokerAddress},
-		Topic:            topic,
-		CompressionCodec: kafka.Snappy.Codec(),
+		Brokers: []string{brokerAddress},
+		Topic:   topic,
+		//CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
@@ -382,11 +373,11 @@ func obtenerParqueDB(db *sql.DB) ([]parque, error) {
 }
 
 /*
-* Función que obtiene todos los visitantes que se encuentran registrados en la aplicación
+* Función que obtiene todos los visitantes que se encuentran la BD
 * @return []visitante : Arrays de los visitantes obtenidos en la sentencia
 * @return error : Error en caso de que no se haya podido obtener ninguno
  */
-func obtenerVisitantesRegistrados(db *sql.DB) ([]visitante, error) {
+func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 
 	//Ejecutamos la sentencia
 	results, err := db.Query("SELECT * FROM visitante")
@@ -427,7 +418,7 @@ func obtenerVisitantesRegistrados(db *sql.DB) ([]visitante, error) {
 }
 
 /*
-* Función que obtiene todos los visitantes que se encuentran registrados en la aplicación
+* Función que obtiene todos los visitantes que se encuentran en el parque de la BD
 * @return []visitante : Arrays de los visitantes obtenidos en la sentencia
 * @return error : Error en caso de que no se haya podido obtener ninguno
  */
@@ -675,13 +666,6 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 
 }*/
 
-/* Función que permite el inicio de sesión de un visitante en el parque */
-func inicioSesionVisitante(id, password string) {
-
-	// Comprobamos que el id y el password se corresponden con un visitante registrado
-
-}
-
 /* Función que se encarga de que un visitante salga del parque */
 func salirVisitanteParque(db *sql.DB, idVisitante string) {
 
@@ -701,7 +685,7 @@ func salirVisitanteParque(db *sql.DB, idVisitante string) {
 }
 
 /* Función que envia el mapa a los visitantes */
-func enviarMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
+func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "mapa-visitantes"
@@ -720,7 +704,7 @@ func enviarMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte)
 	//Compresion de mensajes
 	//https://developer.ibm.com/articles/benefits-compression-kafka-messaging/
 	err := w.WriteMessages(ctx, kafka.Message{
-		Key:   []byte("Key-A"), //[]byte(strconv.Itoa(i)),
+		Key:   []byte("Key-Mapa"), //[]byte(strconv.Itoa(i)),
 		Value: []byte(mapa),
 	})
 	if err != nil {
