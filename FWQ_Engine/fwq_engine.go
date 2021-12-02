@@ -132,7 +132,7 @@ func main() {
 
 		mapaConvertido := convertirMapa(mapa)
 
-		go productorMapa(IpKafka, PuertoKafka, ctx, mapaConvertido) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
+		productorMapa(IpKafka, PuertoKafka, ctx, mapaConvertido) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 
 		//var mapa1D []byte = convertirMapa(mapa)
 		//go consumidorEngine(conn, IpKafka, PuertoKafka, ctx, mapa1D)
@@ -688,7 +688,7 @@ func salirVisitanteParque(db *sql.DB, idVisitante string) {
 func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "mapa-visitantes"
+	var topic string = "mapa"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:          []string{brokerAddress},
