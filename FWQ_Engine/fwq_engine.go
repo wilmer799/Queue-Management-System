@@ -91,7 +91,7 @@ func main() {
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
 
-	visitantesRegistrados, _ = obtenerVisitantesBD(conn)
+	visitantesRegistrados, _ = obtenerVisitantesRegistrados(conn)
 	atracciones, _ = obtenerAtraccionesBD(conn)
 	parqueTematico, _ = obtenerParqueDB(conn)
 
@@ -122,10 +122,10 @@ func main() {
 		//Para empezar con el kafka
 		ctx := context.Background()
 
-		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
+		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, atracciones, mapa, maxVisitantes)
 
 		//Obtenidos todos los visitantes y las atracciones del parque en la BD, asignamos cada uno a la posición que debe tener
-		mapa = asignacionPosiciones(visitantesRegistrados, atracciones, mapa)
+		//mapa = asignacionPosiciones(visitantesRegistrados, atracciones, mapa)
 
 		//var mapa1D []byte = convertirMapa(mapa)
 		//go consumidorEngine(conn, IpKafka, PuertoKafka, ctx, mapa1D)
@@ -137,7 +137,7 @@ func main() {
 
 		//Aqui podemos hacer un for y que solo se envien la información de un visitante por parametro
 		//Matriz transversal bidimensional
-		fmt.Println()
+		/*fmt.Println()
 		fmt.Println("Estado actual del mapa del parque: ")
 		for i := 0; i < len(mapa); i++ {
 			for j := 0; j < len(mapa[i]); j++ {
@@ -146,7 +146,7 @@ func main() {
 
 			}
 			fmt.Println()
-		}
+		}*/
 
 	}
 
@@ -184,7 +184,7 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante, maxVisitantes int) {
+func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, atracciones []atraccion, mapa [20][20]string, maxVisitantes int) {
 
 	direccionKafka := IpKafka + ":" + PuertoKafka
 
@@ -251,31 +251,47 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
 
+			/*visitantesParque, _ := obtenerVisitantesParque(db) // Nos guardamos los visitantes que se encuentran actualmente en el parque
+
+			mapa = asignacionPosiciones(visitantesParque, atracciones, mapa) // Obtenemos el mapa actualizado
+
+			var mapaOneD []byte = convertirMapa(mapa)
+
+			productorLoginMapa(IpKafka, PuertoKafka, ctx, mapaOneD)*/
+
 			respuesta += alias + ":" + "Acceso concedido"
+
+			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+
+			//respuesta += alias + ":" + mapaOneD
+
+			//fmt.Println(len(mapaOneD))
+
+			//fmt.Println("Respuesta a enviar: " + mapaOneD)
 
 			results.Close()
 			sentenciaPreparada.Close()
 
 		} else { // Sino entonces le informamos de que el parque está cerrado
 			respuesta += alias + ":" + "Parque cerrado"
+			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+			results.Close()
 		}
-
-		productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 
 	}
 
 }
 
-/* Función que envía el mensaje de respuesta a la petición de login de un visitante */
+/* Función que envía el mensaje de "parque cerrado" a la petición de login de un visitante */
 func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "respuesta-login"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{brokerAddress},
-		Topic:   topic,
-		//CompressionCodec: kafka.Snappy.Codec(),
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
@@ -366,14 +382,59 @@ func obtenerParqueDB(db *sql.DB) ([]parque, error) {
 }
 
 /*
-* Función que obtiene todos los visitantes que se encuentran la BD
+* Función que obtiene todos los visitantes que se encuentran registrados en la aplicación
 * @return []visitante : Arrays de los visitantes obtenidos en la sentencia
 * @return error : Error en caso de que no se haya podido obtener ninguno
  */
-func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
+func obtenerVisitantesRegistrados(db *sql.DB) ([]visitante, error) {
 
 	//Ejecutamos la sentencia
 	results, err := db.Query("SELECT * FROM visitante")
+
+	if err != nil {
+		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
+	}
+
+	//Cerramos la base de datos
+	defer results.Close()
+
+	//Declaramos el array de visitantes
+	var visitantes []visitante
+
+	//Recorremos los resultados obtenidos por la consulta
+	for results.Next() {
+
+		//Variable donde guardamos la información de cada una filas de la sentencia
+		var fwq_visitante visitante
+
+		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
+			&fwq_visitante.Password, &fwq_visitante.Posicionx,
+			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
+			&fwq_visitante.DentroParque, &fwq_visitante.IdParque, &fwq_visitante.Parque); err != nil {
+			return visitantes, err
+		}
+
+		//Vamos añadiendo los visitantes al array
+		visitantes = append(visitantes, fwq_visitante)
+	}
+
+	if err = results.Err(); err != nil {
+		return visitantes, err
+	}
+
+	return visitantes, nil
+
+}
+
+/*
+* Función que obtiene todos los visitantes que se encuentran registrados en la aplicación
+* @return []visitante : Arrays de los visitantes obtenidos en la sentencia
+* @return error : Error en caso de que no se haya podido obtener ninguno
+ */
+func obtenerVisitantesParque(db *sql.DB) ([]visitante, error) {
+
+	//Ejecutamos la sentencia
+	results, err := db.Query("SELECT * FROM visitante WHERE dentroParque = 1")
 
 	if err != nil {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta

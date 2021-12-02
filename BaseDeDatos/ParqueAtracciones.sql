@@ -62,5 +62,8 @@ UPDATE parque SET aforoMaximo=10 WHERE id = "SDpark";
 UPDATE atraccion SET tiempoEspera = 7 WHERE id = "atraccion1";
 UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
 
+update visitante set dentroParque = 1 where id = "elbala00";
+
 select * from atraccion;
 select * from visitante;
+
