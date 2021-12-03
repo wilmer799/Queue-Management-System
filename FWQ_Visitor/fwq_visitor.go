@@ -40,6 +40,7 @@ var v visitante
 * Función main de los visitantes
 **/
 func main() {
+
 	//Argumentos iniciales
 	IpFWQ_Registry := os.Args[1]
 	PuertoFWQ := os.Args[2]
@@ -49,7 +50,6 @@ func main() {
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	crearTopic(IpBroker, PuertoBroker, "mapa")
 	crearTopic(IpBroker, PuertoBroker, "peticion-salir")
-	crearTopic(IpBroker, PuertoBroker, "respuesta-salir")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	/*fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
 	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)*/
@@ -216,21 +216,9 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 /* Función que permite a un visitante abandonar el parque */
 func SalidaParque(v visitante, IpBroker string, PuertoBroker string, ctx context.Context) {
 
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Println("Desea abandonar el parque (si/no): ")
-	abandonar, err := reader.ReadString('\n')
-
-	if err != nil {
-		fmt.Println("Perdone, no entiendo si quiere abandonar el parque o no")
-	}
-
-	if string(abandonar) == "s" || string(abandonar) == "si" || string(abandonar) == "SI" || string(abandonar) == "sI" || string(abandonar) == "Si" {
-		v.DentroParque = 0
-		mensaje := v.ID + ":" + "Salir"
-		productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
-		fmt.Println("Gracias por venir al parque, espero que vuelvas cuanto antes")
-	}
+	v.DentroParque = 0
+	mensaje := v.ID + ":" + "Salir"
+	productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
 
 }
 
@@ -324,7 +312,7 @@ func productorMovimiento(IpBroker, PuertoBroker, movimiento string, ctx context.
 func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "salir-parque"
+	var topic string = "peticion-salir"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddress},
@@ -332,14 +320,12 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
-		Key:   []byte("Key-Moves"),
+		Key:   []byte("Key-Salir"),
 		Value: []byte(peticion),
 	})
 	if err != nil {
 		panic("No se puede encolar la solicitud: " + err.Error())
 	}
-
-	fmt.Println("Enviando solicitud -> " + peticion)
 
 }
 
@@ -366,30 +352,20 @@ func consumidorMapa(IpBroker, PuertoBroker string) {
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		// Procesamos el mapa enviado y lo convertimos a un array bidimensional de strings
-		// PARA PROBAR A VER LO QUE MUESTRA EN CADA CASO
-		//fmt.Println(string(m.Value))
+		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
 		cadenaProcesada := strings.Split(string(m.Value), "|")
 		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
-		var mapa [][]string = procesarMapa(cadenaProcesada)
+		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
-		/*fmt.Println(m.Value)
-		fmt.Println(m.Value[0])
-		fmt.Println(m.Value[1])
-		fmt.Println(string(m.Value[0]))
-		fmt.Println(string(m.Value[1]))*/
 
-		//mapaFormateado = formateaMapa(m)
 	}
-
-	//return mapaFormateado
 
 }
 
 /* Función que formatea el mapa y lo convierte en un array bidimensional de strings */
-func procesarMapa(mapa []string) [][]string {
+func procesarMapa(mapa []string) [20][20]string {
 
-	var mapaFormateado [][]string
+	var mapaFormateado [20][20]string
 
 	k := 0
 
@@ -397,8 +373,10 @@ func procesarMapa(mapa []string) [][]string {
 
 		for j := 0; j < 20; j++ {
 
-			mapaFormateado[i][j] = mapa[k]
-			k++
+			if k < 400 {
+				mapaFormateado[i][j] = mapa[k]
+				k++
+			}
 
 		}
 
@@ -408,7 +386,7 @@ func procesarMapa(mapa []string) [][]string {
 
 }
 
-func mostrarMapa(mapa [][]string) {
+func mostrarMapa(mapa [20][20]string) {
 
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {

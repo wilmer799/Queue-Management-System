@@ -16,9 +16,6 @@ SALIR-PARQUE:
 
 Topic "peticion-salir" : Productor del visitante = "productorSalir" -> Consumidor del engine = "consumidorSalir"
 
-Topic "respuesta-salir" : Productor del engine = "productorSalir" -> Consumidor del visitante = "consumidorSalir"
-
-
 FORMATO DE LOS MENSAJES QUE MANDAN LOS PRODUCTORES
 
 LOGIN:
@@ -36,5 +33,3 @@ Topic "movimientos" : alias:movimiento donde movimiento será uno de estos -> N,
 SALIR-PARQUE:
 
 Topic "peticion-salir" : alias:"Salir"
-
-Topic "respuesta-salir" : alias:"Parque cerrado"

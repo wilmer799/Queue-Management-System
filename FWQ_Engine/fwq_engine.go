@@ -72,7 +72,6 @@ func main() {
 	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
 	crearTopics(IpKafka, PuertoKafka, "mapa")
 	crearTopics(IpKafka, PuertoKafka, "peticion-salir")
-	crearTopics(IpKafka, PuertoKafka, "respuesta-salir")
 	/*fmt.Println("**Bienvenido al engine de la aplicación**")
 	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
 	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
@@ -139,6 +138,8 @@ func main() {
 		//var mapa1D []byte = convertirMapa(mapa)
 		//go consumidorEngine(conn, IpKafka, PuertoKafka, ctx, mapa1D)
 
+		go consumidorSalir(conn, IpKafka, PuertoKafka, ctx)
+
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
 		tiempo := "Mándame los tiempos de espera actualizados"
@@ -173,15 +174,14 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
 	}
 
-	// Cerramos la base de datos
-	defer results.Close()
-
 	visitantesDentroParque := 0 // Variable en la que vamos a almacenar el número de visitantes que se encuentran en el parque
 
 	// Vamos recorriendo las filas devueltas para obtener el nº de visitanes dentro del parque
 	for results.Next() {
 		visitantesDentroParque++
 	}
+
+	results.Close() // Cerramos la conexión a la BD
 
 	// Si el aforo está al completo
 	if visitantesDentroParque >= maxAforo {
@@ -267,6 +267,7 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 
 		} else { // Sino entonces le informamos de que el parque está cerrado
 			respuesta += alias + ":" + "Parque cerrado"
+			results.Close()
 		}
 
 		productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
@@ -712,6 +713,72 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 	if err != nil {
 		panic("No se puede mandar el mapa: " + err.Error())
 	}
+}
+
+/* Función que recibe del gestor de colas las peticiones de salida del parque de los visitantes */
+func consumidorSalir(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context) {
+
+	direccionKafka := IpKafka + ":" + PuertoKafka
+
+	//Configuración de lector de kafka
+	conf := kafka.ReaderConfig{
+		//El broker habra que cambiarlo por otro
+		Brokers:     []string{direccionKafka},
+		Topic:       "peticion-salir", //Topico que hemos creado
+		StartOffset: kafka.LastOffset,
+		//MaxBytes: 10,
+	}
+
+	reader := kafka.NewReader(conf)
+
+	for {
+
+		m, err := reader.ReadMessage(context.Background())
+
+		if err != nil {
+			fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
+		}
+
+		mensaje := strings.Split(string(m.Value), ":")
+
+		alias := mensaje[0]
+		peticion := mensaje[1]
+
+		v := visitante{
+			ID: strings.TrimSpace(alias),
+		}
+
+		// Comprobamos si las credenciales de acceso son válidas
+		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID)
+
+		if err != nil {
+			fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
+		}
+
+		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
+		if results.Next() && peticion == "Salir" {
+
+			// Sacamos del parque al visitante
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0 WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación: " + err.Error())
+			}
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.ID)
+			if err != nil {
+				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
+			}
+
+			results.Close()
+			sentenciaPreparada.Close()
+
+		} else { // Sino entonces le informamos de que el parque está cerrado
+			results.Close()
+		}
+
+	}
+
 }
 
 /* Función que actualiza los tiempos de espera de las atracciones en la BD*/
