@@ -683,11 +683,32 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) [
 					visitantes[i].Posiciony++
 				}
 			case "NW":
-				if visitantes[i].Posiciony == 19 {
-					visitantes[i].Posiciony = 0
+				if visitantes[i].Posicionx == 0 && visitantes[i].Posiciony == 0 {
+					visitantes[i].Posicionx = 19
+					visitantes[i].Posiciony = 19
+				} else if visitantes[i].Posicionx == 0 && visitantes[i].Posiciony > 0 {
+					visitantes[i].Posicionx = 19
+					visitantes[i].Posiciony--
+				} else if visitantes[i].Posicionx > 0 && visitantes[i].Posiciony == 0 {
+					visitantes[i].Posicionx--
+					visitantes[i].Posiciony = 19
 				} else {
 					visitantes[i].Posicionx--
 					visitantes[i].Posiciony--
+				}
+			case "NE":
+				if visitantes[i].Posicionx == 0 && visitantes[i].Posiciony == 19 {
+					visitantes[i].Posicionx = 19
+					visitantes[i].Posiciony = 0
+				} else if visitantes[i].Posicionx == 0 && visitantes[i].Posiciony > 0 {
+					visitantes[i].Posicionx = 19
+					visitantes[i].Posiciony++
+				} else if visitantes[i].Posicionx > 0 && visitantes[i].Posiciony == 19 {
+					visitantes[i].Posicionx--
+					visitantes[i].Posiciony = 0
+				} else {
+					visitantes[i].Posicionx--
+					visitantes[i].Posiciony++
 				}
 			}
 
