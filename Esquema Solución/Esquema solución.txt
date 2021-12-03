@@ -8,9 +8,9 @@ Topic "respuesta-login" : Productor del engine = "productorLogin" -> Consumidor 
 
 MOVIMIENTOS-MAPA:
 
-Topic "mapa" : Productor del engine = "productorMapa" -> Consumidor del visitante = "consumidorMapa"
+Topic "movimientos" : Productor del visitante = "productorMovimientos" -> Consumidor del engine = "consumidorMovimientos"
 
-Topic "movimientos" : Productor del visitante = "productorMovimiento" -> Consumidor del engine = "consumidorMovimiento"
+Topic "mapa" : Productor del engine = "productorMapa" -> Consumidor del visitante = "consumidorMapa"
 
 SALIR-PARQUE:
 
@@ -28,7 +28,7 @@ MOVIMIENTOS-MAPA:
 
 Topic "mapa" : [MAPA]
 
-Topic "movimientos" : alias:movimiento donde movimiento será uno de estos -> N,S,W,E,NW,NE,SW,SE
+Topic "movimientos" : alias:movimiento donde movimiento será uno de estos -> " ","N","S","W","E","NW","NE","SW","SE"
 
 SALIR-PARQUE:
 
