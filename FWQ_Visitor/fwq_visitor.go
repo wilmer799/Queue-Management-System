@@ -205,7 +205,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
 
 	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, v)
+	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx, v)
 
 	/*for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
 		//go movimientoVisitante(v, mapa, IpBroker, PuertoBroker, ctx) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
@@ -247,7 +247,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante) {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context, v visitante) {
 
 	respuestaEngine := ""
 
@@ -275,7 +275,8 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
-			go consumidorMapa(IpBroker, PuertoBroker)
+			productorMovimientos(IpBroker, PuertoBroker, v.ID+":"+" ", ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
+			go consumidorMapa(IpBroker, PuertoBroker, v, ctx)
 			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
@@ -286,11 +287,54 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 
 }
 
+/* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
+func calcularMovimiento(v visitante, mapa [20][20]string, IpBroker string, PuertoBroker string, ctx context.Context) string {
+
+	var movimiento string
+
+	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
+
+		// Si el visitante no sabe a qué atracción dirigirse
+		if v.Destinox == -1 && v.Destinoy == -1 {
+
+			//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+
+			// Actualizamos la coordenadas de destino del visitante
+
+		}
+
+		// El visitante realiza un movimiento para acercarse a su destino
+
+		movimiento := "N"
+
+		mensaje := v.ID + ":" + movimiento
+
+		// Enviamos el movimiento al engine
+		productorMovimientos(IpBroker, PuertoBroker, mensaje, ctx)
+
+		// Si el visitante se encuentra en la atracción
+		if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
+
+			time.Sleep(10 * time.Second) // Esperamos un tiempo para simular el tiempo de ciclo de la atracción
+			// Ahora el visitante vuelve a desconocer su destino
+			v.Destinox = -1
+			v.Destinoy = -1
+
+		}
+
+		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
+
+	}
+
+	return movimiento
+
+}
+
 /* Función que se encarga de enviar los movimientos de los visitantes al engine */
-func productorMovimiento(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
+func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "movimientos-visitantes"
+	var topic string = "movimientos"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddress},
@@ -304,8 +348,6 @@ func productorMovimiento(IpBroker, PuertoBroker, movimiento string, ctx context.
 	if err != nil {
 		panic("No se puede encolar el movimiento: " + err.Error())
 	}
-
-	fmt.Println("Enviando movimiento -> " + movimiento)
 
 }
 
@@ -331,7 +373,7 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 }
 
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpBroker, PuertoBroker string) {
+func consumidorMapa(IpBroker, PuertoBroker string, v visitante, ctx context.Context) {
 
 	//var mapaFormateado [][]string
 
@@ -358,6 +400,9 @@ func consumidorMapa(IpBroker, PuertoBroker string) {
 		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
 		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
+		movimiento := calcularMovimiento(v, mapa, IpBroker, PuertoBroker, ctx)
+		peticionMovimiento := v.ID + ":" + movimiento
+		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
 
 	}
 
@@ -391,48 +436,9 @@ func mostrarMapa(mapa [20][20]string) {
 
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
-			fmt.Print(mapa[i][j])
+			fmt.Print(mapa[i][j] + "|")
 		}
 		fmt.Println()
-	}
-
-}
-
-/* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func movimientoVisitante(v visitante, mapa [][]string, IpBroker string, PuertoBroker string, ctx context.Context) {
-
-	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
-
-		// Si el visitante no sabe a qué atracción dirigirse
-		if v.Destinox == -1 && v.Destinoy == -1 {
-
-			//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
-
-			// Actualizamos la coordenadas de destino del visitante
-
-		}
-
-		// El visitante realiza un movimiento para acercarse a su destino
-
-		movimiento := "N"
-
-		mensaje := v.ID + ":" + movimiento
-
-		// Enviamos el movimiento al engine
-		productorMovimiento(IpBroker, PuertoBroker, mensaje, ctx)
-
-		// Si el visitante se encuentra en la atracción
-		if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
-
-			time.Sleep(10 * time.Second) // Esperamos un tiempo para simular el tiempo de ciclo de la atracción
-			// Ahora el visitante vuelve a desconocer su destino
-			v.Destinox = -1
-			v.Destinoy = -1
-
-		}
-
-		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
-
 	}
 
 }

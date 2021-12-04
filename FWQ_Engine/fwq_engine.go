@@ -136,8 +136,7 @@ func main() {
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
-		tiempo := "Mándame los tiempos de espera actualizados"
-		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, tiempo)
+		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
 
 	}
 
@@ -152,7 +151,7 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 	results, err := db.Query("SELECT * FROM visitante WHERE dentroParque = 1")
 
 	if err != nil {
-		fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
+		fmt.Println("Error al hacer la consulta sobre la BD para comprobar el aforo: " + err.Error())
 	}
 
 	visitantesDentroParque := 0 // Variable en la que vamos a almacenar el número de visitantes que se encuentran en el parque
@@ -536,7 +535,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 /*
 * Función que se conecta al servidor de tiempos para obtener los tiempos de espera actualizados
  */
-func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting, tiempo string) {
+func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
 	fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
@@ -796,7 +795,7 @@ func consumidorSalir(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
 		Brokers:     []string{direccionKafka},
-		Topic:       "peticion-salir", //Topico que hemos creado
+		Topic:       "salir", //Topico que hemos creado
 		StartOffset: kafka.LastOffset,
 		//MaxBytes: 10,
 	}
@@ -824,7 +823,7 @@ func consumidorSalir(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID)
 
 		if err != nil {
-			fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
+			fmt.Println("Error al hacer la consulta sobre la BD para la salida del parque: " + err.Error())
 		}
 
 		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
