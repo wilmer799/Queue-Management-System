@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -27,6 +28,19 @@ type visitante struct {
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
 	IdParque     string `json:"idParque"`
+	Parque       string `json:"parqueAtracciones"`
+}
+
+/*
+* Estructura de las atracciones
+ */
+type atraccion struct {
+	ID           string `json:"id"`
+	TCiclo       int    `json:"tciclo"`
+	NVisitantes  int    `json:"nvisitantes"`
+	Posicionx    int    `json:"posicionx"`
+	Posiciony    int    `json:"posiciony"`
+	TiempoEspera int    `json:"tiempoEspera"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -288,43 +302,55 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func calcularMovimiento(v visitante, mapa [20][20]string, IpBroker string, PuertoBroker string, ctx context.Context) string {
+func calcularMovimiento(v visitante, mapa [20][20]string) string {
 
 	var movimiento string
+	var atraccionesDisponibles []atraccion
 
-	for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
+	// Si el visitante no sabe a qué atracción dirigirse
+	if v.Destinox == -1 && v.Destinoy == -1 {
 
-		// Si el visitante no sabe a qué atracción dirigirse
-		if v.Destinox == -1 && v.Destinoy == -1 {
-
-			//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
-
-			// Actualizamos la coordenadas de destino del visitante
-
+		//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+		for i := 0; i < 20; i++ {
+			for j := 0; j < 20; j++ {
+				if t, err := strconv.Atoi(mapa[i][j]); err == nil { // Si la posición actual del mapa es un número
+					if t < 60 { // Si el tiempo de espera es menor a 60 minutos
+						a := atraccion{ // Guardamos la información de la atraccion que nos hace falta
+							Posicionx:    i,
+							Posiciony:    j,
+							TiempoEspera: t,
+						}
+						atraccionesDisponibles = append(atraccionesDisponibles, a)
+					}
+				}
+			}
 		}
 
-		// El visitante realiza un movimiento para acercarse a su destino
+		// Elegimos al azar una de las atracciones disponibles
+		rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+		min := 0
+		max := len(atraccionesDisponibles) - 1
+		indexAtraccion := (rand.Intn(max-min+1) + min)
 
-		movimiento := "N"
+		// Actualizamos la coordenadas de destino del visitante
+		v.Destinox = atraccionesDisponibles[indexAtraccion].Posicionx
+		v.Destinoy = atraccionesDisponibles[indexAtraccion].Posiciony
+	}
 
-		mensaje := v.ID + ":" + movimiento
+	// Seleccionamos el mejor movimiento para que el visitante alcance su destino
 
-		// Enviamos el movimiento al engine
-		productorMovimientos(IpBroker, PuertoBroker, mensaje, ctx)
+	// Si el visitante se encuentra en la atracción
+	if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
 
-		// Si el visitante se encuentra en la atracción
-		if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
+		time.Sleep(10 * time.Second) // Esperamos un tiempo para simular el tiempo de ciclo de la atracción
 
-			time.Sleep(10 * time.Second) // Esperamos un tiempo para simular el tiempo de ciclo de la atracción
-			// Ahora el visitante vuelve a desconocer su destino
-			v.Destinox = -1
-			v.Destinoy = -1
-
-		}
-
-		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
+		// Ahora el visitante vuelve a desconocer su destino
+		v.Destinox = -1
+		v.Destinoy = -1
 
 	}
+
+	time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
 
 	return movimiento
 
@@ -400,9 +426,10 @@ func consumidorMapa(IpBroker, PuertoBroker string, v visitante, ctx context.Cont
 		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
 		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
-		movimiento := calcularMovimiento(v, mapa, IpBroker, PuertoBroker, ctx)
+		movimiento := calcularMovimiento(v, mapa)
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
+		time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
 
 	}
 

@@ -659,60 +659,36 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) [
 			switch movimiento {
 			case "N":
 				visitantes[i].Posicionx--
-				if visitantes[i].Posicionx == -1 {
-					visitantes[i].Posicionx = 19
-				}
 			case "S":
 				visitantes[i].Posicionx++
-				if visitantes[i].Posicionx == 20 {
-					visitantes[i].Posicionx = 0
-				}
 			case "W":
 				visitantes[i].Posiciony--
-				if visitantes[i].Posiciony == -1 {
-					visitantes[i].Posiciony = 19
-				}
 			case "E":
 				visitantes[i].Posiciony++
-				if visitantes[i].Posiciony == 20 {
-					visitantes[i].Posiciony = 0
-				}
 			case "NW":
 				visitantes[i].Posicionx--
 				visitantes[i].Posiciony--
-				if visitantes[i].Posicionx == -1 {
-					visitantes[i].Posicionx = 19
-				}
-				if visitantes[i].Posiciony == -1 {
-					visitantes[i].Posiciony = 19
-				}
 			case "NE":
 				visitantes[i].Posicionx--
 				visitantes[i].Posiciony++
-				if visitantes[i].Posicionx == -1 {
-					visitantes[i].Posicionx = 19
-				}
-				if visitantes[i].Posiciony == 20 {
-					visitantes[i].Posiciony = 0
-				}
 			case "SW":
 				visitantes[i].Posicionx++
 				visitantes[i].Posiciony--
-				if visitantes[i].Posicionx == 20 {
-					visitantes[i].Posicionx = 0
-				}
-				if visitantes[i].Posiciony == -1 {
-					visitantes[i].Posiciony = 19
-				}
 			case "SE":
 				visitantes[i].Posicionx++
 				visitantes[i].Posiciony++
-				if visitantes[i].Posicionx == 20 {
-					visitantes[i].Posicionx = 0
-				}
-				if visitantes[i].Posiciony == 20 {
-					visitantes[i].Posiciony = 19
-				}
+			}
+
+			if visitantes[i].Posicionx == -1 {
+				visitantes[i].Posicionx = 19
+			} else if visitantes[i].Posicionx == 20 {
+				visitantes[i].Posicionx = 0
+			}
+
+			if visitantes[i].Posiciony == -1 {
+				visitantes[i].Posiciony = 19
+			} else if visitantes[i].Posiciony == 20 {
+				visitantes[i].Posiciony = 0
 			}
 
 			nuevaPosicionX = visitantes[i].Posicionx
