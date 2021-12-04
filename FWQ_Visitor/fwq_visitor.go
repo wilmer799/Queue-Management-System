@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -302,7 +303,7 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func calcularMovimiento(v visitante, mapa [20][20]string) string {
+func obtenerMovimiento(v visitante, mapa [20][20]string) string {
 
 	var movimiento string
 	var atraccionesDisponibles []atraccion
@@ -337,7 +338,8 @@ func calcularMovimiento(v visitante, mapa [20][20]string) string {
 		v.Destinoy = atraccionesDisponibles[indexAtraccion].Posiciony
 	}
 
-	// Seleccionamos el mejor movimiento para que el visitante alcance su destino
+	movimiento = calculaMovimiento(v) // Obtiene el mejor movimiento en base a las posiciones adyacentes y la atracción destino seleccionada
+	actualizaPosicion(v, movimiento)  // Actualiza la posición actual del visitante en base al mejor movimiento elegido
 
 	// Si el visitante se encuentra en la atracción
 	if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
@@ -353,6 +355,174 @@ func calcularMovimiento(v visitante, mapa [20][20]string) string {
 	time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
 
 	return movimiento
+
+}
+
+/* Función que devuelve el mejor movimiento a realizar en base a la atracción destino elegida por el visitante */
+func calculaMovimiento(v visitante) string {
+
+	var mejorMovimiento string = ""
+	var mejorDistancia int
+	var nuevaDistancia int
+
+	xOriginal := v.Posicionx
+	yOriginal := v.Posiciony
+
+	// Seleccionamos el mejor movimiento para que el visitante alcance su destino
+	for i := 0; i < 8; i++ {
+
+		switch i {
+		case 0:
+			v.Posicionx--
+			if v.Posicionx == -1 {
+				v.Posicionx = 19
+			}
+			mejorDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			mejorMovimiento = "N"
+			v.Posicionx = xOriginal // Reseteamos la posición
+		case 1:
+			v.Posicionx++
+			if v.Posicionx == 20 {
+				v.Posicionx = 0
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "S"
+			}
+			v.Posicionx = xOriginal // Reseteamos la posición
+		case 2:
+			v.Posiciony--
+			if v.Posiciony == -1 {
+				v.Posiciony = 19
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "W"
+			}
+			v.Posiciony = yOriginal // Reseteamos la posición
+		case 3:
+			v.Posiciony++
+			if v.Posiciony == 20 {
+				v.Posiciony = 0
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "E"
+			}
+			v.Posiciony = yOriginal // Reseteamos la posición
+		case 4:
+			v.Posicionx--
+			v.Posiciony--
+			if v.Posicionx == -1 {
+				v.Posicionx = 19
+			}
+			if v.Posiciony == -1 {
+				v.Posiciony = 19
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "NW"
+			}
+			v.Posicionx = xOriginal // Reseteamos la posición
+			v.Posiciony = yOriginal // Reseteamos la posición
+		case 5:
+			v.Posicionx--
+			v.Posiciony++
+			if v.Posicionx == -1 {
+				v.Posicionx = 19
+			}
+			if v.Posiciony == 20 {
+				v.Posiciony = 0
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "NE"
+			}
+			v.Posicionx = xOriginal // Reseteamos la posición
+			v.Posiciony = yOriginal // Reseteamos la posición
+		case 6:
+			v.Posicionx++
+			v.Posiciony--
+			if v.Posicionx == 20 {
+				v.Posicionx = 0
+			}
+			if v.Posiciony == -1 {
+				v.Posiciony = 19
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "SW"
+			}
+			v.Posicionx = xOriginal // Reseteamos la posición
+			v.Posiciony = yOriginal // Reseteamos la posición
+		case 7:
+			v.Posicionx++
+			v.Posiciony++
+			if v.Posicionx == 20 {
+				v.Posicionx = 0
+			}
+			if v.Posiciony == 20 {
+				v.Posiciony = 0
+			}
+			nuevaDistancia = int(math.Abs(float64(v.Destinox)-float64(v.Posicionx))) + int(math.Abs(float64(v.Destinoy)-float64(v.Posiciony))) // Distancia de Manhattan
+			if nuevaDistancia < mejorDistancia {
+				mejorDistancia = nuevaDistancia
+				mejorMovimiento = "SE"
+			}
+			v.Posicionx = xOriginal // Reseteamos la posición
+			v.Posiciony = yOriginal // Reseteamos la posición
+		}
+
+	}
+
+	return mejorMovimiento
+
+}
+
+/* Función que actualiza la posición actual del visitante en base al movimiento pasado por parámetro */
+func actualizaPosicion(v visitante, movimiento string) {
+
+	switch movimiento {
+
+	case "N":
+		v.Posicionx--
+	case "S":
+		v.Posicionx++
+	case "W":
+		v.Posiciony--
+	case "E":
+		v.Posiciony++
+	case "NW":
+		v.Posicionx--
+		v.Posiciony--
+	case "NE":
+		v.Posicionx--
+		v.Posiciony++
+	case "SW":
+		v.Posicionx++
+		v.Posiciony--
+	case "SE":
+		v.Posicionx++
+		v.Posiciony++
+	}
+
+	if v.Posicionx == -1 {
+		v.Posicionx = 19
+	} else if v.Posicionx == 20 {
+		v.Posicionx = 0
+	}
+
+	if v.Posiciony == -1 {
+		v.Posiciony = 19
+	} else if v.Posiciony == 20 {
+		v.Posiciony = 0
+	}
 
 }
 
@@ -426,7 +596,7 @@ func consumidorMapa(IpBroker, PuertoBroker string, v visitante, ctx context.Cont
 		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
 		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
-		movimiento := calcularMovimiento(v, mapa)
+		movimiento := obtenerMovimiento(v, mapa)
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
 		time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
