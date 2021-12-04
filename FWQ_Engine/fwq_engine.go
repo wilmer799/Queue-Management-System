@@ -626,7 +626,7 @@ func consumidorMovimientos(db *sql.DB, IpKafka, PuertoKafka string, ctx context.
 			continue
 		}
 
-		fmt.Println("Mensaje desde el gestor de colas: ", string(m.Value))
+		//fmt.Println("Mensaje desde el gestor de colas: ", string(m.Value))
 
 		mensaje := strings.Split(string(m.Value), ":")
 
