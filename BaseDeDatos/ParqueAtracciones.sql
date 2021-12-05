@@ -65,3 +65,5 @@ UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
 select * from atraccion;
 select * from visitante;
 select * from parque;
+
+SHOW STATUS LIKE 'max_used_connections';
