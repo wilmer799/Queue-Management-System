@@ -59,11 +59,9 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	crearTopic(IpBroker, PuertoBroker, "peticion-login")
+	crearTopic(IpBroker, PuertoBroker, "peticiones")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	crearTopic(IpBroker, PuertoBroker, "mapa")
-	crearTopic(IpBroker, PuertoBroker, "movimientos")
-	crearTopic(IpBroker, PuertoBroker, "salir")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
@@ -239,7 +237,7 @@ func SalidaParque(v visitante, IpBroker string, PuertoBroker string, ctx context
 func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "peticion-login"
+	var topic string = "peticiones"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddress},
@@ -267,8 +265,9 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
 		Topic:   "respuesta-login",
+		GroupID: "visitantes",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
-		StartOffset: kafka.LastOffset,
+		//StartOffset: kafka.LastOffset,
 	})
 
 	reader := kafka.NewReader(r)
@@ -309,7 +308,7 @@ func actualizaAtraccion(mapa [20][20]string, a atraccion) {
 }
 
 /* Función que selecciona una atracción al azar y guarda la posición de dicha atracción en el visitante */
-func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string, a atraccion) {
+func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string) atraccion {
 
 	var atraccionesDisponibles []atraccion
 
@@ -318,10 +317,12 @@ func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string, a atraccion) {
 		for j := 0; j < 20; j++ {
 			if t, err := strconv.Atoi(mapa[i][j]); err == nil { // Si la posición actual del mapa es un número
 				if t < 60 { // Si el tiempo de espera es menor a 60 minutos
-					a.Posicionx = i
-					a.Posiciony = j
-					a.TiempoEspera = t
-					atraccionesDisponibles = append(atraccionesDisponibles, a)
+					atraccionAux := atraccion{
+						Posicionx:    i,
+						Posiciony:    j,
+						TiempoEspera: t,
+					}
+					atraccionesDisponibles = append(atraccionesDisponibles, atraccionAux)
 				}
 			}
 		}
@@ -336,6 +337,7 @@ func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string, a atraccion) {
 	// Actualizamos la coordenadas de destino del visitante
 	v.Destinox = atraccionesDisponibles[indexAtraccion].Posicionx
 	v.Destinoy = atraccionesDisponibles[indexAtraccion].Posiciony
+	return atraccionesDisponibles[indexAtraccion]
 
 }
 
@@ -346,7 +348,7 @@ func obtenerMovimiento(v visitante, mapa [20][20]string, a atraccion) string {
 
 	// Si el visitante no sabe a qué atracción dirigirse o la atracción actual elegida tiene un tiempo de espera mayor a 60 minutos
 	if v.Destinox == -1 || v.Destinoy == -1 || a.TiempoEspera >= 60 {
-		seleccionaAtraccionAlAzar(v, mapa, a)
+		a = seleccionaAtraccionAlAzar(v, mapa)
 	} else {
 		actualizaAtraccion(mapa, a) // Actualizamos el tiempo de espera de la atracción destino del visitante
 	}
@@ -363,6 +365,8 @@ func obtenerMovimiento(v visitante, mapa [20][20]string, a atraccion) string {
 		v.Destinox = -1
 		v.Destinoy = -1
 		a.TiempoEspera = -1
+		a.Posicionx = -1
+		a.Posiciony = -1
 
 	}
 
@@ -544,7 +548,7 @@ func actualizaPosicion(v visitante, movimiento string) {
 func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "movimientos"
+	var topic string = "peticiones"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddress},
@@ -565,7 +569,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "salir"
+	var topic string = "peticiones"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddress},
@@ -589,8 +593,9 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
 		Topic:   "mapa",
+		GroupID: "mapa",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
-		StartOffset: kafka.LastOffset,
+		//StartOffset: kafka.LastOffset,
 	})
 
 	reader := kafka.NewReader(r)
@@ -613,13 +618,13 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v
 		movimiento := obtenerMovimiento(v, mapa, a)
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
-		var respuesta string
+		/*var respuesta string
 		fmt.Println("Desea salir del parque (si/no): ")
 		fmt.Scanln(&respuesta)
 		if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
 			SalidaParque(v, IpBroker, PuertoBroker, ctx)
 			dentroParque = false
-		}
+		}*/
 		time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
 
 	}
@@ -652,12 +657,15 @@ func procesarMapa(mapa []string) [20][20]string {
 
 func mostrarMapa(mapa [20][20]string) {
 
+	fmt.Println("Mapa actual del parque: ")
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
 			fmt.Print(mapa[i][j] + "|")
 		}
 		fmt.Println()
 	}
+
+	fmt.Println()
 
 }
 

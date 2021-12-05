@@ -178,9 +178,10 @@ func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Conte
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
 		//El broker habra que cambiarlo por otro
-		Brokers:     []string{direccionKafka},
-		Topic:       "peticiones", //Topico que hemos creado
-		StartOffset: kafka.LastOffset,
+		Brokers: []string{direccionKafka},
+		Topic:   "peticiones", //Topico que hemos creado
+		GroupID: "visitantes",
+		//StartOffset: kafka.LastOffset,
 		//MaxBytes: 10,
 	}
 
@@ -231,6 +232,7 @@ func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Conte
 			}
 
 			respuesta += alias + ":" + "Acceso concedido"
+			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 
 			sentenciaPreparada.Close()
 
@@ -238,10 +240,11 @@ func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Conte
 			peticion == "NE" || peticion == "SW" || peticion == "SE" { // Si se nos ha mandado un movimiento
 			var mapa [20][20]string
 			var visitantesParque []visitante
-			visitantesParque, _ = obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
-			visitantesParque = mueveVisitante(db, alias, peticion, visitantesParque)
+			visitantesParque, _ = obtenerVisitantesParque(db)              // Obtenemos los visitantes del parque actualizados
+			mueveVisitante(db, alias, peticion, visitantesParque)          // Movemos al visitante en base al movimiento recibido
+			visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
 			// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
-			mapa = asignacionPosiciones(visitantesParque, atracciones, mapa)
+			mapa = asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
 			mapaConvertido := convertirMapa(mapa)
 			productorMapa(IpKafka, PuertoKafka, ctx, mapaConvertido) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 		} else if peticion == "Salir" { // Si se nos ha solicitado una salida del parque
@@ -260,11 +263,10 @@ func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Conte
 			sentenciaPreparada.Close()
 		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
 			respuesta += alias + ":" + "Parque cerrado"
+			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 		}
 
 		results.Close()
-
-		productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 
 	}
 
@@ -511,7 +513,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
  */
 func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string) [20][20]string {
 
-	//Asignamos valores a las posiciones del mapa
+	//Asignamos los id de los visitantes
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(visitantes); k++ {
@@ -663,7 +665,7 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 }*/
 
 /* Función que modifica las posiciones de los visitantes en el parque en base a sus movimientos */
-func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) []visitante {
+func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) {
 
 	var nuevaPosicionX int
 	var nuevaPosicionY int
@@ -729,26 +731,6 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) [
 		panic("Error al modificar la posición del visitante en la BD: " + err.Error())
 	}
 
-	return visitantes
-
-}
-
-/* Función que se encarga de que un visitante salga del parque */
-func salirVisitanteParque(db *sql.DB, idVisitante string) {
-
-	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0 WHERE id = ?")
-	if err != nil {
-		panic("Error al preparar la sentencia de modificación: " + err.Error())
-	}
-
-	defer sentenciaPreparada.Close()
-
-	// Ejecutar sentencia, un valor por cada '?'
-	_, err = sentenciaPreparada.Exec(idVisitante)
-	if err != nil {
-		panic("Error al modificar el estado del visitante en el parque: " + err.Error())
-	}
-
 }
 
 /* Función que envia el mapa a los visitantes */
@@ -758,9 +740,9 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 	var topic string = "mapa"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:          []string{brokerAddress},
-		Topic:            topic,
-		CompressionCodec: kafka.Snappy.Codec(),
+		Brokers: []string{brokerAddress},
+		Topic:   topic,
+		//CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
