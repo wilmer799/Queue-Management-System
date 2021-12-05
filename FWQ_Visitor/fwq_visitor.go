@@ -49,8 +49,6 @@ const (
 	connType = "tcp"
 )
 
-var v visitante
-
 /**
 * Función main de los visitantes
 **/
@@ -67,12 +65,10 @@ func main() {
 	crearTopic(IpBroker, PuertoBroker, "movimientos")
 	crearTopic(IpBroker, PuertoBroker, "salir")
 	fmt.Println("**Bienvenido al parque de atracciones**")
-	/*fmt.Println("La IP del registro es la siguiente: " + IpFWQ_Registry + ":" + PuertoFWQ)
-	fmt.Println("La IP del Broker es el siguiente: " + IpBroker + ":" + PuertoBroker)*/
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-	ctx := context.Background()
-	defer SalidaParque(v, IpBroker, PuertoBroker, ctx)
+	/*ctx := context.Background()
+	defer SalidaParque(v, IpBroker, PuertoBroker, ctx)*/
 
 }
 
@@ -87,7 +83,7 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 		fmt.Println("1.Crear perfil")
 		fmt.Println("2.Editar perfil")
 		fmt.Println("3.Moverse por el parque")
-		fmt.Println("4.Salir del parque")
+		//fmt.Println("4.Salir del parque")
 		fmt.Print("Elige la acción a realizar:")
 		fmt.Scanln(&opcion)
 
@@ -98,9 +94,9 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
 		case 3:
 			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-		case 4:
-			ctx := context.Background()
-			SalidaParque(v, IpBroker, PuertoBroker, ctx)
+		//case 4:
+		//ctx := context.Background()
+		//SalidaParque(v, IpBroker, PuertoBroker, ctx)
 		default:
 			fmt.Println("Opción invalida, elige otra opción")
 		}
@@ -216,16 +212,17 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		DentroParque: 0,
 	}
 
+	a := atraccion{ // Guardamos la información de la atraccion que nos hace falta
+		Posicionx:    -1,
+		Posiciony:    -1,
+		TiempoEspera: -1,
+	}
+
 	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
 	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
 
 	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx, v)
-
-	/*for v.DentroParque == 1 { // Mientras el visitante esté dentro del parque vamos mandando los movimientos
-		//go movimientoVisitante(v, mapa, IpBroker, PuertoBroker, ctx) // El visitante se desplaza una posición para alcanzar la atracción y le envía cada movimiento al engine
-		time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
-	}*/
+	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx, v, a)
 
 }
 
@@ -262,7 +259,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context, v visitante) {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context, v visitante, a atraccion) {
 
 	respuestaEngine := ""
 
@@ -276,7 +273,9 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 
 	reader := kafka.NewReader(r)
 
-	for {
+	dentroParque := true
+
+	for dentroParque {
 
 		m, err := reader.ReadMessage(context.Background())
 
@@ -291,51 +290,65 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			productorMovimientos(IpBroker, PuertoBroker, v.ID+":"+" ", ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
-			go consumidorMapa(IpBroker, PuertoBroker, v, ctx)
-			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
+			consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, v, ctx, a)
+			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
-			MenuParque(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker) // Volvemos al menú de nuevo
+			dentroParque = false
 		}
 
 	}
 
 }
 
-/* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func obtenerMovimiento(v visitante, mapa [20][20]string) string {
+/* Función que actualiza el tiempo de espera de la atracción destino del visitante en base al mapa recibido */
+func actualizaAtraccion(mapa [20][20]string, a atraccion) {
 
-	var movimiento string
+	a.TiempoEspera, _ = strconv.Atoi(mapa[a.Posicionx][a.Posiciony])
+
+}
+
+/* Función que selecciona una atracción al azar y guarda la posición de dicha atracción en el visitante */
+func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string, a atraccion) {
+
 	var atraccionesDisponibles []atraccion
 
-	// Si el visitante no sabe a qué atracción dirigirse
-	if v.Destinox == -1 && v.Destinoy == -1 {
-
-		//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
-		for i := 0; i < 20; i++ {
-			for j := 0; j < 20; j++ {
-				if t, err := strconv.Atoi(mapa[i][j]); err == nil { // Si la posición actual del mapa es un número
-					if t < 60 { // Si el tiempo de espera es menor a 60 minutos
-						a := atraccion{ // Guardamos la información de la atraccion que nos hace falta
-							Posicionx:    i,
-							Posiciony:    j,
-							TiempoEspera: t,
-						}
-						atraccionesDisponibles = append(atraccionesDisponibles, a)
-					}
+	//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 20; j++ {
+			if t, err := strconv.Atoi(mapa[i][j]); err == nil { // Si la posición actual del mapa es un número
+				if t < 60 { // Si el tiempo de espera es menor a 60 minutos
+					a.Posicionx = i
+					a.Posiciony = j
+					a.TiempoEspera = t
+					atraccionesDisponibles = append(atraccionesDisponibles, a)
 				}
 			}
 		}
+	}
 
-		// Elegimos al azar una de las atracciones disponibles
-		rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
-		min := 0
-		max := len(atraccionesDisponibles) - 1
-		indexAtraccion := (rand.Intn(max-min+1) + min)
+	// Elegimos al azar una de las atracciones disponibles
+	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+	min := 0
+	max := len(atraccionesDisponibles) - 1
+	indexAtraccion := (rand.Intn(max-min+1) + min)
 
-		// Actualizamos la coordenadas de destino del visitante
-		v.Destinox = atraccionesDisponibles[indexAtraccion].Posicionx
-		v.Destinoy = atraccionesDisponibles[indexAtraccion].Posiciony
+	// Actualizamos la coordenadas de destino del visitante
+	v.Destinox = atraccionesDisponibles[indexAtraccion].Posicionx
+	v.Destinoy = atraccionesDisponibles[indexAtraccion].Posiciony
+
+}
+
+/* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
+func obtenerMovimiento(v visitante, mapa [20][20]string, a atraccion) string {
+
+	var movimiento string
+
+	// Si el visitante no sabe a qué atracción dirigirse o la atracción actual elegida tiene un tiempo de espera mayor a 60 minutos
+	if v.Destinox == -1 || v.Destinoy == -1 || a.TiempoEspera >= 60 {
+		seleccionaAtraccionAlAzar(v, mapa, a)
+	} else {
+		actualizaAtraccion(mapa, a) // Actualizamos el tiempo de espera de la atracción destino del visitante
 	}
 
 	movimiento = calculaMovimiento(v) // Obtiene el mejor movimiento en base a las posiciones adyacentes y la atracción destino seleccionada
@@ -349,6 +362,7 @@ func obtenerMovimiento(v visitante, mapa [20][20]string) string {
 		// Ahora el visitante vuelve a desconocer su destino
 		v.Destinox = -1
 		v.Destinoy = -1
+		a.TiempoEspera = -1
 
 	}
 
@@ -551,7 +565,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "peticion-salir"
+	var topic string = "salir"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{brokerAddress},
@@ -569,9 +583,7 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 }
 
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpBroker, PuertoBroker string, v visitante, ctx context.Context) {
-
-	//var mapaFormateado [][]string
+func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante, ctx context.Context, a atraccion) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -583,7 +595,9 @@ func consumidorMapa(IpBroker, PuertoBroker string, v visitante, ctx context.Cont
 
 	reader := kafka.NewReader(r)
 
-	for {
+	dentroParque := true
+
+	for dentroParque {
 
 		m, err := reader.ReadMessage(context.Background())
 
@@ -593,12 +607,19 @@ func consumidorMapa(IpBroker, PuertoBroker string, v visitante, ctx context.Cont
 
 		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
 		cadenaProcesada := strings.Split(string(m.Value), "|")
-		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
+		//fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
 		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
-		movimiento := obtenerMovimiento(v, mapa)
+		movimiento := obtenerMovimiento(v, mapa, a)
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
+		var respuesta string
+		fmt.Println("Desea salir del parque (si/no): ")
+		fmt.Scanln(&respuesta)
+		if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
+			SalidaParque(v, IpBroker, PuertoBroker, ctx)
+			dentroParque = false
+		}
 		time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
 
 	}

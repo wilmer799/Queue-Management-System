@@ -73,13 +73,6 @@ func main() {
 	crearTopics(IpKafka, PuertoKafka, "mapa")
 	crearTopics(IpKafka, PuertoKafka, "movimientos")
 	crearTopics(IpKafka, PuertoKafka, "salir")
-	/*fmt.Println("**Bienvenido al engine de la aplicación**")
-	fmt.Println("La ip del apache kafka es el siguiente:" + IpKafka)
-	fmt.Println("El puerto del apache kafka es el siguiente:" + PuertoKafka)
-	fmt.Println("El número máximo de visitantes es el siguiente:" + numeroVisitantes)
-	fmt.Println("La ip del servidor de espera es el siguiente:" + IpFWQWating)
-	fmt.Println("El puerto del servidor de tiempo es el siguiente:" + PuertoWaiting)
-	fmt.Println()*/
 
 	//Reserva de memoria para el mapa
 	//var mapa [20][20]string
@@ -94,13 +87,13 @@ func main() {
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
 
-	visitantesRegistrados, _ = obtenerVisitantesBD(conn)
+	//visitantesRegistrados, _ = obtenerVisitantesBD(conn)
 	atracciones, _ = obtenerAtraccionesBD(conn)
 	parqueTematico, _ = obtenerParqueDB(conn)
 
 	// Esta parte la podemos suprimir, simplemente es a modo de comprobación
-	fmt.Println("Visitantes registrados: ")
-	fmt.Println(visitantesRegistrados)
+	//fmt.Println("Visitantes registrados: ")
+	//fmt.Println(visitantesRegistrados)
 	fmt.Println() // Para mejorar la salida por pantalla
 	fmt.Println("Atracciones del parque: ")
 	fmt.Println(atracciones)
@@ -109,24 +102,27 @@ func main() {
 	fmt.Println(parqueTematico)
 	fmt.Println() // Para mejorar la salida por pantalla
 
-	fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
-	fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino")
-
-	// Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
-	for i := 0; i < len(visitantesRegistrados); i++ {
-		fmt.Println(strings.TrimSpace(visitantesRegistrados[i].ID) + " 		" + strings.TrimSpace(visitantesRegistrados[i].Nombre) +
-			"    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posicionx)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posiciony)) +
-			")" + "    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinox)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinoy)) +
-			")")
-	}
-
 	for {
 
 		//Para empezar con el kafka
 		ctx := context.Background()
 
 		visitantesRegistrados, _ = obtenerVisitantesBD(conn) // Obtenemos los visitantes registrados actualmente
-		atracciones, _ = obtenerAtraccionesBD(conn)          // Obtenemos las atracciones actualizadass
+		atracciones, _ = obtenerAtraccionesBD(conn)          // Obtenemos las atracciones actualizadas
+
+		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
+		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino      " + "	DentroParque")
+
+		// Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
+		// Mostramos los visitantes registrados en la aplicación actualmente
+		for i := 0; i < len(visitantesRegistrados); i++ {
+			fmt.Println(strings.TrimSpace(visitantesRegistrados[i].ID) + " 		" + strings.TrimSpace(visitantesRegistrados[i].Nombre) +
+				"    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posicionx)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posiciony)) +
+				")" + "    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinox)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinoy)) +
+				")" + "	   	      " + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].DentroParque)))
+		}
+
+		fmt.Println() // Para mejorar la visualización
 
 		go consumidorLogin(conn, IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
 
@@ -137,6 +133,8 @@ func main() {
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
 		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
+
+		fmt.Println() // Para mejorar la visualización
 
 	}
 
@@ -242,13 +240,13 @@ func consumidorLogin(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 
 			respuesta += alias + ":" + "Acceso concedido"
 
-			results.Close()
 			sentenciaPreparada.Close()
 
 		} else { // Sino entonces le informamos de que el parque está cerrado
 			respuesta += alias + ":" + "Parque cerrado"
-			results.Close()
 		}
+
+		results.Close()
 
 		productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 
@@ -538,12 +536,12 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
-	fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
+	//fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
 	conn, err := net.Dial(connType, IpFWQWating+":"+PuertoWaiting)
 
 	if err != nil {
-		fmt.Println("Error a la hora de escuchar", err.Error())
+		fmt.Println("ERROR: El servidor de tiempos de espera no está disponible", err.Error())
 	} else {
 		fmt.Println("***Actualizando los tiempos de espera***")
 
@@ -655,7 +653,9 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) [
 	var nuevaPosicionY int
 
 	for i := 0; i < len(visitantes); i++ {
-		if id == visitantes[i].ID {
+
+		if id == visitantes[i].ID { // Modificamos la posición del visitante recibido por kafka
+
 			switch movimiento {
 			case "N":
 				visitantes[i].Posicionx--
@@ -695,6 +695,7 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) [
 			nuevaPosicionY = visitantes[i].Posiciony
 
 		}
+
 	}
 
 	// MODIFICAMOS la posición de dicho visitante en la BD
@@ -805,8 +806,8 @@ func consumidorSalir(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
 		if results.Next() && peticion == "Salir" {
 
-			// Sacamos del parque al visitante
-			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0 WHERE id = ?")
+			// Sacamos del parque al visitante y reinciamos tanto su posición actual como su destino
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
 			if err != nil {
 				panic("Error al preparar la sentencia de modificación: " + err.Error())
 			}
@@ -817,35 +818,34 @@ func consumidorSalir(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Contex
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
 
-			results.Close()
 			sentenciaPreparada.Close()
 
-		} else { // Sino entonces le informamos de que el parque está cerrado
-			results.Close()
 		}
+
+		results.Close()
 
 	}
 
 }
 
-/* Función que actualiza los tiempos de espera de las atracciones en la BD*/
+/* Función que actualiza los tiempos de espera de las atracciones en la BD */
 func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 
-	results, err := db.Query("SELECT * FROM atraccion")
+	/*results, err := db.Query("SELECT * FROM atraccion")
 
 	// Comrpobamos que no se produzcan errores al hacer la consulta
 	if err != nil {
 		panic("Error al hacer la consulta a la BD: " + err.Error())
 	}
 
-	defer results.Close() // Nos aseguramos de cerrar
+	defer results.Close() // Nos aseguramos de cerrar*/
 
 	i := 0
 
 	// Recorremos todas las filas de la consulta
-	for results.Next() {
+	//for results.Next() {
+	for i < len(tiemposEspera) {
 
-		// MODIFICAMOS la información de dicho visitante en la BD
 		// Preparamos para prevenir inyecciones SQL
 		sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET tiempoEspera = ? WHERE id = ?")
 		if err != nil {
@@ -869,8 +869,6 @@ func actualizaTiemposEsperaBD(db *sql.DB, tiemposEspera []string) {
 		if err != nil {
 			panic("Error al modificar el tiempo de espera de la atracción: " + err.Error())
 		}
-
-		fmt.Println("Atracción modificada.")
 
 		i++
 	}
