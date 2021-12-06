@@ -49,6 +49,22 @@ const (
 	connType = "tcp"
 )
 
+var v = visitante{ // Guardamos la información del visitante que nos hace falta
+	ID:           "",
+	Password:     "",
+	Posicionx:    0,
+	Posiciony:    0,
+	Destinox:     -1,
+	Destinoy:     -1,
+	DentroParque: 0,
+}
+
+var a = atraccion{ // Guardamos la información de la atraccion que nos hace falta
+	Posicionx:    -1,
+	Posiciony:    -1,
+	TiempoEspera: -1,
+}
+
 /**
 * Función main de los visitantes
 **/
@@ -61,7 +77,7 @@ func main() {
 	PuertoBroker := os.Args[4]
 	crearTopic(IpBroker, PuertoBroker, "peticiones")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
-	crearTopic(IpBroker, PuertoBroker, "mapa")
+	crearTopic(IpBroker, PuertoBroker, "movimiento-mapa")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
@@ -190,9 +206,11 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	fmt.Print("Por favor introduce tu alias:")
 	alias, _ := reader.ReadString('\n')
+	v.ID += strings.TrimSpace(string(alias))
 
 	fmt.Print("y tu password:")
 	password, _ := reader.ReadString('\n')
+	v.Password += strings.TrimSpace(string(password))
 
 	ctx := context.Background()
 
@@ -200,32 +218,16 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	//var mapa string // Variable donde almacenaremos el mapa pasado por el engine
 
-	v := visitante{ // Guardamos la información del visitante que nos hace falta
-		ID:           strings.TrimSpace(string(alias)),
-		Password:     strings.TrimSpace(string(password)),
-		Posicionx:    0,
-		Posiciony:    0,
-		Destinox:     -1,
-		Destinoy:     -1,
-		DentroParque: 0,
-	}
-
-	a := atraccion{ // Guardamos la información de la atraccion que nos hace falta
-		Posicionx:    -1,
-		Posiciony:    -1,
-		TiempoEspera: -1,
-	}
-
 	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
 	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
 
 	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx, v, a)
+	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
 
 }
 
 /* Función que permite a un visitante abandonar el parque */
-func SalidaParque(v visitante, IpBroker string, PuertoBroker string, ctx context.Context) {
+func SalidaParque(IpBroker string, PuertoBroker string, ctx context.Context) {
 
 	v.DentroParque = 0
 	mensaje := v.ID + ":" + "Salir"
@@ -252,12 +254,12 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 		panic("No se pueden encolar las credenciales: " + err.Error())
 	}
 
-	//fmt.Println("Enviando credenciales -> " + credenciales)
+	fmt.Println("Enviando credenciales -> " + credenciales)
 
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context, v visitante, a atraccion) {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context) {
 
 	respuestaEngine := ""
 
@@ -283,13 +285,13 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		}
 
 		respuestaEngine = strings.TrimSpace(string(m.Value))
-		//fmt.Println("Respuesta del engine: " + respuestaEngine)
+		fmt.Println("Respuesta del engine: " + respuestaEngine)
 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			productorMovimientos(IpBroker, PuertoBroker, v.ID+":"+" ", ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
-			consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, v, ctx, a)
+			consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, ctx)
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
@@ -301,14 +303,14 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 }
 
 /* Función que actualiza el tiempo de espera de la atracción destino del visitante en base al mapa recibido */
-func actualizaAtraccion(mapa [20][20]string, a atraccion) {
+func actualizaAtraccion(mapa [20][20]string) {
 
 	a.TiempoEspera, _ = strconv.Atoi(mapa[a.Posicionx][a.Posiciony])
 
 }
 
 /* Función que selecciona una atracción al azar y guarda la posición de dicha atracción en el visitante */
-func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string) atraccion {
+func seleccionaAtraccionAlAzar(mapa [20][20]string) {
 
 	var atraccionesDisponibles []atraccion
 
@@ -337,24 +339,28 @@ func seleccionaAtraccionAlAzar(v visitante, mapa [20][20]string) atraccion {
 	// Actualizamos la coordenadas de destino del visitante
 	v.Destinox = atraccionesDisponibles[indexAtraccion].Posicionx
 	v.Destinoy = atraccionesDisponibles[indexAtraccion].Posiciony
-	return atraccionesDisponibles[indexAtraccion]
+	a.Posicionx = atraccionesDisponibles[indexAtraccion].Posicionx
+	a.Posiciony = atraccionesDisponibles[indexAtraccion].Posiciony
+	a.TiempoEspera = atraccionesDisponibles[indexAtraccion].TiempoEspera
+
+	fmt.Println("Me dirijo a la atracción con tiempo de espera igual a = " + strconv.Itoa(a.TiempoEspera))
 
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func obtenerMovimiento(v visitante, mapa [20][20]string, a atraccion) string {
+func obtenerMovimiento(mapa [20][20]string) string {
 
 	var movimiento string
 
 	// Si el visitante no sabe a qué atracción dirigirse o la atracción actual elegida tiene un tiempo de espera mayor a 60 minutos
 	if v.Destinox == -1 || v.Destinoy == -1 || a.TiempoEspera >= 60 {
-		a = seleccionaAtraccionAlAzar(v, mapa)
+		seleccionaAtraccionAlAzar(mapa)
 	} else {
-		actualizaAtraccion(mapa, a) // Actualizamos el tiempo de espera de la atracción destino del visitante
+		actualizaAtraccion(mapa) // Actualizamos el tiempo de espera de la atracción destino del visitante
 	}
 
-	movimiento = calculaMovimiento(v) // Obtiene el mejor movimiento en base a las posiciones adyacentes y la atracción destino seleccionada
-	actualizaPosicion(v, movimiento)  // Actualiza la posición actual del visitante en base al mejor movimiento elegido
+	movimiento = calculaMovimiento() // Obtiene el mejor movimiento en base a las posiciones adyacentes y la atracción destino seleccionada
+	actualizaPosicion(movimiento)    // Actualiza la posición actual del visitante en base al mejor movimiento elegido
 
 	// Si el visitante se encuentra en la atracción
 	if (v.Posicionx == v.Destinox) && (v.Posiciony == v.Destinoy) {
@@ -377,7 +383,7 @@ func obtenerMovimiento(v visitante, mapa [20][20]string, a atraccion) string {
 }
 
 /* Función que devuelve el mejor movimiento a realizar en base a la atracción destino elegida por el visitante */
-func calculaMovimiento(v visitante) string {
+func calculaMovimiento() string {
 
 	var mejorMovimiento string = ""
 	var mejorDistancia int
@@ -504,7 +510,7 @@ func calculaMovimiento(v visitante) string {
 }
 
 /* Función que actualiza la posición actual del visitante en base al movimiento pasado por parámetro */
-func actualizaPosicion(v visitante, movimiento string) {
+func actualizaPosicion(movimiento string) {
 
 	switch movimiento {
 
@@ -563,6 +569,8 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 		panic("No se puede encolar el movimiento: " + err.Error())
 	}
 
+	fmt.Println("Enviando movimiento: " + movimiento)
+
 }
 
 /* Función que se encarga de mandar la solicitud de salida del parque al engine */
@@ -587,12 +595,12 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 }
 
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v visitante, ctx context.Context, a atraccion) {
+func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "mapa",
+		Topic:   "movimiento-mapa",
 		GroupID: "mapa",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		//StartOffset: kafka.LastOffset,
@@ -610,12 +618,14 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, v
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
+		fmt.Println(string(m.Value))
+
 		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
 		cadenaProcesada := strings.Split(string(m.Value), "|")
 		//fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
 		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
-		movimiento := obtenerMovimiento(v, mapa, a)
+		movimiento := obtenerMovimiento(mapa)
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
 		/*var respuesta string
