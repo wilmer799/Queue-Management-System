@@ -9,6 +9,8 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -81,8 +83,6 @@ func main() {
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-	/*ctx := context.Background()
-	defer SalidaParque(v, IpBroker, PuertoBroker, ctx)*/
 
 }
 
@@ -232,6 +232,8 @@ func SalidaParque(IpBroker string, PuertoBroker string, ctx context.Context) {
 	v.DentroParque = 0
 	mensaje := v.ID + ":" + "Salir"
 	productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+	fmt.Println()
+	fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
 
 }
 
@@ -618,7 +620,7 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		fmt.Println(string(m.Value))
+		//fmt.Println(string(m.Value))
 
 		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
 		cadenaProcesada := strings.Split(string(m.Value), "|")
@@ -628,13 +630,29 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 		movimiento := obtenerMovimiento(mapa)
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
-		/*var respuesta string
-		fmt.Println("Desea salir del parque (si/no): ")
-		fmt.Scanln(&respuesta)
-		if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
-			SalidaParque(v, IpBroker, PuertoBroker, ctx)
-			dentroParque = false
-		}*/
+
+		var respuesta string
+
+		go func() {
+			fmt.Println("Desea salir del parque (si/no): ")
+			fmt.Scanln(&respuesta)
+			if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
+				SalidaParque(IpBroker, PuertoBroker, ctx)
+				dentroParque = false
+			}
+		}()
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for sig := range c {
+				log.Printf("captured %v, stopping profiler and exiting..", sig)
+				SalidaParque(IpBroker, PuertoBroker, ctx)
+				pprof.StopCPUProfile()
+				os.Exit(1)
+			}
+		}()
+
 		time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
 
 	}
