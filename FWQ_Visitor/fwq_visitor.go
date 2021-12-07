@@ -227,15 +227,9 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 }
 
 /* Función que permite a un visitante abandonar el parque */
-func SalidaParque(IpBroker string, PuertoBroker string, ctx context.Context) {
+/*func SalidaParque(IpBroker string, PuertoBroker string, ctx context.Context) {
 
-	v.DentroParque = 0
-	mensaje := v.ID + ":" + "Salir"
-	productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
-	fmt.Println()
-	fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
-
-}
+}*/
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
 func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
@@ -610,9 +604,7 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 
 	reader := kafka.NewReader(r)
 
-	dentroParque := true
-
-	for dentroParque {
+	for {
 
 		m, err := reader.ReadMessage(context.Background())
 
@@ -631,14 +623,17 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 		peticionMovimiento := v.ID + ":" + movimiento
 		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
 
-		var respuesta string
-
 		go func() {
+			var respuesta string
 			fmt.Println("Desea salir del parque (si/no): ")
 			fmt.Scanln(&respuesta)
 			if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
-				SalidaParque(IpBroker, PuertoBroker, ctx)
-				dentroParque = false
+				v.DentroParque = 0
+				mensaje := v.ID + ":" + "Salir"
+				productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+				fmt.Println()
+				fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
+				os.Exit(1)
 			}
 		}()
 
@@ -647,7 +642,10 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 		go func() {
 			for sig := range c {
 				log.Printf("captured %v, stopping profiler and exiting..", sig)
-				SalidaParque(IpBroker, PuertoBroker, ctx)
+				mensaje := v.ID + ":" + "Salir"
+				productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+				fmt.Println()
+				fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
 				pprof.StopCPUProfile()
 				os.Exit(1)
 			}
