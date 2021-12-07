@@ -123,7 +123,7 @@ func main() {
 
 		fmt.Println() // Para mejorar la visualización
 
-		go consumidorEngine(conn, IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
+		go consumidorEngine(IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
@@ -166,7 +166,17 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorEngine(db *sql.DB, IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante, maxVisitantes int) {
+func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante, maxVisitantes int) {
+
+	//Accediendo a la base de datos
+	//Abrimos la conexion con la base de datos
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	//Si la conexión falla mostrara este error
+	if err != nil {
+		panic(err.Error())
+	}
+	//Cierra la conexion con la bd
+	defer db.Close()
 
 	direccionKafka := IpKafka + ":" + PuertoKafka
 

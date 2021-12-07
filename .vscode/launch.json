@@ -10,8 +10,8 @@
             "type": "go",
             "request": "launch",
             "mode": "exec",
-            "program": "FWQ_Visitor/FWQ_Visitor",
-            "args": ["localhost","9093","localhost","9092"]
+            "program": "FWQ_Engine/fwq_engine",
+            "args": ["localhost","9092","50","localhost","9094"]
         }
 
     ]
