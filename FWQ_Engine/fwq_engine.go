@@ -299,9 +299,9 @@ func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuest
 	var topic string = "respuesta-login"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{brokerAddress},
-		Topic:   topic,
-		//CompressionCodec: kafka.Snappy.Codec(),
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{

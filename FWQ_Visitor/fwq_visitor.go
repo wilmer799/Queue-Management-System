@@ -238,8 +238,9 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 	var topic string = "peticiones"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{brokerAddress},
-		Topic:   topic,
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
@@ -553,8 +554,9 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 	var topic string = "peticiones"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{brokerAddress},
-		Topic:   topic,
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
@@ -576,8 +578,9 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 	var topic string = "peticiones"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{brokerAddress},
-		Topic:   topic,
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	err := w.WriteMessages(ctx, kafka.Message{
