@@ -252,15 +252,15 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, visitant
 			visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
 			// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
 			atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
-			mapa = asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
+			mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
 
-			/*fmt.Println("Mapa actual del parque: ")
-			for i := 0; i < len(mapa); i++ {
-				for j := 0; j < len(mapa[i]); j++ {
-					fmt.Print(mapa[i][j])
+			fmt.Println("Mapa actual del parque: ")
+			for i := 0; i < len(mapaActualizado); i++ {
+				for j := 0; j < len(mapaActualizado[i]); j++ {
+					fmt.Print(mapaActualizado[i][j])
 				}
 				fmt.Println()
-			}*/
+			}
 
 			fmt.Println()
 
