@@ -615,11 +615,11 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		//fmt.Println(string(m.Value))
+		fmt.Println(string(m.Value))
 
 		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
 		cadenaProcesada := strings.Split(string(m.Value), "|")
-		//fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
+		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
 		var mapa [20][20]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
 		movimiento := obtenerMovimiento(mapa)

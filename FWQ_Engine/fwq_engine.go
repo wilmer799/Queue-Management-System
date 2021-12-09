@@ -87,7 +87,7 @@ func main() {
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
 
-	//visitantesRegistrados, _ = obtenerVisitantesBD(conn)
+	visitantesRegistrados, _ = obtenerVisitantesBD(conn)
 	atracciones, _ = obtenerAtraccionesBD(conn)
 	parqueTematico, _ = obtenerParqueDB(conn)
 
@@ -102,10 +102,11 @@ func main() {
 	fmt.Println(parqueTematico)
 	fmt.Println() // Para mejorar la salida por pantalla
 
-	for {
+	//Para empezar con el kafka
+	ctx := context.Background()
+	go consumidorEngine(IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
 
-		//Para empezar con el kafka
-		ctx := context.Background()
+	for {
 
 		visitantesRegistrados, _ = obtenerVisitantesBD(conn) // Obtenemos los visitantes registrados actualmente
 
@@ -122,8 +123,6 @@ func main() {
 		}
 
 		fmt.Println() // Para mejorar la visualización
-
-		go consumidorEngine(IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
@@ -209,6 +208,8 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, visitant
 			ID:       strings.TrimSpace(alias),
 			Password: strings.TrimSpace(peticion),
 		}
+
+		fmt.Println("Petición recibida: " + string(m.Value))
 
 		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
@@ -760,9 +761,9 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 	var topic string = "movimiento-mapa"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{brokerAddress},
-		Topic:   topic,
-		//CompressionCodec: kafka.Snappy.Codec(),
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
 	//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
