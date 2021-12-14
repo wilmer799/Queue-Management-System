@@ -224,14 +224,14 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 }
 
 /* Función que actualiza el tiempo de espera de la atracción destino del visitante en base al mapa recibido */
-func actualizaAtraccion(mapa [20][20]string) {
+func actualizaAtraccion(mapa [20][21]string) {
 
 	a.TiempoEspera, _ = strconv.Atoi(mapa[a.Posicionx][a.Posiciony])
 
 }
 
 /* Función que selecciona una atracción al azar y guarda la posición de dicha atracción en el visitante */
-func seleccionaAtraccionAlAzar(mapa [20][20]string) {
+func seleccionaAtraccionAlAzar(mapa [20][21]string) {
 
 	var atraccionesDisponibles []atraccion
 
@@ -269,7 +269,7 @@ func seleccionaAtraccionAlAzar(mapa [20][20]string) {
 }
 
 /* Función que se encarga de ir moviendo al visitante hasta alcanzar el destino */
-func obtenerMovimiento(mapa [20][20]string) string {
+func obtenerMovimiento(mapa [20][21]string) string {
 
 	var movimiento string
 
@@ -475,7 +475,7 @@ func actualizaPosicion(movimiento string) {
 func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "movimientoss"
+	var topic string = "movimientos"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:          []string{brokerAddress},
@@ -499,7 +499,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "peticiones"
+	var topic string = "movimientos"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:          []string{brokerAddress},
@@ -523,7 +523,7 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
-		Topic:   "movimiento-mapa",
+		Topic:   "mapa",
 		GroupID: "visitantes",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		//StartOffset: kafka.LastOffset,
@@ -539,12 +539,12 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		//fmt.Println(string(m.Value))
+		fmt.Println(string(m.Value))
 
 		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
 		cadenaProcesada := strings.Split(string(m.Value), "|")
 		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
-		var mapa [20][20]string = procesarMapa(cadenaProcesada)
+		var mapa [20][21]string = procesarMapa(cadenaProcesada)
 		mostrarMapa(mapa)
 		movimiento := obtenerMovimiento(mapa)
 		peticionMovimiento := v.ID + ":" + movimiento
@@ -585,9 +585,9 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 }
 
 /* Función que formatea el mapa y lo convierte en un array bidimensional de strings */
-func procesarMapa(mapa []string) [20][20]string {
+func procesarMapa(mapa []string) [20][21]string {
 
-	var mapaFormateado [20][20]string
+	var mapaFormateado [20][21]string
 
 	k := 0
 
@@ -608,7 +608,7 @@ func procesarMapa(mapa []string) [20][20]string {
 
 }
 
-func mostrarMapa(mapa [20][20]string) {
+func mostrarMapa(mapa [20][21]string) {
 
 	fmt.Println("Mapa actual del parque: ")
 	for i := 0; i < len(mapa); i++ {

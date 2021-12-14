@@ -72,7 +72,7 @@ func main() {
 	crearTopics(IpKafka, PuertoKafka, "mapa")
 
 	//Reserva de memoria para el mapa
-	//var mapa [20][20]string
+	//var mapa [20][21]string
 
 	// Visitantes, atracciones que se encuentran en la BD
 	var visitantesRegistrados []visitante
@@ -239,14 +239,14 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 
 				}
 
-				var mapa [20][20]string
+				var mapa [20][21]string
 				var visitantesParque []visitante
 				visitantesParque, _ = obtenerVisitantesParque(db)              // Obtenemos los visitantes del parque actualizados
 				mueveVisitante(db, alias, movimiento, visitantesParque)        // Movemos al visitante en base al movimiento recibido
 				visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
 				// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
 				atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
-				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
+				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa, alias)
 
 				fmt.Println("Mapa actual del parque: ")
 				for i := 0; i < len(mapaActualizado); i++ {
@@ -301,7 +301,7 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 * Función que convierte el mapa de tipo string en []byte
 * @return []mapa : Retorna un array de bytes que va a ser enviado a los visitantes que se encuentren en el parque
  */
-func convertirMapa(mapa [20][20]string) []byte {
+func convertirMapa(mapa [20][21]string) []byte {
 	var mapaOneD []byte
 	var cadenaMapa []byte
 	for i := 0; i < len(mapa); i++ {
@@ -511,9 +511,9 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
 /*
 * Función que forma el mapa del parque conteniendo a los visitantes y las atracciones
-* @return [20][20]string : Matriz bidimensional representando el mapa
+* @return [20][21]string : Matriz bidimensional representando el mapa
  */
-func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string) [20][20]string {
+func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][21]string, alias string) [20][21]string {
 
 	//Asignamos los id de los visitantes
 	for i := 0; i < len(mapa); i++ {
@@ -545,6 +545,8 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 			}
 		}
 	}
+
+	mapa[19][20] = alias // En la última posición añadimos el alias
 
 	return mapa
 
@@ -691,7 +693,7 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) {
 func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "movimiento-mapa"
+	var topic string = "mapa"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:          []string{brokerAddress},
