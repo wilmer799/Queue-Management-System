@@ -1,13 +1,3 @@
-TOPICS y PRODUCTORES-CONSUMIDORES NECESARIOS
-
-LOGIN:
-
-Topic "peticion-login" : Productor del visitante = "productorLogin" -> Consumidor del engine = "consumidorLogin"
-
-Topic "respuesta-login" : Productor del engine = "productorLogin" -> Consumidor del visitante = "consumidorLogin"
-
-MOVIMIENTOS-MAPA:
-
 Topic "movimientos" : Productor del visitante = "productorMovimientos" -> Consumidor del engine = "consumidorMovimientos"
 
 Topic "mapa" : Productor del engine = "productorMapa" -> Consumidor del visitante = "consumidorMapa"
