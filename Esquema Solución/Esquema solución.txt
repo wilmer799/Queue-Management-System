@@ -12,24 +12,11 @@ Topic "movimientos" : Productor del visitante = "productorMovimientos" -> Consum
 
 Topic "mapa" : Productor del engine = "productorMapa" -> Consumidor del visitante = "consumidorMapa"
 
-SALIR-PARQUE:
-
-Topic "peticion-salir" : Productor del visitante = "productorSalir" -> Consumidor del engine = "consumidorSalir"
-
 FORMATO DE LOS MENSAJES QUE MANDAN LOS PRODUCTORES
 
-LOGIN:
+Topic "mapa" : [MAPA] o "Parque cerrado"
 
-Topic "peticion-login" : alias:password
+Topic "movimientos" : alias:password:movimiento donde movimiento será uno de estos -> "IN","N","S","W","E","NW","NE","SW","SE","OUT"
+El movimiento "IN" es para indicar al engine que estamos en la posición inicial del parque
+El movimiento "OUT" sirve para indicar que el visitante desea salir del parque o ya ha salido
 
-Topic "respuesta-login" : si OK -> alias:”Acceso concedido” | si NO OK -> alias:"Parque cerrado"
-
-MOVIMIENTOS-MAPA:
-
-Topic "mapa" : [MAPA]
-
-Topic "movimientos" : alias:movimiento donde movimiento será uno de estos -> " ","N","S","W","E","NW","NE","SW","SE"
-
-SALIR-PARQUE:
-
-Topic "peticion-salir" : alias:"Salir"

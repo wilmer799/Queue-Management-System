@@ -77,9 +77,8 @@ func main() {
 	PuertoFWQ := os.Args[2]
 	IpBroker := os.Args[3]
 	PuertoBroker := os.Args[4]
-	crearTopic(IpBroker, PuertoBroker, "peticiones")
-	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
-	crearTopic(IpBroker, PuertoBroker, "movimiento-mapa")
+	crearTopic(IpBroker, PuertoBroker, "movimientos")
+	crearTopic(IpBroker, PuertoBroker, "mapa")
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
@@ -214,88 +213,13 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	ctx := context.Background()
 
-	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password))
+	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + "IN" // Indicamos que nos coloque/nos encontramos en la entrada del parque
 
-	//var mapa string // Variable donde almacenaremos el mapa pasado por el engine
+	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque junto con el movimiento "IN"
+	productorMovimientos(IpBroker, PuertoBroker, mensaje, ctx)
 
-	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
-	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
-
-	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
-
-}
-
-/* Función que permite a un visitante abandonar el parque */
-/*func SalidaParque(IpBroker string, PuertoBroker string, ctx context.Context) {
-
-}*/
-
-/* Función que se encarga de enviar las credenciales de inicio de sesión */
-func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
-
-	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "peticiones"
-
-	w := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:          []string{brokerAddress},
-		Topic:            topic,
-		CompressionCodec: kafka.Snappy.Codec(),
-	})
-
-	err := w.WriteMessages(ctx, kafka.Message{
-		Key:   []byte("Key-Login"),
-		Value: []byte(credenciales),
-	})
-	if err != nil {
-		panic("No se pueden encolar las credenciales: " + err.Error())
-	}
-
-	fmt.Println("Enviando credenciales -> " + credenciales)
-
-}
-
-/* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context) {
-
-	respuestaEngine := ""
-
-	broker := IpBroker + ":" + PuertoBroker
-	r := kafka.ReaderConfig(kafka.ReaderConfig{
-		Brokers: []string{broker},
-		Topic:   "respuesta-login",
-		GroupID: "visitantes",
-		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
-		//StartOffset: kafka.LastOffset,
-	})
-
-	reader := kafka.NewReader(r)
-
-	dentroParque := true
-
-	for dentroParque {
-
-		m, err := reader.ReadMessage(context.Background())
-
-		if err != nil {
-			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
-		}
-
-		respuestaEngine = strings.TrimSpace(string(m.Value))
-		fmt.Println("Respuesta del engine: " + respuestaEngine)
-
-		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
-			v.DentroParque = 1 // El visitante está dentro del parque
-			fmt.Println("El visitante está dentro del parque")
-			productorMovimientos(IpBroker, PuertoBroker, v.ID+":"+" ", ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
-			consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, ctx)
-			dentroParque = false
-		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
-			fmt.Println("Parque cerrado")
-			dentroParque = false
-		}
-
-	}
+	// Recibe del engine el mapa actualizado o un mapa vacío
+	consumidorMapa(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
 
 }
 
@@ -551,7 +475,7 @@ func actualizaPosicion(movimiento string) {
 func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "peticiones"
+	var topic string = "movimientoss"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:          []string{brokerAddress},
@@ -593,14 +517,14 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 
 }
 
-/* Función que recibe el mapa del engine y lo devuelve formateado */
+/* Función que recibe el mapa del engine */
 func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
 		Topic:   "movimiento-mapa",
-		GroupID: "mapa",
+		GroupID: "visitantes",
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
 		//StartOffset: kafka.LastOffset,
 	})
@@ -699,7 +623,7 @@ func mostrarMapa(mapa [20][20]string) {
 }
 
 /*
-* Función que crea el topic para el envio de los movimientos de los visitantes
+* Función que crea los topics de los visitantes
  */
 func crearTopic(IpBroker, PuertoBroker, topic string) {
 
