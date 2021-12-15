@@ -540,7 +540,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 
 	// Las casillas del mapa que no tengan ni visitantes ni atracciones las representamos con una guión
 	for i := 0; i < 20; i++ {
-		for j := 0; j < 20; j++ {
+		for j := 0; j < 21; j++ {
 			if len(mapa[i][j]) == 0 {
 				mapa[i][j] = "-" + "|"
 			}
