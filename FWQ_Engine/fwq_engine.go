@@ -716,6 +716,9 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 	if err != nil {
 		panic("No se puede mandar el mapa: " + err.Error())
 	}
+
+	fmt.Println("Mapa enviado.")
+
 }
 
 /* Función que actualiza los tiempos de espera de las atracciones en la BD */
