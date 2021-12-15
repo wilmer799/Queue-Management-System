@@ -539,46 +539,62 @@ func consumidorMapa(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, c
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		fmt.Println(string(m.Value))
+		cadenaRecibida := string(m.Value)
 
-		// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
-		cadenaProcesada := strings.Split(string(m.Value), "|")
-		fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
-		var mapa [20][21]string = procesarMapa(cadenaProcesada)
-		mostrarMapa(mapa)
-		movimiento := obtenerMovimiento(mapa)
-		peticionMovimiento := v.ID + ":" + movimiento
-		productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
+		fmt.Println("Cadena recibida: " + cadenaRecibida)
 
-		go func() {
-			var respuesta string
-			fmt.Println("Desea salir del parque (si/no): ")
-			fmt.Scanln(&respuesta)
-			if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
-				v.DentroParque = 0
-				mensaje := v.ID + ":" + "Salir"
-				productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
-				fmt.Println()
-				fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
-				os.Exit(1)
+		// Si coincide el alias del mensaje con el del visitante actual
+		if strings.Contains(cadenaRecibida, v.ID) {
+
+			// Si se nos ha mandado un mensaje de parque cerrado
+			if strings.Contains(cadenaRecibida, "Parque cerrado") {
+				fmt.Println("Parque cerrado")
+				return // Volvemos al menú
+			} else { // Si es el mapa
+
+				// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
+				cadenaProcesada := strings.Split(string(m.Value), "|")
+				fmt.Println("Tamaño cadena procesada: " + strconv.Itoa(len(cadenaProcesada)))
+
+				var mapa [20][21]string = procesarMapa(cadenaProcesada)
+				mostrarMapa(mapa)
+				movimiento := obtenerMovimiento(mapa)
+				peticionMovimiento := v.ID + ":" + movimiento
+				productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
+
+				go func() {
+					var respuesta string
+					fmt.Println("Desea salir del parque (si/no): ")
+					fmt.Scanln(&respuesta)
+					if respuesta == "s" || respuesta == "S" || respuesta == "si" || respuesta == "SI" || respuesta == "Si" || respuesta == "sI" {
+						v.DentroParque = 0
+						mensaje := v.ID + ":" + "Salir"
+						productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+						fmt.Println()
+						fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
+						os.Exit(1)
+					}
+				}()
+
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, os.Interrupt)
+				go func() {
+					for sig := range c {
+						log.Printf("captured %v, stopping profiler and exiting..", sig)
+						mensaje := v.ID + ":" + "Salir"
+						productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+						fmt.Println()
+						fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
+						pprof.StopCPUProfile()
+						os.Exit(1)
+					}
+				}()
+
+				time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
+
 			}
-		}()
 
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for sig := range c {
-				log.Printf("captured %v, stopping profiler and exiting..", sig)
-				mensaje := v.ID + ":" + "Salir"
-				productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
-				fmt.Println()
-				fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
-				pprof.StopCPUProfile()
-				os.Exit(1)
-			}
-		}()
-
-		time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
+		}
 
 	}
 
@@ -611,8 +627,8 @@ func procesarMapa(mapa []string) [20][21]string {
 func mostrarMapa(mapa [20][21]string) {
 
 	fmt.Println("Mapa actual del parque: ")
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 20; j++ {
 			fmt.Print(mapa[i][j] + "|")
 		}
 		fmt.Println()

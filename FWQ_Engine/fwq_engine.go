@@ -246,11 +246,12 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 				visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
 				// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
 				atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
+				fmt.Println("El alias a enviar es este: " + alias)
 				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa, alias)
 
-				fmt.Println("Mapa actual del parque: ")
-				for i := 0; i < len(mapaActualizado); i++ {
-					for j := 0; j < len(mapaActualizado[i]); j++ {
+				fmt.Println("Mapa que enviamos: ")
+				for i := 0; i < 20; i++ {
+					for j := 0; j < 21; j++ {
 						fmt.Print(mapaActualizado[i][j])
 					}
 					fmt.Println()
@@ -304,8 +305,8 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 func convertirMapa(mapa [20][21]string) []byte {
 	var mapaOneD []byte
 	var cadenaMapa []byte
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa); j++ {
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 21; j++ {
 			cadenaMapa = []byte(mapa[i][j])
 			mapaOneD = append(mapaOneD, cadenaMapa...)
 		}
@@ -516,8 +517,8 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][21]string, alias string) [20][21]string {
 
 	//Asignamos los id de los visitantes
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 20; j++ {
 			for k := 0; k < len(visitantes); k++ {
 				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony && visitantes[k].DentroParque == 1 {
 					mapa[i][j] = visitantes[k].IdParque + "|"
@@ -527,8 +528,8 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	}
 
 	//Asignamos los valores de tiempo de espera de las atracciones
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 20; j++ {
 			for k := 0; k < len(atracciones); k++ {
 				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
 					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
@@ -538,15 +539,15 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	}
 
 	// Las casillas del mapa que no tengan ni visitantes ni atracciones las representamos con una guión
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
+	for i := 0; i < 20; i++ {
+		for j := 0; j < 20; j++ {
 			if len(mapa[i][j]) == 0 {
 				mapa[i][j] = "-" + "|"
 			}
 		}
 	}
 
-	mapa[19][20] = alias // En la última posición añadimos el alias
+	mapa[19][20] = alias + "|" // En la última posición añadimos el alias
 
 	return mapa
 
