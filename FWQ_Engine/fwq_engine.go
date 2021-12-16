@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -68,50 +69,25 @@ func main() {
 
 	//Creamos el topic...Cambiar la Ipkafka en la función principal
 	//Si no se ejecuta el programa, se cierra el kafka?
-	crearTopics(IpKafka, PuertoKafka, "movimientos")
-	crearTopics(IpKafka, PuertoKafka, "mapa")
-
-	//Reserva de memoria para el mapa
-	//var mapa [20][21]string
+	crearTopics(IpKafka, PuertoKafka, "peticiones")
+	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
+	crearTopics(IpKafka, PuertoKafka, "movimiento-mapa")
 
 	// Visitantes, atracciones que se encuentran en la BD
 	var visitantesRegistrados []visitante
-	//var visitantesParque []visitante
-	var atracciones []atraccion
-	var parqueTematico []parque
-
 	var conn = conexionBD()
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
-
-	visitantesRegistrados, _ = obtenerVisitantesBD(conn)
-	atracciones, _ = obtenerAtraccionesBD(conn)
-	parqueTematico, _ = obtenerParqueDB(conn)
-
-	// Esta parte la podemos suprimir, simplemente es a modo de comprobación
-	//fmt.Println("Visitantes registrados: ")
-	//fmt.Println(visitantesRegistrados)
-	fmt.Println() // Para mejorar la salida por pantalla
-	fmt.Println("Atracciones del parque: ")
-	fmt.Println(atracciones)
-	fmt.Println() // Para mejorar la salida por pantalla
-	fmt.Println("Información del parque: ")
-	fmt.Println(parqueTematico)
-	fmt.Println() // Para mejorar la salida por pantalla
-
 	//Para empezar con el kafka
 	ctx := context.Background()
-	go consumidorMovimientos(IpKafka, PuertoKafka, ctx, visitantesRegistrados, maxVisitantes)
+	go consumidorEngine(IpKafka, PuertoKafka, ctx, maxVisitantes)
 
 	for {
-
 		visitantesRegistrados, _ = obtenerVisitantesBD(conn) // Obtenemos los visitantes registrados actualmente
-
 		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
 		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino      " + "	DentroParque")
-
-		// Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
-		// Mostramos los visitantes registrados en la aplicación actualmente
+		//Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
+		//Mostramos los visitantes registrados en la aplicación actualmente
 		for i := 0; i < len(visitantesRegistrados); i++ {
 			fmt.Println(strings.TrimSpace(visitantesRegistrados[i].ID) + " 		" + strings.TrimSpace(visitantesRegistrados[i].Nombre) +
 				"    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posicionx)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posiciony)) +
@@ -123,7 +99,7 @@ func main() {
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
-		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
+		go conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
 
 		fmt.Println() // Para mejorar la visualización
 
@@ -162,7 +138,7 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, visitantesRegistrados []visitante, maxVisitantes int) {
+func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisitantes int) {
 
 	//Accediendo a la base de datos
 	//Abrimos la conexion con la base de datos
@@ -175,15 +151,11 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 	defer db.Close()
 
 	direccionKafka := IpKafka + ":" + PuertoKafka
-
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
-		//El broker habra que cambiarlo por otro
 		Brokers: []string{direccionKafka},
-		Topic:   "movimientos", //Topico que hemos creado
-		GroupID: "engine",
-		//StartOffset: kafka.LastOffset,
-		//MaxBytes: 10,
+		Topic:   "peticiones", //Topico que hemos creado
+		GroupID: "visitantes",
 	}
 
 	reader := kafka.NewReader(conf)
@@ -199,97 +171,92 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 		cadenaPeticion := strings.Split(string(m.Value), ":")
 
 		alias := cadenaPeticion[0]
-		password := cadenaPeticion[1]
-		movimiento := cadenaPeticion[2]
+		peticion := cadenaPeticion[1]
 
 		v := visitante{
 			ID:       strings.TrimSpace(alias),
-			Password: strings.TrimSpace(password),
+			Password: strings.TrimSpace(peticion),
 		}
 
-		fmt.Println("Petición recibida -> " + string(m.Value))
+		fmt.Println("Petición recibida: " + string(m.Value))
 
-		// Comprobamos si las credenciales de acceso son válidas
+		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
 
 		if err != nil {
 			fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
 		}
 
+		var respuesta string = ""
+
 		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
 		if results.Next() && !parqueLleno(db, maxVisitantes) {
+			fmt.Println("LLEGA ESTA AQUI EL SEGUNDO")
 
-			if movimiento == "IN" || movimiento == "N" || movimiento == "S" || movimiento == "W" || movimiento == "E" || movimiento == "NW" ||
-				movimiento == "NE" || movimiento == "SW" || movimiento == "SE" { // Si se nos ha mandado un movimiento o un estado inicial
-
-				if movimiento == "IN" { // Si el visitante quiere entrar al parque
-					// Actualizamos el estado del visitante en la BD
-					sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
-					if err != nil {
-						panic("Error al preparar la sentencia de modificación: " + err.Error())
-					}
-
-					// Ejecutar sentencia, un valor por cada '?'
-					_, err = sentenciaPreparada.Exec(v.ID)
-					if err != nil {
-						panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
-					}
-
-					sentenciaPreparada.Close()
-
-				}
-
-				var mapa [20][21]string
-				var visitantesParque []visitante
-				visitantesParque, _ = obtenerVisitantesParque(db)              // Obtenemos los visitantes del parque actualizados
-				mueveVisitante(db, alias, movimiento, visitantesParque)        // Movemos al visitante en base al movimiento recibido
-				visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
-				// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
-				atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
-				fmt.Println("El alias a enviar es este: " + alias)
-				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa, alias)
-
-				fmt.Println("Mapa que enviamos: ")
-				for i := 0; i < 20; i++ {
-					for j := 0; j < 21; j++ {
-						fmt.Print(mapaActualizado[i][j])
-					}
-					fmt.Println()
-				}
-
-				fmt.Println()
-
-				mapaConvertido := convertirMapa(mapa)
-				productorMapa(IpKafka, PuertoKafka, ctx, mapaConvertido) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
-
-			} else if movimiento == "OUT" { // Si se nos ha solicitado una salida del parque
-
-				// Sacamos del parque al visitante y reinciamos tanto su posición actual como su destino
-				sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
-				if err != nil {
-					panic("Error al preparar la sentencia de modificación: " + err.Error())
-				}
-
-				// Ejecutar sentencia, un valor por cada '?'
-				_, err = sentenciaPreparada.Exec(v.ID)
-				if err != nil {
-					panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
-				}
-
-				sentenciaPreparada.Close()
-
-			} else { // Si el movimiento enviado no es válido
-				var respuesta []byte
-				cadena := []byte(alias + ":" + "Parque cerrado")
-				respuesta = append(respuesta, cadena...)
-				productorMapa(IpKafka, PuertoKafka, ctx, respuesta)
+			// Actualizamos el estado del visitante en la BD
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación: " + err.Error())
 			}
 
-		} else { // Si las credenciales enviadas no son válidas
-			var respuesta []byte
-			cadena := []byte(alias + ":" + "Parque cerrado")
-			respuesta = append(respuesta, cadena...)
-			productorMapa(IpKafka, PuertoKafka, ctx, respuesta)
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.ID)
+			if err != nil {
+				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
+			}
+
+			respuesta += alias + ":" + "Acceso concedido"
+			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+
+			sentenciaPreparada.Close()
+
+		} else if peticion == " " || peticion == "N" || peticion == "S" || peticion == "W" || peticion == "E" || peticion == "NW" ||
+			peticion == "NE" || peticion == "SW" || peticion == "SE" { // Si se nos ha mandado un movimiento
+
+			var mapa [20][20]string
+			visitantesParque, _ := obtenerVisitantesParque(db)             // Obtenemos los visitantes del parque actualizados
+			mueveVisitante(db, alias, peticion, visitantesParque)          // Movemos al visitante en base al movimiento recibido
+			visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
+			// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
+			atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
+			mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
+			var representacion string
+			for i := 0; i < len(mapaActualizado); i++ {
+				for j := 0; j < len(mapaActualizado); j++ {
+					if j == 19 {
+						representacion = representacion + mapaActualizado[i][j] + "\n"
+					} else {
+						representacion = representacion + mapaActualizado[i][j]
+					}
+				}
+			}
+			//Convertimos el mapaActualizado a formato jSON
+			//Esta función devuelve un array de byte
+			mapaJson, err := json.Marshal(representacion)
+			//En formato jSon tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
+			if err != nil {
+				fmt.Println("Error a la hora de codificar el mapa: %v", err)
+			}
+			productorMapa(IpKafka, PuertoKafka, ctx, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
+
+		} else if peticion == "Salir" { // Si se nos ha solicitado una salida del parque
+
+			// Sacamos del parque al visitante y reinciamos tanto su posición actual como su destino
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación: " + err.Error())
+			}
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.ID)
+			if err != nil {
+				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
+			}
+
+			sentenciaPreparada.Close()
+		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
+			respuesta += alias + ":" + "Parque cerrado"
+			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 		}
 
 		results.Close()
@@ -298,20 +265,27 @@ func consumidorMovimientos(IpKafka, PuertoKafka string, ctx context.Context, vis
 
 }
 
-/*
-* Función que convierte el mapa de tipo string en []byte
-* @return []mapa : Retorna un array de bytes que va a ser enviado a los visitantes que se encuentren en el parque
- */
-func convertirMapa(mapa [20][21]string) []byte {
-	var mapaOneD []byte
-	var cadenaMapa []byte
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 21; j++ {
-			cadenaMapa = []byte(mapa[i][j])
-			mapaOneD = append(mapaOneD, cadenaMapa...)
-		}
+/* Función que envía el mensaje de respuesta a la petición de login de un visitante */
+func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
+
+	var brokerAddress string = IpBroker + ":" + PuertoBroker
+	var topic string = "respuesta-login"
+
+	w := kafka.NewWriter(kafka.WriterConfig{
+		Brokers:          []string{brokerAddress},
+		Topic:            topic,
+		CompressionCodec: kafka.Snappy.Codec(),
+	})
+
+	err := w.WriteMessages(ctx, kafka.Message{
+		Key:   []byte("Key-Login"),
+		Value: []byte(respuesta),
+	})
+
+	if err != nil {
+		fmt.Println("No se puede mandar el mensaje de respuesta a la petición de login: " + err.Error())
 	}
-	return mapaOneD
+
 }
 
 /*
@@ -319,6 +293,7 @@ func convertirMapa(mapa [20][21]string) []byte {
  */
 func conexionBD() *sql.DB {
 	//Accediendo a la base de datos
+	/*****Flate blod **/
 	//Abrimos la conexion con la base de datos
 	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
 	//Si la conexión falla mostrara este error
@@ -512,13 +487,13 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 
 /*
 * Función que forma el mapa del parque conteniendo a los visitantes y las atracciones
-* @return [20][21]string : Matriz bidimensional representando el mapa
+* @return [20][20]string : Matriz bidimensional representando el mapa
  */
-func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][21]string, alias string) [20][21]string {
+func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string) [20][20]string {
 
 	//Asignamos los id de los visitantes
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 20; j++ {
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(visitantes); k++ {
 				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony && visitantes[k].DentroParque == 1 {
 					mapa[i][j] = visitantes[k].IdParque + "|"
@@ -528,8 +503,8 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	}
 
 	//Asignamos los valores de tiempo de espera de las atracciones
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 20; j++ {
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(atracciones); k++ {
 				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
 					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
@@ -539,18 +514,14 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	}
 
 	// Las casillas del mapa que no tengan ni visitantes ni atracciones las representamos con una guión
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 21; j++ {
+	for i := 0; i < len(mapa); i++ {
+		for j := 0; j < len(mapa[i]); j++ {
 			if len(mapa[i][j]) == 0 {
 				mapa[i][j] = "-" + "|"
 			}
 		}
 	}
-
-	mapa[19][20] = alias + "|" // En la última posición añadimos el alias
-
 	return mapa
-
 }
 
 /*
@@ -586,7 +557,9 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 
 }
 
-/* Función que establece en la tabla parque de la BD el aforo máximo permitido */
+/*
+* Función que establece el aforo maximo permitido en el parque de atracciones
+ */
 func establecerMaxVisitantes(db *sql.DB, numero int) {
 
 	//Ejecutamos la sentencia
@@ -694,7 +667,7 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) {
 func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
-	var topic string = "mapa"
+	var topic string = "movimiento-mapa"
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:          []string{brokerAddress},
@@ -716,9 +689,6 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 	if err != nil {
 		panic("No se puede mandar el mapa: " + err.Error())
 	}
-
-	fmt.Println("Mapa enviado.")
-
 }
 
 /* Función que actualiza los tiempos de espera de las atracciones en la BD */
@@ -798,7 +768,7 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 	topicConfigs := []kafka.TopicConfig{
 		kafka.TopicConfig{
 			Topic:             nombre,
-			NumPartitions:     1,
+			NumPartitions:     10, //Cambiamos el número de particiones
 			ReplicationFactor: 1,
 		},
 	}
