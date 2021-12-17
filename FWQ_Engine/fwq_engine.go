@@ -181,6 +181,11 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 		fmt.Println("Petición recibida: " + string(m.Value))
 
+		// Comprobamos que no esté completo el aforo del parque
+		if parqueLleno(db, maxVisitantes) {
+
+		}
+
 		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
 
@@ -248,10 +253,12 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 					fmt.Println("Error a la hora de codificar el mapa: %v", err)
 				}
 				productorMapa(IpKafka, PuertoKafka, ctx, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
+				results.Close()
 
 			} else { // Si el alias no pertenece a un visitante del parque
 				respuesta += alias + ":" + "Parque cerrado"
 				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				results.Close()
 			}
 
 		} else if peticion == "Salir" { // Si se nos ha solicitado una salida del parque
@@ -270,8 +277,14 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 			sentenciaPreparada.Close()
 		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
-			respuesta += alias + ":" + "Parque cerrado"
-			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+
+			if parqueLleno(db, maxVisitantes) {
+				respuesta += alias + ":" + "Aforo al completo"
+				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+			} else {
+				respuesta += alias + ":" + "Parque cerrado"
+				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+			}
 		}
 
 		results.Close()

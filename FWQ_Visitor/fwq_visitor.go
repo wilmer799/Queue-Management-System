@@ -296,6 +296,9 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
 			dentroParque = false
+		} else if respuestaEngine == (v.ID + ":" + "Aforo al completo") {
+			fmt.Println("Aforo al completo")
+			dentroParque = false
 		}
 
 	}
