@@ -150,57 +150,59 @@ func manejoConexion(conexion net.Conn) {
 	// Si se ha solicitado un registro
 	if opcionElegida == "1" {
 
-		results, err := db.Query("SELECT * FROM visitante") // Devuelve los visitantes que hay registrados en la aplicación
+		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Comprueba si el visitante está registrado en la aplicación
 
-		// Comrpobamos que no se produzcan errores al hacer la consulta
+		// Comprobamos que no se produzcan errores al hacer la consulta
 		if err != nil {
-			panic("Error al hacer la consulta a la BD: " + err.Error())
+			panic("Error al hacer la consulta de la información del visitante indicado: " + err.Error())
 		}
 
 		defer results.Close() // Nos aseguramos de cerrar
 
-		// Nos guardamos el nº actual de visitantes registrados en la aplicación
-		visitantesActuales := 0
-		for results.Next() {
-			visitantesActuales += 1
+		// Si el visitante ya se había registrado
+		if results.Next() {
+			conexion.Write([]byte("El visitante ya está registrado en la aplicación"))
+			conexion.Close()
+		} else { // Si es un nuevo usuario
+
+			results, err := db.Query("SELECT * FROM visitante") // Devuelve los visitantes que hay registrados en la aplicación
+
+			// Comrpobamos que no se produzcan errores al hacer la consulta
+			if err != nil {
+				panic("Error al hacer la consulta a la BD: " + err.Error())
+			}
+
+			defer results.Close() // Nos aseguramos de cerrar
+
+			// Nos guardamos el nº actual de visitantes registrados en la aplicación
+			visitantesActuales := 0
+			for results.Next() {
+				visitantesActuales += 1
+			}
+
+			// INSERTAMOS el nuevo visitante en la BD
+			// Preparamos para prevenir inyecciones SQL
+			sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña, idParque) VALUES(?, ?, ?, ?)")
+			if err != nil {
+				panic("Error al preparar la sentencia de inserción: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password, v.IdParque)
+			if err != nil {
+				panic("Error al registrar el visitante: " + err.Error())
+			}
+
+			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
+			conexion.Close()
+
 		}
-
-		// INSERTAMOS el nuevo visitante en la BD
-		// Preparamos para prevenir inyecciones SQL
-		sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña, idParque) VALUES(?, ?, ?, ?)")
-		if err != nil {
-			panic("Error al preparar la sentencia de inserción: " + err.Error())
-		}
-
-		defer sentenciaPreparada.Close()
-
-		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password, v.IdParque)
-		if err != nil {
-			panic("Error al registrar el visitante: " + err.Error())
-		}
-
-		conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
-		conexion.Close()
-
-		// Actualizamos el número de visitantes que se encuentran en el parque
-		// Preparamos para prevenir inyecciones SQL
-		/*sentenciaPreparada, err = db.Prepare("UPDATE parque SET aforoActual = ? + 1 WHERE id = ?")
-		if err != nil {
-			panic("Error al preparar la sentencia de actualización del aforo del parque: " + err.Error())
-		}
-
-		defer sentenciaPreparada.Close()
-
-		// Ejecutar sentencia, un valor por cada '?'
-		_, err = sentenciaPreparada.Exec(visitantesActuales, "SDPark")
-		if err != nil {
-			panic("Error al modificar el aforo actual del parque: " + err.Error())
-		}*/
 
 	} else { // Si se ha solicitado una actualización
 
-		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Devuelve los visitantes que hay registrados en la aplicación
+		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Comprueba si el visitante está registrado en la aplicación
 
 		// Comprobamos que no se produzcan errores al hacer la consulta
 		if err != nil {
