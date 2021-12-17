@@ -153,9 +153,10 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 	direccionKafka := IpKafka + ":" + PuertoKafka
 	//Configuración de lector de kafka
 	conf := kafka.ReaderConfig{
-		Brokers: []string{direccionKafka},
-		Topic:   "peticiones", //Topico que hemos creado
-		GroupID: "visitantes",
+		Brokers:     []string{direccionKafka},
+		Topic:       "peticiones", //Topico que hemos creado
+		GroupID:     "visitantes",
+		StartOffset: kafka.LastOffset,
 	}
 
 	reader := kafka.NewReader(conf)
