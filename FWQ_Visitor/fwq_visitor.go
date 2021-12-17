@@ -267,9 +267,9 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers: []string{broker},
 		Topic:   "respuesta-login",
-		GroupID: "visitantes",
+		GroupID: Ulid(),
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
-		//StartOffset: kafka.LastOffset,
+		StartOffset: kafka.LastOffset,
 	})
 
 	reader := kafka.NewReader(r)
