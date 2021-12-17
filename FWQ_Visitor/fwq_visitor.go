@@ -605,7 +605,7 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 		Topic:   "movimiento-mapa",
 		GroupID: Ulid(),
 		//De esta forma solo cogera los ultimos mensajes despues de unirse al cluster
-		//StartOffset: kafka.LastOffset,
+		StartOffset: kafka.LastOffset,
 	})
 
 	reader := kafka.NewReader(r)
