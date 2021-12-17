@@ -214,31 +214,45 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 		} else if peticion == " " || peticion == "N" || peticion == "S" || peticion == "W" || peticion == "E" || peticion == "NW" ||
 			peticion == "NE" || peticion == "SW" || peticion == "SE" { // Si se nos ha mandado un movimiento
 
-			var mapa [20][20]string
-			visitantesParque, _ := obtenerVisitantesParque(db)             // Obtenemos los visitantes del parque actualizados
-			mueveVisitante(db, alias, peticion, visitantesParque)          // Movemos al visitante en base al movimiento recibido
-			visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
-			// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
-			atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
-			mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
-			var representacion string
-			for i := 0; i < len(mapaActualizado); i++ {
-				for j := 0; j < len(mapaActualizado); j++ {
-					if j == 19 {
-						representacion = representacion + mapaActualizado[i][j] + "\n"
-					} else {
-						representacion = representacion + mapaActualizado[i][j]
+			// Comprobamos que el alias pertenezca a un visitante que se encuentra en el parque
+			results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID)
+
+			if err != nil {
+				fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
+			}
+
+			if results.Next() {
+
+				var mapa [20][20]string
+				visitantesParque, _ := obtenerVisitantesParque(db)             // Obtenemos los visitantes del parque actualizados
+				mueveVisitante(db, alias, peticion, visitantesParque)          // Movemos al visitante en base al movimiento recibido
+				visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
+				// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
+				atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
+				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
+				var representacion string
+				for i := 0; i < len(mapaActualizado); i++ {
+					for j := 0; j < len(mapaActualizado); j++ {
+						if j == 19 {
+							representacion = representacion + mapaActualizado[i][j] + "\n"
+						} else {
+							representacion = representacion + mapaActualizado[i][j]
+						}
 					}
 				}
+				//Convertimos el mapaActualizado a formato jSON
+				//Esta función devuelve un array de byte
+				mapaJson, err := json.Marshal(representacion)
+				//En formato jSon tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
+				if err != nil {
+					fmt.Println("Error a la hora de codificar el mapa: %v", err)
+				}
+				productorMapa(IpKafka, PuertoKafka, ctx, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
+
+			} else { // Si el alias no pertenece a un visitante del parque
+				respuesta += alias + ":" + "Parque cerrado"
+				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 			}
-			//Convertimos el mapaActualizado a formato jSON
-			//Esta función devuelve un array de byte
-			mapaJson, err := json.Marshal(representacion)
-			//En formato jSon tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
-			if err != nil {
-				fmt.Println("Error a la hora de codificar el mapa: %v", err)
-			}
-			productorMapa(IpKafka, PuertoKafka, ctx, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 
 		} else if peticion == "Salir" { // Si se nos ha solicitado una salida del parque
 
