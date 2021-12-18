@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"time"
 
@@ -78,6 +81,31 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		Brokers: []string{brokerAddress},
 		Topic:   "sensor-servidorTiempos",
 	})
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+
+			log.Printf("captured %v, stopping profiler and exiting..", sig)
+			mensaje := "\nSensor de la atracción (" + s.IdAtraccion + ") desconectado\n"
+
+			err := escritor.WriteMessages(context.Background(),
+				kafka.Message{
+					Key:   []byte("Atraccion " + s.IdAtraccion),
+					Value: []byte(mensaje),
+				})
+
+			if err != nil {
+				panic("Error al conectarse al gestor de colas - No se puede mandar la información al servidor de tiempos de espera: " + err.Error())
+			}
+
+			fmt.Println()
+			fmt.Println("Sensor desconectado manualmente")
+			pprof.StopCPUProfile()
+			os.Exit(1)
+		}
+	}()
 
 	for {
 

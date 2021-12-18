@@ -180,35 +180,41 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 			//continue
 		}
 
-		fmt.Println("[", string(m.Value)+" personas en cola", "]")
+		if strings.Contains(string(m.Value), "desconectado") {
+			fmt.Println(string(m.Value))
+			conn.Close()
+		} else {
+			fmt.Println("[", string(m.Value)+" personas en cola", "]")
 
-		infoSensor := strings.Split(string(m.Value), ":")
+			infoSensor := strings.Split(string(m.Value), ":")
 
-		idAtraccion := infoSensor[0]
-		personasEnCola, _ := strconv.Atoi(infoSensor[1])
+			idAtraccion := infoSensor[0]
+			personasEnCola, _ := strconv.Atoi(infoSensor[1])
 
-		encontrado := false
+			encontrado := false
 
-		// Buscamos la atracción indicada por el sensor para calcular su tiempo de espera actual
-		for i := 0; i < len(atracciones) && !encontrado; i++ {
+			// Buscamos la atracción indicada por el sensor para calcular su tiempo de espera actual
+			for i := 0; i < len(atracciones) && !encontrado; i++ {
 
-			if atracciones[i].ID == idAtraccion {
-				encontrado = true
-				atracciones[i].TiempoEspera = calculaTiempoEspera(atracciones[i], personasEnCola)
+				if atracciones[i].ID == idAtraccion {
+					encontrado = true
+					atracciones[i].TiempoEspera = calculaTiempoEspera(atracciones[i], personasEnCola)
+				}
+
 			}
 
+			tiemposEspera := ""
+
+			// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
+			for i := 0; i < len(atracciones); i++ {
+				tiemposEspera += atracciones[i].ID + ":" + strconv.Itoa(atracciones[i].TiempoEspera) + "|"
+			}
+
+			// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
+			conn.Write([]byte(tiemposEspera))
+			conn.Close()
+
 		}
-
-		tiemposEspera := ""
-
-		// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
-		for i := 0; i < len(atracciones); i++ {
-			tiemposEspera += atracciones[i].ID + ":" + strconv.Itoa(atracciones[i].TiempoEspera) + "|"
-		}
-
-		// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
-		conn.Write([]byte(tiemposEspera))
-		conn.Close()
 
 	}
 
