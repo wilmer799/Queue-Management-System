@@ -9,6 +9,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -81,6 +83,24 @@ func main() {
 	//Para empezar con el kafka
 	ctx := context.Background()
 	go consumidorEngine(IpKafka, PuertoKafka, ctx, maxVisitantes)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			log.Printf("captured %v, stopping profiler and exiting..", sig)
+			mensaje := "Engine no disponible"
+			mensajeJson, err := json.Marshal(mensaje)
+			if err != nil {
+				fmt.Println("Error a la hora de codificar el mensaje: %v", err)
+			}
+			productorMapa(IpKafka, PuertoKafka, ctx, mensajeJson)
+			fmt.Println()
+			fmt.Println("Engine apagado manualmente")
+			pprof.StopCPUProfile()
+			os.Exit(1)
+		}
+	}()
 
 	for {
 		visitantesRegistrados, _ = obtenerVisitantesBD(conn) // Obtenemos los visitantes registrados actualmente
