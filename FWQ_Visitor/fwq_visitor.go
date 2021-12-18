@@ -640,8 +640,6 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 			fmt.Println("Error al decodificar el mapa: %v\n", err)
 		}
 
-		fmt.Println("Mensaje recibido: " + mapaObtenido)
-
 		if mapaObtenido == "Engine no disponible" {
 			fmt.Println("El engine ha dejado de estar disponible")
 			v.DentroParque = 0
