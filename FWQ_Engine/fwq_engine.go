@@ -119,7 +119,7 @@ func main() {
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
-		go conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
+		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
 
 		fmt.Println() // Para mejorar la visualización
 

@@ -51,7 +51,7 @@ func main() {
 	// Generamos un número aleatorio de personas inicialmente en la cola de la atracción
 	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
 	min := 0
-	max := 40
+	max := 60
 	s.Personas = (rand.Intn(max-min+1) + min)
 	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " personas en cola")
 
@@ -94,7 +94,7 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		// Generamos un número aleatorio de personas en cola
 		rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
 		min := 0
-		max := 40
+		max := 60
 		s.Personas = (rand.Intn(max-min+1) + min)
 
 		// Cada 1 a 3 segundos el sensor envía la información al servidor de tiempos
