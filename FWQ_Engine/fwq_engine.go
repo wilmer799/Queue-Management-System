@@ -95,6 +95,21 @@ func main() {
 				fmt.Println("Error a la hora de codificar el mensaje: %v", err)
 			}
 			productorMapa(IpKafka, PuertoKafka, ctx, mensajeJson)
+
+			// Al cerrar el parque tenemos que sacar a los visitantes de este
+			sentenciaPreparada, err := conn.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación: " + err.Error())
+			}
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec()
+			if err != nil {
+				panic("Error al expulsar a los visitantes del parque: " + err.Error())
+			}
+
+			sentenciaPreparada.Close()
+
 			fmt.Println()
 			fmt.Println("Engine apagado manualmente")
 			pprof.StopCPUProfile()
@@ -200,11 +215,6 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 		fmt.Println("Petición recibida: " + string(m.Value))
 
-		// Comprobamos que no esté completo el aforo del parque
-		if parqueLleno(db, maxVisitantes) {
-
-		}
-
 		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
 
@@ -295,6 +305,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			}
 
 			sentenciaPreparada.Close()
+
 		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
 
 			if parqueLleno(db, maxVisitantes) {
@@ -353,7 +364,7 @@ func conexionBD() *sql.DB {
 }
 
 /*
-* Función que obtienen los parques
+* Función que obtiene la información almacenada en la tabla parque
 * @return []parque : Arrays de parque en la base de datos
 * @return error : Error en caso de que no se pueda obtener parques
  */
@@ -576,6 +587,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
  */
 func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 
+	fmt.Println() // Por limpieza
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
 	//fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
@@ -585,6 +597,7 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 		fmt.Println("ERROR: El servidor de tiempos de espera no está disponible", err.Error())
 	} else {
 		fmt.Println("***Actualizando los tiempos de espera***")
+		fmt.Println() // Por limpieza
 
 		conn.Write([]byte("Mándame los tiempos de espera actualizados" + "\n")) // Mandamos la petición
 		tiemposEspera, _ := bufio.NewReader(conn).ReadString('\n')              // Obtenemos los tiempos de espera actualizados

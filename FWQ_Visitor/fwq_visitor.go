@@ -359,7 +359,7 @@ func seleccionaAtraccionAlAzar(mapa [20][20]string) {
 	a.Posiciony = atraccionesDisponibles[indexAtraccion].Posiciony
 	a.TiempoEspera = atraccionesDisponibles[indexAtraccion].TiempoEspera
 
-	fmt.Println("Me dirijo a la atracción con tiempo de espera igual a = " + strconv.Itoa(a.TiempoEspera))
+	fmt.Println("Me dirijo a la atracción con tiempo de espera igual a " + strconv.Itoa(a.TiempoEspera))
 
 }
 
@@ -640,9 +640,16 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 			fmt.Println("Error al decodificar el mapa: %v\n", err)
 		}
 
+		// Como el parque ha cerrado tenemos que reiniciar la información del visitante
 		if mapaObtenido == "Engine no disponible" {
 			fmt.Println("El engine ha dejado de estar disponible")
 			v.DentroParque = 0
+			v.ID = ""
+			v.Password = ""
+			v.Posicionx = 0
+			v.Posiciony = 0
+			v.Destinox = -1
+			v.Destinoy = -1
 		} else {
 
 			// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
