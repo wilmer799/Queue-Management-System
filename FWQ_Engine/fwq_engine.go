@@ -57,6 +57,8 @@ type parque struct {
 	AforoActual int    `json:"aforoActual"`
 }
 
+var visitantesDelEngine []string
+
 /*
  * @Description : Función main de fwq_engine
  * @Author : Wilmer Fabricio Bravo Shuira
@@ -96,19 +98,22 @@ func main() {
 			}
 			productorMapa(IpKafka, PuertoKafka, ctx, mensajeJson)
 
-			// Al cerrar el parque tenemos que sacar a los visitantes de este
-			sentenciaPreparada, err := conn.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1")
-			if err != nil {
-				panic("Error al preparar la sentencia de modificación: " + err.Error())
-			}
+			for i := 0; i < len(visitantesDelEngine); i++ {
 
-			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec()
-			if err != nil {
-				panic("Error al expulsar a los visitantes del parque: " + err.Error())
-			}
+				// Al cerrar el parque tenemos que sacar a los visitantes de este
+				sentenciaPreparada, err := conn.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación: " + err.Error())
+				}
 
-			sentenciaPreparada.Close()
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec(visitantesDelEngine[i])
+				if err != nil {
+					panic("Error al expulsar a los visitantes del parque: " + err.Error())
+				}
+
+				sentenciaPreparada.Close()
+			}
 
 			fmt.Println()
 			fmt.Println("Engine apagado manualmente")
@@ -170,6 +175,13 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 
 	return lleno
 
+}
+
+/* Función que permite eliminar un element de un slice */
+func remove(s []string, i int) []string {
+	s[i] = s[len(s)-1]
+	// We do not need to put s[i] at the end, as it will be discarded anyway
+	return s[:len(s)-1]
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
@@ -244,6 +256,9 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			if err != nil {
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
+
+			// Nos guardamos los visitantes del parque asociados a este engine
+			visitantesDelEngine = append(visitantesDelEngine, v.ID)
 
 			respuesta += alias + ":" + "Acceso concedido"
 			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
@@ -321,6 +336,17 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			_, err = sentenciaPreparada.Exec(v.ID)
 			if err != nil {
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
+			}
+
+			encontrado := false
+
+			for i := 0; i < len(visitantesDelEngine) && !encontrado; i++ {
+
+				if visitantesDelEngine[i] == v.ID {
+					visitantesDelEngine = remove(visitantesDelEngine, i)
+					encontrado = true
+				}
+
 			}
 
 			sentenciaPreparada.Close()
