@@ -120,13 +120,14 @@ func main() {
 	for {
 		visitantesRegistrados, _ = obtenerVisitantesBD(conn) // Obtenemos los visitantes registrados actualmente
 		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
-		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	DentroParque")
+		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino      " + "	DentroParque")
 		//Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
 		//Mostramos los visitantes registrados en la aplicación actualmente
 		for i := 0; i < len(visitantesRegistrados); i++ {
 			fmt.Println(strings.TrimSpace(visitantesRegistrados[i].ID) + " 		" + strings.TrimSpace(visitantesRegistrados[i].Nombre) +
 				"    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posicionx)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posiciony)) +
-				")" + "	   	      " + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].DentroParque)))
+				")" + "	    " + "    (" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinox)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinoy)) +
+				")" + "	             " + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].DentroParque)))
 		}
 
 		fmt.Println() // Para mejorar la visualización
@@ -203,17 +204,22 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
 		}
 
+		//fmt.Println("Petición recibida: " + string(m.Value))
+
 		cadenaPeticion := strings.Split(string(m.Value), ":")
 
 		alias := cadenaPeticion[0]
 		peticion := cadenaPeticion[1]
+		destino := strings.Split(cadenaPeticion[2], ",")
+		destinoX, _ := strconv.Atoi(strings.TrimSpace(destino[0]))
+		destinoY, _ := strconv.Atoi(strings.TrimSpace(destino[1]))
 
 		v := visitante{
 			ID:       strings.TrimSpace(alias),
 			Password: strings.TrimSpace(peticion),
+			Destinox: destinoX,
+			Destinoy: destinoY,
 		}
-
-		fmt.Println("Petición recibida: " + string(m.Value))
 
 		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
@@ -226,16 +232,15 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
 		if results.Next() && !parqueLleno(db, maxVisitantes) {
-			fmt.Println("LLEGA ESTA AQUI EL SEGUNDO")
 
 			// Actualizamos el estado del visitante en la BD
-			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1 WHERE id = ?")
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1, destinox = ?, destinoy = ? WHERE id = ?")
 			if err != nil {
 				panic("Error al preparar la sentencia de modificación: " + err.Error())
 			}
 
 			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(v.ID)
+			_, err = sentenciaPreparada.Exec(v.Destinox, v.Destinoy, v.ID)
 			if err != nil {
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
@@ -245,7 +250,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 			sentenciaPreparada.Close()
 
-		} else if peticion == " " || peticion == "N" || peticion == "S" || peticion == "W" || peticion == "E" || peticion == "NW" ||
+		} else if peticion == "IN" || peticion == "N" || peticion == "S" || peticion == "W" || peticion == "E" || peticion == "NW" ||
 			peticion == "NE" || peticion == "SW" || peticion == "SE" { // Si se nos ha mandado un movimiento
 
 			// Comprobamos que el alias pertenezca a un visitante que se encuentra en el parque
@@ -254,6 +259,20 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			if err != nil {
 				fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
 			}
+
+			// Actualizamos el estado el destino del visitante en la BD
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET destinox = ?, destinoy = ? WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación de destino: " + err.Error())
+			}
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.Destinox, v.Destinoy, v.ID)
+			if err != nil {
+				panic("Error al actualizar el destino del visitante: " + err.Error())
+			}
+
+			sentenciaPreparada.Close()
 
 			if results.Next() {
 
@@ -290,7 +309,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				results.Close()
 			}
 
-		} else if peticion == "Salir" { // Si se nos ha solicitado una salida del parque
+		} else if peticion == "OUT" { // Si se nos ha solicitado una salida del parque
 
 			// Sacamos del parque al visitante y reinciamos tanto su posición actual como su destino
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")

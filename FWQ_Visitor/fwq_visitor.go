@@ -217,7 +217,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	ctx := context.Background()
 
-	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password))
+	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
 	//var mapa string // Variable donde almacenaremos el mapa pasado por el engine
 
@@ -229,7 +229,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	go func() {
 		for sig := range c {
 			log.Printf("captured %v, stopping profiler and exiting..", sig)
-			mensaje := v.ID + ":" + "Salir"
+			mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 			productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
 			fmt.Println()
 			fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
@@ -241,11 +241,6 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
 	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
 }
-
-/* Función que permite a un visitante abandonar el parque */
-/*func SalidaParque(IpBroker string, PuertoBroker string, ctx context.Context) {
-
-}*/
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
 func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
@@ -303,7 +298,8 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
-			productorMovimientos(IpBroker, PuertoBroker, v.ID+":"+" ", ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
+			posicionInicial := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
+			productorMovimientos(IpBroker, PuertoBroker, posicionInicial, ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
 			consumidorMapa(IpBroker, PuertoBroker, ctx)
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
@@ -657,7 +653,7 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 			var mapa [20][20]string = procesarMapa(cadenaProcesada)
 			fmt.Println(mapaObtenido)
 			movimiento := obtenerMovimiento(mapa)
-			peticionMovimiento := v.ID + ":" + movimiento
+			peticionMovimiento := v.ID + ":" + movimiento + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 			productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
 
 			/*go func() {
