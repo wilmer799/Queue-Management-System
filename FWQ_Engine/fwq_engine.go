@@ -105,13 +105,12 @@ func main() {
 	for {
 		visitantesRegistrados, _ = obtenerVisitantesBD(conn) // Obtenemos los visitantes registrados actualmente
 		fmt.Println("*********** FUN WITH QUEUES RESORT ACTIVITY MAP *********")
-		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	Destino      " + "	DentroParque")
+		fmt.Println("ID   	" + "		Nombre      " + "	Pos.      " + "	DentroParque")
 		//Hay que usar la función TrimSpace porque al parecer tras la obtención de valores de BD se agrega un retorno de carro a cada variable
 		//Mostramos los visitantes registrados en la aplicación actualmente
 		for i := 0; i < len(visitantesRegistrados); i++ {
 			fmt.Println(strings.TrimSpace(visitantesRegistrados[i].ID) + " 		" + strings.TrimSpace(visitantesRegistrados[i].Nombre) +
 				"    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posicionx)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Posiciony)) +
-				")" + "    " + "	(" + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinox)) + "," + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].Destinoy)) +
 				")" + "	   	      " + strings.TrimSpace(strconv.Itoa(visitantesRegistrados[i].DentroParque)))
 		}
 
