@@ -111,9 +111,6 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
 		case 3:
 			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
-		//case 4:
-		//ctx := context.Background()
-		//SalidaParque(v, IpBroker, PuertoBroker, ctx)
 		default:
 			fmt.Println("Opción invalida, elige otra opción")
 		}
@@ -219,8 +216,6 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
-	//var mapa string // Variable donde almacenaremos el mapa pasado por el engine
-
 	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
 	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
 
@@ -298,15 +293,21 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
-			posicionInicial := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, posicionInicial, ctx) // Le indicamos al engine que el visitante se encuentra en la posición inicial
+			peticionEntrada := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
+			productorMovimientos(IpBroker, PuertoBroker, peticionEntrada, ctx) // Le indicamos al engine que el visitante desea entrar al parque
 			consumidorMapa(IpBroker, PuertoBroker, ctx)
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
+			v.DentroParque = 0
+			v.ID = ""
+			v.Password = ""
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Aforo al completo") {
 			fmt.Println("Aforo al completo")
+			v.DentroParque = 0
+			v.ID = ""
+			v.Password = ""
 			dentroParque = false
 		}
 
@@ -642,10 +643,10 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 			v.DentroParque = 0
 			v.ID = ""
 			v.Password = ""
-			v.Posicionx = 0
-			v.Posiciony = 0
-			v.Destinox = -1
-			v.Destinoy = -1
+			//v.Posicionx = 0
+			//v.Posiciony = 0
+			//v.Destinox = -1
+			//v.Destinoy = -1
 		} else {
 
 			// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings

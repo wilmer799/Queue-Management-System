@@ -29,7 +29,7 @@ CONSTRAINT fk_atracciones_parque FOREIGN KEY (parqueAtracciones) REFERENCES parq
 /* Inserciones en las tablas */ 
 INSERT INTO parque (id, aforoActual) VALUES ('SDpark', 0);
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion1", 5, 3, 10, 14, 45, "SDpark"); 
-INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion2", 9, 4, 1, 4, 30, "SDpark");
+INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion2", 8, 9, 1, 4, 30, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion3", 7, 6, 6, 6, 15, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion4", 18, 9, 10, 19, 65, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion5", 4, 5, 9, 17, 10, "SDpark");
@@ -59,7 +59,7 @@ delete from visitante;
 
 /*Actualizar algunos valores */
 UPDATE parque SET aforoMaximo=10 WHERE id = "SDpark";
-UPDATE atraccion SET tiempoEspera = 7 WHERE id = "atraccion1";
+UPDATE atraccion SET tciclo = 10, nvisitantes = 6, posicionx = 2, posiciony = 10 WHERE id = "atraccion2";
 UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
 
 select * from atraccion;
