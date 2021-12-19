@@ -98,7 +98,7 @@ func main() {
 			}
 			productorMapa(IpKafka, PuertoKafka, ctx, mensajeJson)
 
-			for i := 0; i < len(visitantesDelEngine); i++ {
+			/*for i := 0; i < len(visitantesDelEngine); i++ {
 
 				// Al cerrar el parque tenemos que sacar a los visitantes de este
 				sentenciaPreparada, err := conn.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
@@ -113,7 +113,7 @@ func main() {
 				}
 
 				sentenciaPreparada.Close()
-			}
+			}*/
 
 			fmt.Println()
 			fmt.Println("Engine apagado manualmente")
