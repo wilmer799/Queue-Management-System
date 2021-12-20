@@ -317,9 +317,7 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 
 /* Función que actualiza el tiempo de espera de la atracción destino del visitante en base al mapa recibido */
 func actualizaAtraccion(mapa [20][20]string) {
-
 	a.TiempoEspera, _ = strconv.Atoi(mapa[a.Posicionx][a.Posiciony])
-
 }
 
 /* Función que selecciona una atracción al azar y guarda la posición de dicha atracción en el visitante */
@@ -388,8 +386,6 @@ func obtenerMovimiento(mapa [20][20]string) string {
 		a.Posiciony = -1
 
 	}
-
-	time.Sleep(1 * time.Second) // Esperamos un segundo hasta volver a enviar el movimiento del visitante
 
 	return movimiento
 
