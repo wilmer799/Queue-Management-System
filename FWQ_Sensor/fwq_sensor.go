@@ -138,11 +138,8 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 * Función que crea el topic para el envio de los movimientos de los visitantes
  */
 func crearTopic(IpBroker, PuertoBroker string) {
+
 	topic := "sensor-servidorTiempos"
-	//partition := 0
-	//Broker1 se sustituira en localhost:9092
-	//var broker1 string = IpBroker + ":" + PuertoBroker
-	//el localhost:9092 cambiara y sera pasado por parametro
 	conn, err := kafka.Dial("tcp", IpBroker+":"+PuertoBroker)
 	if err != nil {
 		panic(err.Error())

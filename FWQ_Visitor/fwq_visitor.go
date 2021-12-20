@@ -703,29 +703,12 @@ func procesarMapa(mapa []string) [20][20]string {
 
 }
 
-func mostrarMapa(mapa [20][20]string) {
-
-	fmt.Println("Mapa actual del parque: ")
-	for i := 0; i < len(mapa); i++ {
-		for j := 0; j < len(mapa[i]); j++ {
-			fmt.Print(mapa[i][j] + "|")
-		}
-		fmt.Println()
-	}
-
-	fmt.Println()
-
-}
-
 /*
 * Función que crea el topic para el envio de los movimientos de los visitantes
  */
 func crearTopic(IpBroker, PuertoBroker, topic string) {
 
-	//partition := 0
-	//Broker1 se sustituira en localhost:9092
 	var broker1 string = IpBroker + ":" + PuertoBroker
-	//el localhost:9092 cambiara y sera pasado por parametro
 	conn, err := kafka.Dial("tcp", broker1)
 	if err != nil {
 		panic(err.Error())

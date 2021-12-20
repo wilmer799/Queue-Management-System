@@ -177,7 +177,6 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 		m, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con kafka", err)
-			//continue
 		}
 
 		if strings.Contains(string(m.Value), "desconectado") {
@@ -224,11 +223,8 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []
 * Función que crea el topic para el envio de los movimientos de los visitantes
  */
 func crearTopic(IpBroker, PuertoBroker string) {
+
 	topic := "sensor-servidorTiempos"
-	//partition := 0
-	//Broker1 se sustituira en localhost:9092
-	//var broker1 string = IpBroker + ":" + PuertoBroker
-	//el localhost:9092 cambiara y sera pasado por parametro
 	conn, err := kafka.Dial("tcp", IpBroker+":"+PuertoBroker)
 	if err != nil {
 		panic(err.Error())

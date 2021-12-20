@@ -48,16 +48,7 @@ type atraccion struct {
 	Parque       string `json:"parqueAtracciones"`
 }
 
-/*
-* Estructura del parque
- */
-type parque struct {
-	ID          string `json:"id"`
-	AforoMaximo int    `json:"aforoMaximo"`
-	AforoActual int    `json:"aforoActual"`
-}
-
-var visitantesDelEngine []string
+//var visitantesDelEngine []string
 
 /*
  * @Description : Función main de fwq_engine
@@ -178,11 +169,11 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 }
 
 /* Función que permite eliminar un element de un slice */
-func remove(s []string, i int) []string {
+/*func remove(s []string, i int) []string {
 	s[i] = s[len(s)-1]
 	// We do not need to put s[i] at the end, as it will be discarded anyway
 	return s[:len(s)-1]
-}
+}*/
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
 func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisitantes int) {
@@ -258,7 +249,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			}
 
 			// Nos guardamos los visitantes del parque asociados a este engine
-			visitantesDelEngine = append(visitantesDelEngine, v.ID)
+			//visitantesDelEngine = append(visitantesDelEngine, v.ID)
 
 			respuesta += alias + ":" + "Acceso concedido"
 			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
@@ -338,7 +329,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
 
-			encontrado := false
+			/*encontrado := false
 
 			for i := 0; i < len(visitantesDelEngine) && !encontrado; i++ {
 
@@ -347,7 +338,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 					encontrado = true
 				}
 
-			}
+			}*/
 
 			sentenciaPreparada.Close()
 
@@ -406,50 +397,6 @@ func conexionBD() *sql.DB {
 	//Cierra la conexion con la bd
 	//defer db.Close()
 	return db
-}
-
-/*
-* Función que obtiene la información almacenada en la tabla parque
-* @return []parque : Arrays de parque en la base de datos
-* @return error : Error en caso de que no se pueda obtener parques
- */
-func obtenerParqueDB(db *sql.DB) ([]parque, error) {
-
-	//Cada parque sera un grupo // Idea
-	results, err := db.Query("SELECT * FROM parque")
-
-	if err != nil {
-		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
-	}
-
-	//Cerramos la base de datos
-	defer results.Close()
-
-	//Declaramos el array de visitantes
-	var parquesTematicos []parque
-
-	//Recorremos los resultados obtenidos por la consulta
-	for results.Next() {
-
-		//Variable donde guardamos la información de cada una filas de la sentencia
-		var parqueTematico parque
-
-		if err := results.Scan(&parqueTematico.ID, &parqueTematico.AforoMaximo,
-			&parqueTematico.AforoActual); err != nil {
-			return parquesTematicos, err
-		}
-
-		//Vamos añadiendo los visitantes al array
-		parquesTematicos = append(parquesTematicos, parqueTematico)
-
-	}
-
-	if err = results.Err(); err != nil {
-		return parquesTematicos, err
-	}
-
-	return parquesTematicos, nil
-
 }
 
 /*
@@ -780,13 +727,6 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	//https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
-	//https://docs.confluent.io/clients-confluent-kafka-go/current/overview.html
-	//https://www.confluent.io/blog/5-things-every-kafka-developer-should-know/
-
-	//https://en.m.wikipedia.org/wiki/SerDes
-	//Compresion de mensajes
-	//https://developer.ibm.com/articles/benefits-compression-kafka-messaging/
 	err := w.WriteMessages(ctx, kafka.Message{
 		Key:   []byte("Key-Mapa"), //[]byte(strconv.Itoa(i)),
 		Value: []byte(mapa),
