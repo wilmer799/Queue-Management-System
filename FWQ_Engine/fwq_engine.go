@@ -130,7 +130,8 @@ func main() {
 
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
-		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting)
+		atracciones, _ := obtenerAtraccionesBD(conn) // Obtenemos las atracciones actualizadas
+		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, atracciones)
 
 		fmt.Println() // Para mejorar la visualización
 
@@ -577,7 +578,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 /*
 * Función que se conecta al servidor de tiempos para obtener los tiempos de espera actualizados
  */
-func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
+func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string, atracciones []atraccion) {
 
 	fmt.Println() // Por limpieza
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
@@ -588,19 +589,32 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string) {
 	if err != nil {
 		fmt.Println("ERROR: El servidor de tiempos de espera no está disponible", err.Error())
 	} else {
+
 		fmt.Println("***Actualizando los tiempos de espera***")
 		fmt.Println() // Por limpieza
 
-		conn.Write([]byte("Mándame los tiempos de espera actualizados" + "\n")) // Mandamos la petición
-		tiemposEspera, _ := bufio.NewReader(conn).ReadString('\n')              // Obtenemos los tiempos de espera actualizados
+		var infoAtracciones string = ""
 
-		arrayTiemposEspera := strings.Split(tiemposEspera[:len(tiemposEspera)-1], "|")
+		for i := 0; i < len(atracciones); i++ {
+			infoAtracciones += atracciones[i].ID + ":"
+			infoAtracciones += strconv.Itoa(atracciones[i].TCiclo) + ":"
+			infoAtracciones += strconv.Itoa(atracciones[i].NVisitantes) + "|"
+		}
 
-		// Actualizamos los tiempos de espera de las atracciones en la BD
-		actualizaTiemposEsperaBD(db, arrayTiemposEspera)
+		fmt.Println("Enviando informacion de las atracciones")
+
+		conn.Write([]byte(infoAtracciones))                        // Mandamos el id:tiempoCiclo:nºvisitantes de cada atracción en un string
+		tiemposEspera, _ := bufio.NewReader(conn).ReadString('\n') // Obtenemos los tiempos de espera actualizados
 
 		if tiemposEspera != "" {
+
 			log.Println("Tiempos de espera actualizados: " + tiemposEspera)
+
+			arrayTiemposEspera := strings.Split(tiemposEspera, "|")
+
+			// Actualizamos los tiempos de espera de las atracciones en la BD
+			actualizaTiemposEsperaBD(db, arrayTiemposEspera)
+
 		} else {
 			log.Println("Servidor de tiempos no disponible.")
 		}

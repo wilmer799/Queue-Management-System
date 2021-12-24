@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net"
@@ -37,11 +36,6 @@ func main() {
 
 	crearTopic(ipBrokerGestorColas, puertoBrokerGestorColas)
 
-	var conexionBD = conexionBD()
-	var atracciones []atraccion
-
-	atracciones, _ = obtenerAtraccionesBD(conexionBD)
-
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)
 
@@ -68,7 +62,7 @@ func main() {
 		log.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.")
 
 		// Manejamos las conexiones de forma concurrente
-		go manejoConexion(ipBrokerGestorColas, puertoBrokerGestorColas, c, atracciones)
+		go manejoConexion(ipBrokerGestorColas, puertoBrokerGestorColas, c)
 
 	}
 
@@ -91,70 +85,41 @@ func calculaTiempoEspera(a atraccion, personasEnCola int) int {
 
 }
 
-/*
-* Función que abre una conexion con la bd
- */
-func conexionBD() *sql.DB {
-	//Accediendo a la base de datos
-	//Abrimos la conexion con la base de datos
-	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
-	//Si la conexión falla mostrara este error
-	if err != nil {
-		panic(err.Error())
-	}
-	//Cierra la conexion con la bd
-	//defer db.Close()
-	return db
-}
-
-/*
-* Función que obtiene las atracciones del parque
-* @return []atraccion : Array con las atracciones del parque
-* @return error : Error en caso de que no se ha podido obtener las atracciones
- */
-func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
-
-	//Ejecutamos la sentencia
-	results, err := db.Query("SELECT * FROM atraccion")
-	if err != nil {
-		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
-	}
-
-	//Cerramos la base de datos
-	defer results.Close()
-
-	//Declaramos el array de visitantes
-	var atraccionesParque []atraccion
-
-	//Recorremos los resultados obtenidos por la consulta
-	for results.Next() {
-		//   var nombreVariable tipoVariable
-		//Variable donde guardamos la información de cada una filas de la sentencia
-		var fwq_atraccion atraccion
-		if err := results.Scan(&fwq_atraccion.ID, &fwq_atraccion.TCiclo,
-			&fwq_atraccion.NVisitantes, &fwq_atraccion.Posicionx,
-			&fwq_atraccion.Posiciony, &fwq_atraccion.TiempoEspera,
-			&fwq_atraccion.Parque); err != nil {
-			return atraccionesParque, err
-		}
-		//Vamos añadiendo las atracciones al array
-		atraccionesParque = append(atraccionesParque, fwq_atraccion)
-	}
-
-	if err = results.Err(); err != nil {
-		return atraccionesParque, err
-	}
-	return atraccionesParque, nil
-
-}
-
 // Función que maneja la lógica para una única petición de conexión
-func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn, atracciones []atraccion) {
+func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 
 	// Lectura del buffer de entrada hasta el final de línea
 	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
 
 	fmt.Println("Petición del Engine: " + string(buffer))
+
+	infoAtracciones := strings.Split(string(buffer), "|")
+
+	var atracciones []atraccion
+
+	for i := 0; i < (len(infoAtracciones) - 1); i++ {
+
+		fmt.Println(infoAtracciones[i])
+		infoAtraccion := strings.Split(infoAtracciones[i], ":")
+
+		var a = atraccion{
+			ID:           "",
+			TCiclo:       -1,
+			NVisitantes:  -1,
+			TiempoEspera: -1,
+		}
+
+		a.ID = infoAtraccion[0]
+		tciclo, _ := strconv.Atoi(infoAtraccion[1])
+		a.TCiclo = tciclo
+		nvisitantes, _ := strconv.Atoi(infoAtraccion[2])
+		a.NVisitantes = nvisitantes
+
+		atracciones = append(atracciones, a)
+
+	}
+
+	fmt.Println("Longitud atracciones: " + strconv.Itoa(len(atracciones)))
 
 	// Cerrar las conexiones con engines desconectados
 	if err != nil {
