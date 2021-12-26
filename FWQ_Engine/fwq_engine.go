@@ -598,7 +598,8 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string, atracci
 		for i := 0; i < len(atracciones); i++ {
 			infoAtracciones += atracciones[i].ID + ":"
 			infoAtracciones += strconv.Itoa(atracciones[i].TCiclo) + ":"
-			infoAtracciones += strconv.Itoa(atracciones[i].NVisitantes) + "|"
+			infoAtracciones += strconv.Itoa(atracciones[i].NVisitantes) + ":"
+			infoAtracciones += strconv.Itoa(atracciones[i].TiempoEspera) + "|"
 		}
 
 		infoAtracciones += "\n" // Le añadimos el salto de línea porque los sockets los estamos leyendo hasta final de línea

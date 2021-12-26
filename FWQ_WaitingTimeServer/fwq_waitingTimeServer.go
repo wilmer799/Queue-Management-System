@@ -114,6 +114,8 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 		a.TCiclo = tciclo
 		nvisitantes, _ := strconv.Atoi(infoAtraccion[2])
 		a.NVisitantes = nvisitantes
+		tiempoEspera, _ := strconv.Atoi(infoAtraccion[3])
+		a.TiempoEspera = tiempoEspera
 
 		atracciones = append(atracciones, a)
 
@@ -132,6 +134,7 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers:     []string{broker},
 		Topic:       "sensor-servidorTiempos",
+		GroupID:     "sensores",
 		StartOffset: kafka.LastOffset,
 	})
 
