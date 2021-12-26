@@ -601,6 +601,8 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string, atracci
 			infoAtracciones += strconv.Itoa(atracciones[i].NVisitantes) + "|"
 		}
 
+		infoAtracciones += "\n" // Le añadimos el salto de línea porque los sockets los estamos leyendo hasta final de línea
+
 		fmt.Println("Enviando informacion de las atracciones")
 
 		conn.Write([]byte(infoAtracciones))                        // Mandamos el id:tiempoCiclo:nºvisitantes de cada atracción en un string
