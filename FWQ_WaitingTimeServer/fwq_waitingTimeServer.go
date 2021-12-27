@@ -3,14 +3,17 @@ package main
 import (
 	"bufio"
 	"context"
+	hho "crypto/rand"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/oklog/ulid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -134,7 +137,7 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
 		Brokers:     []string{broker},
 		Topic:       "sensor-servidorTiempos",
-		GroupID:     "sensores",
+		GroupID:     Ulid(),
 		StartOffset: kafka.LastOffset,
 	})
 
@@ -225,4 +228,11 @@ func crearTopic(IpBroker, PuertoBroker string) {
 		panic(err.Error())
 	}
 
+}
+
+func Ulid() string {
+	t := time.Now().UTC()
+	id := ulid.MustNew(ulid.Timestamp(t), hho.Reader)
+
+	return id.String()
 }

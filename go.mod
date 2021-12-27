@@ -3,6 +3,7 @@ module github.com/wilmer799/SDPracticas
 go 1.17
 
 require (
+	github.com/oklog/ulid v1.3.1
 	github.com/oklog/ulid/v2 v2.0.2
 	github.com/segmentio/kafka-go v0.4.22
 )
