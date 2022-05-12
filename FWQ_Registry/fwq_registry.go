@@ -25,7 +25,7 @@ type visitante struct {
 	Destinox     int    `json:"destinox"`
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
-	IdParque     string `json:"idParque"`
+	IdEnParque   string `json:"idParque"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -141,10 +141,10 @@ func manejoConexion(conexion net.Conn) {
 	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
 
 	v := visitante{
-		ID:       strings.TrimSpace(string(id)),
-		Nombre:   strings.TrimSpace(string(nombre)),
-		Password: strings.TrimSpace(string(password)),
-		IdParque: strings.TrimSpace(string(id[0])),
+		ID:         strings.TrimSpace(string(id)),
+		Nombre:     strings.TrimSpace(string(nombre)),
+		Password:   strings.TrimSpace(string(password)),
+		IdEnParque: strings.TrimSpace(string(id[0])),
 	}
 
 	// Si se ha solicitado un registro
@@ -190,7 +190,7 @@ func manejoConexion(conexion net.Conn) {
 			defer sentenciaPreparada.Close()
 
 			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password, v.IdParque)
+			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password, v.IdEnParque)
 			if err != nil {
 				panic("Error al registrar el visitante: " + err.Error())
 			}

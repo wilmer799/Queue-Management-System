@@ -31,7 +31,7 @@ type visitante struct {
 	Destinox     int    `json:"destinox"`
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
-	IdParque     string `json:"idParque"`
+	IdEnParque   string `json:"idParque"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -429,7 +429,7 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.IdParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
@@ -474,7 +474,7 @@ func obtenerVisitantesParque(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.IdParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
@@ -547,7 +547,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(visitantes); k++ {
 				if i == visitantes[k].Posicionx && j == visitantes[k].Posiciony && visitantes[k].DentroParque == 1 {
-					mapa[i][j] = visitantes[k].IdParque + "|"
+					mapa[i][j] = visitantes[k].IdEnParque + "|"
 				}
 			}
 		}
