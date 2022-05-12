@@ -76,8 +76,8 @@ func calculaTiempoEspera(a atraccion, personasEnCola int) int {
 
 	tiempoEspera := 0
 
-	// Mientras queden personas en la cola de la atracción
-	for personasEnCola > a.NVisitantes {
+	// Mientras el número de personas en la cola sea mayor o igual al número de personas que pueden subir a la atracción
+	for personasEnCola >= a.NVisitantes {
 
 		tiempoEspera += a.TCiclo
 		personasEnCola -= a.NVisitantes
