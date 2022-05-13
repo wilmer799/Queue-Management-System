@@ -59,7 +59,7 @@ func main() {
 	IpKafka := os.Args[1]
 	PuertoKafka := os.Args[2]
 	numeroVisitantes := os.Args[3]
-	IpFWQWating := os.Args[4]
+	IpFWQWaiting := os.Args[4]
 	PuertoWaiting := os.Args[5]
 
 	//Creamos el topic...Cambiar la Ipkafka en la función principal
@@ -73,6 +73,7 @@ func main() {
 	var conn = conexionBD()
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
+
 	//Para empezar con el kafka
 	ctx := context.Background()
 	go consumidorEngine(IpKafka, PuertoKafka, ctx, maxVisitantes)
@@ -131,7 +132,7 @@ func main() {
 		// Cada X segundos se conectará al servidor de tiempos para actualizar los tiempos de espera de las atracciones
 		time.Sleep(time.Duration(5 * time.Second))
 		atracciones, _ := obtenerAtraccionesBD(conn) // Obtenemos las atracciones actualizadas
-		conexionTiempoEspera(conn, IpFWQWating, PuertoWaiting, atracciones)
+		conexionTiempoEspera(conn, IpFWQWaiting, PuertoWaiting, atracciones)
 
 		fmt.Println() // Para mejorar la visualización
 
@@ -504,7 +505,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 		return nil, err //devolvera nil y error en caso de que no se pueda hacer la consulta
 	}
 
-	//Cerramos la base de datos
+	// Nos aseguramos de que se cierre la base de datos
 	defer results.Close()
 
 	//Declaramos el array de atracciones
@@ -604,7 +605,7 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string, atracci
 
 		infoAtracciones += "\n" // Le añadimos el salto de línea porque los sockets los estamos leyendo hasta final de línea
 
-		fmt.Println("Enviando informacion de las atracciones")
+		fmt.Println("Enviando información de las atracciones...")
 
 		conn.Write([]byte(infoAtracciones))                        // Mandamos el id:tiempoCiclo:nºvisitantes de cada atracción en un string
 		tiemposEspera, _ := bufio.NewReader(conn).ReadString('\n') // Obtenemos los tiempos de espera actualizados
