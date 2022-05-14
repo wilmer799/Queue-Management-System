@@ -100,9 +100,11 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 
 	var atracciones []atraccion
 
+	// El -1 es porque la longitud del array es 17, ya que al terminar la cadena en la barra vertical
+	// el split realizado coge un último elemento para formar el array que contiene un espacio en blanco.
 	for i := 0; i < (len(infoAtracciones) - 1); i++ {
 
-		fmt.Println(infoAtracciones[i])
+		//fmt.Println(infoAtracciones[i])
 		infoAtraccion := strings.Split(infoAtracciones[i], ":")
 
 		var a = atraccion{
@@ -124,7 +126,7 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 
 	}
 
-	fmt.Println("Longitud atracciones: " + strconv.Itoa(len(atracciones)))
+	//fmt.Println("Longitud atracciones: " + strconv.Itoa(len(atracciones)))
 
 	// Cerrar las conexiones con engines desconectados
 	if err != nil {
