@@ -153,8 +153,21 @@ func manejoConexion(IpBroker, PuertoBroker string, conn net.Conn) {
 		}
 
 		if strings.Contains(string(m.Value), "desconectado") {
+
 			fmt.Println(string(m.Value))
-			conn.Close()
+
+			// Enviamos al engine los tiempos de espera actuales
+			tiemposEspera := ""
+
+			// Formamos la cadena con los tiempos de espera que le vamos a mandar al engine
+			for i := 0; i < len(atracciones); i++ {
+				tiemposEspera += atracciones[i].ID + ":" + strconv.Itoa(atracciones[i].TiempoEspera) + "|"
+			}
+
+			// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
+			conn.Write([]byte(tiemposEspera))
+			conn.Close() // Cerramos la conexión con el engine
+
 		} else {
 			fmt.Println("[", string(m.Value)+" personas en cola", "]")
 
