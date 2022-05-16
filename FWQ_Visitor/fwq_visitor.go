@@ -133,7 +133,12 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 		fmt.Print("Introduce tu ID:")
 		id, _ := reader.ReadString('\n')
-		conn.Write([]byte(id))
+
+		if len(id) > 1 {
+			conn.Write([]byte(id))
+		} else {
+			panic("ERROR: Por favor introduzca un ID que no sea vacío.")
+		}
 
 		fmt.Print("Introduce tu nombre:")
 		nombre, _ := reader.ReadString('\n')
