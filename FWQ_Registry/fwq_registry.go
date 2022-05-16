@@ -25,7 +25,7 @@ type visitante struct {
 	Destinox     int    `json:"destinox"`
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
-	IdEnParque   string `json:"idParque"`
+	IdEnParque   string `json:"idEnParque"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -182,7 +182,7 @@ func manejoConexion(conexion net.Conn) {
 
 			// INSERTAMOS el nuevo visitante en la BD
 			// Preparamos para prevenir inyecciones SQL
-			sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña, idParque) VALUES(?, ?, ?, ?)")
+			sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña, idEnParque) VALUES(?, ?, ?, ?)")
 			if err != nil {
 				panic("Error al preparar la sentencia de inserción: " + err.Error())
 			}
