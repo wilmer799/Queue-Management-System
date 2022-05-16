@@ -43,6 +43,7 @@ func main() {
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Servidor de tiempos atendiendo en " + host + ":" + puertoEscucha)
+	fmt.Println() // Por limpieza
 
 	l, err := net.Listen("tcp", host+":"+puertoEscucha)
 
@@ -66,7 +67,8 @@ func main() {
 		}
 
 		// Imprimimos la dirección de conexión del cliente
-		log.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.")
+		fmt.Println() // Por limpieza
+		log.Println("Cliente engine " + c.RemoteAddr().String() + " conectado.\n")
 
 		// Manejamos las conexiones de forma concurrente
 		go manejoConexion(c)
@@ -145,10 +147,14 @@ func manejoConexion(conn net.Conn) {
 	// Lectura del buffer de entrada hasta el final de línea
 	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
 
-	fmt.Println("Petición del Engine: " + string(buffer))
+	//fmt.Println("Petición del Engine: " + string(buffer))
+	fmt.Println("Petición del engine recibida")
 
 	infoAtracciones := strings.Split(string(buffer), "|")
 
+	fmt.Println() // Por limpieza
+	fmt.Println("Estado actual de las atracciones:")
+	fmt.Println("ID:TCiclo:NVisitantes:TiempoEspera")
 	// El -1 es porque la longitud del array es 17, ya que al terminar la cadena en la barra vertical
 	// el split realizado coge un último elemento para formar el array que contiene un espacio en blanco.
 	for i := 0; i < (len(infoAtracciones) - 1); i++ {
@@ -186,7 +192,9 @@ func manejoConexion(conn net.Conn) {
 
 	}
 
-	fmt.Println("Longitud atracciones: " + strconv.Itoa(len(atracciones)))
+	fmt.Println() // Por limpieza
+
+	//fmt.Println("Longitud atracciones: " + strconv.Itoa(len(atracciones)))
 
 	// Cerrar las conexiones con engines desconectados
 	if err != nil {
