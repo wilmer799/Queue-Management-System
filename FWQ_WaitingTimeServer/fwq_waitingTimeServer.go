@@ -147,8 +147,15 @@ func manejoConexion(conn net.Conn) {
 	// Lectura del buffer de entrada hasta el final de línea
 	buffer, err := bufio.NewReader(conn).ReadBytes('\n')
 
+	// Cerrar las conexiones con engines desconectados
+	if err != nil {
+		log.Println("Engine" + conn.RemoteAddr().String() + " desconectado.\n")
+		conn.Close()
+		return
+	}
+
 	//fmt.Println("Petición del Engine: " + string(buffer))
-	fmt.Println("Petición del engine recibida")
+	fmt.Println("Petición del engine recibida.")
 
 	infoAtracciones := strings.Split(string(buffer), "|")
 
@@ -196,13 +203,6 @@ func manejoConexion(conn net.Conn) {
 
 	//fmt.Println("Longitud atracciones: " + strconv.Itoa(len(atracciones)))
 
-	// Cerrar las conexiones con engines desconectados
-	if err != nil {
-		log.Println("Engine" + conn.RemoteAddr().String() + " desconectado.")
-		conn.Close()
-		return
-	}
-
 	// Enviamos al engine los tiempos de espera actuales
 	tiemposEspera := ""
 
@@ -213,9 +213,11 @@ func manejoConexion(conn net.Conn) {
 
 	// Mandamos una cadena separada por barras con los tiempos de espera de cada atracción al engine
 	conn.Write([]byte(tiemposEspera))
-	conn.Close() // Cerramos la conexión con el engine
+	fmt.Println("Enviando los tiempos de espera actualizados...")
+	fmt.Println() // Por limpieza
+	conn.Close()  // Cerramos la conexión con el engine
 
-	//manejoConexion(conn)
+	manejoConexion(conn) // Reiniciamos el proceso
 
 }
 
