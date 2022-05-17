@@ -158,7 +158,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 		if len(password) > 1 {
 			conn.Write([]byte(password))
 		} else {
-			panic("ERROR: Por favor introduzca una contraseña que no sea vacía")
+			panic("ERROR: Por favor introduzca una contraseña que no sea vacía.")
 		}
 
 		//Escuchando por el relay el mensaje de respuesta del Registry
@@ -192,15 +192,33 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 		fmt.Println("Información del visitante que se quiere modificar:")
 		fmt.Print("Introduce el ID:")
 		id, _ := reader.ReadString('\n')
-		conn.Write([]byte(id))
+
+		// Nos aseguramos de que el ID no sea vacío.
+		if len(id) > 1 {
+			conn.Write([]byte(id))
+		} else {
+			panic("ERROR: Por favor introduzca un ID que no sea vacío.")
+		}
 
 		fmt.Print("Introduce el nombre:")
 		nombre, _ := reader.ReadString('\n')
-		conn.Write([]byte(nombre))
+
+		// Nos aseguramos de que el nombre no sea vacío.
+		if len(nombre) > 1 {
+			conn.Write([]byte(nombre))
+		} else {
+			panic("ERROR: Por favor introduzca un nombre que no sea vacío.")
+		}
 
 		fmt.Print("Introduce la contraseña:")
 		password, _ := reader.ReadString('\n')
-		conn.Write([]byte(password))
+
+		// Nos aseguramos de que la contraseña no sea vacía.
+		if len(password) > 1 {
+			conn.Write([]byte(password))
+		} else {
+			panic("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+		}
 
 		message, _ := bufio.NewReader(conn).ReadString('\n')
 
