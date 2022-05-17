@@ -134,6 +134,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 		fmt.Print("Introduce tu ID:")
 		id, _ := reader.ReadString('\n')
 
+		// Nos aseguramos de que no sea válido un id en blanco
 		if len(id) > 1 {
 			conn.Write([]byte(id))
 		} else {
@@ -142,11 +143,23 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 		fmt.Print("Introduce tu nombre:")
 		nombre, _ := reader.ReadString('\n')
-		conn.Write([]byte(nombre))
+
+		// Nos aseguramos de que no sea válido un nombre en blanco
+		if len(nombre) > 1 {
+			conn.Write([]byte(nombre))
+		} else {
+			panic("ERROR: Por favor introduzca un nombre que no sea vacío.")
+		}
 
 		fmt.Print("Introduce tu contraseña:")
 		password, _ := reader.ReadString('\n')
-		conn.Write([]byte(password))
+
+		// Nos aseguramos de que no sea válida una contraseña en blanco
+		if len(password) > 1 {
+			conn.Write([]byte(password))
+		} else {
+			panic("ERROR: Por favor introduzca una contraseña que no sea vacía")
+		}
 
 		//Escuchando por el relay el mensaje de respuesta del Registry
 		message, _ := bufio.NewReader(conn).ReadString('\n')
