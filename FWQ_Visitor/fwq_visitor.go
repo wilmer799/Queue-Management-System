@@ -140,39 +140,45 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 		// Nos aseguramos de que no sea válido un id en blanco
 		if len(id) > 1 {
+
 			conn.Write([]byte(id))
+
+			fmt.Print("Introduce tu nombre:")
+			nombre, _ := reader.ReadString('\n')
+
+			// Nos aseguramos de que no sea válido un nombre en blanco
+			if len(nombre) > 1 {
+
+				conn.Write([]byte(nombre))
+
+				fmt.Print("Introduce tu contraseña:")
+				password, _ := reader.ReadString('\n')
+
+				// Nos aseguramos de que no sea válida una contraseña en blanco
+				if len(password) > 1 {
+
+					conn.Write([]byte(password))
+
+					//Escuchando por el relay el mensaje de respuesta del Registry
+					message, _ := bufio.NewReader(conn).ReadString('\n')
+
+					// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+					if message != "" {
+						log.Print("Respuesta del Registry: ", message)
+					} else {
+						log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+					}
+
+				} else {
+					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+				}
+
+			} else {
+				fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+			}
+
 		} else {
-			panic("ERROR: Por favor introduzca un ID que no sea vacío.")
-		}
-
-		fmt.Print("Introduce tu nombre:")
-		nombre, _ := reader.ReadString('\n')
-
-		// Nos aseguramos de que no sea válido un nombre en blanco
-		if len(nombre) > 1 {
-			conn.Write([]byte(nombre))
-		} else {
-			panic("ERROR: Por favor introduzca un nombre que no sea vacío.")
-		}
-
-		fmt.Print("Introduce tu contraseña:")
-		password, _ := reader.ReadString('\n')
-
-		// Nos aseguramos de que no sea válida una contraseña en blanco
-		if len(password) > 1 {
-			conn.Write([]byte(password))
-		} else {
-			panic("ERROR: Por favor introduzca una contraseña que no sea vacía.")
-		}
-
-		//Escuchando por el relay el mensaje de respuesta del Registry
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-
-		// Comprobamos si el Registry nos devuelve un mensaje de respuesta
-		if message != "" {
-			log.Print("Respuesta del Registry: ", message)
-		} else {
-			log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 		}
 
 	}
