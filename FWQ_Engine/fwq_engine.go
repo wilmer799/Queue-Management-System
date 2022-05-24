@@ -62,7 +62,7 @@ func main() {
 	IpFWQWaiting := os.Args[4]
 	PuertoWaiting := os.Args[5]
 
-	fmt.Println("Arrancando un engine que atiende peticiones por " + IpKafka + ":" + PuertoKafka + ", limitando el parque a " + numeroVisitantes + " visitantes y manda peticiones a un servidor de tiempos de espera situado en " + IpFWQWaiting + ":" + PuertoWaiting + ".\n")
+	fmt.Println("Creado un engine que atiende peticiones por " + IpKafka + ":" + PuertoKafka + ", limita el parque a " + numeroVisitantes + " visitantes y manda peticiones a un servidor de tiempos de espera situado en " + IpFWQWaiting + ":" + PuertoWaiting + ".\n")
 
 	//Creamos el topic...Cambiar la Ipkafka en la función principal
 	//Si no se ejecuta el programa, se cierra el kafka?

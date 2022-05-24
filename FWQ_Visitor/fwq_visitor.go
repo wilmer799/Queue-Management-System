@@ -83,6 +83,10 @@ func main() {
 	crearTopic(IpBroker, PuertoBroker, "peticiones")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	crearTopic(IpBroker, PuertoBroker, "movimiento-mapa")
+
+	fmt.Println("Creado un visitante que envía peticiones a un registry por " + IpFWQ_Registry + ":" + PuertoFWQ + " y a un engine por " + IpBroker + ":" + PuertoBroker)
+	fmt.Println() // Por limpieza
+
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
