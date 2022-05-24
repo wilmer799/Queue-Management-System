@@ -56,7 +56,7 @@ func main() {
 	min := 0
 	max := 60
 	s.Personas = (rand.Intn(max-min+1) + min)
-	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " personas en cola")
+	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " personas en cola\n")
 
 	// Generamos un tiempo aleatorio entre 1 y 3 segundos
 	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
