@@ -246,35 +246,49 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 	fmt.Print("Por favor introduce tu alias:")
 	alias, _ := reader.ReadString('\n')
-	v.ID += strings.TrimSpace(string(alias))
 
-	fmt.Print("y tu password:")
-	password, _ := reader.ReadString('\n')
-	v.Password += strings.TrimSpace(string(password))
+	if len(alias) > 1 {
 
-	ctx := context.Background()
+		v.ID += strings.TrimSpace(string(alias))
 
-	mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
+		fmt.Print("y tu password:")
+		password, _ := reader.ReadString('\n')
 
-	// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
-	productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
+		if len(password) > 1 {
+			v.Password += strings.TrimSpace(string(password))
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for sig := range c {
-			log.Printf("captured %v, stopping profiler and exiting..", sig)
-			mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
-			fmt.Println()
-			fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
-			pprof.StopCPUProfile()
-			os.Exit(1)
+			ctx := context.Background()
+
+			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
+
+			// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
+			productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
+
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func() {
+				for sig := range c {
+					log.Printf("captured %v, stopping profiler and exiting..", sig)
+					mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
+					productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+					fmt.Println()
+					fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
+					pprof.StopCPUProfile()
+					os.Exit(1)
+				}
+			}()
+
+			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
+			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
+
+		} else {
+			fmt.Println("ERROR: Por favor introduzca un password no vacío.")
 		}
-	}()
 
-	// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-	consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
+	} else {
+		fmt.Println("ERROR: Por favor introduzca un ID no vacío.")
+	}
+
 }
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
