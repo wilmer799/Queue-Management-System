@@ -74,7 +74,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
+		log.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
@@ -86,7 +86,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
+		log.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
@@ -96,7 +96,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
+		log.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
@@ -106,7 +106,7 @@ func manejoConexion(conexion net.Conn) {
 
 	// Cerramos la conexión de los clientes que se han desconectado
 	if err != nil {
-		fmt.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
+		log.Println("Visitante " + conexion.RemoteAddr().String() + " desconectado.")
 		conexion.Close()
 		return
 	}
