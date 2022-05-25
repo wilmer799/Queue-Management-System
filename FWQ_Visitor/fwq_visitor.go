@@ -205,38 +205,44 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 
 		// Nos aseguramos de que el ID no sea vacío.
 		if len(id) > 1 {
+
 			conn.Write([]byte(id))
+
+			fmt.Print("Introduce el nombre:")
+			nombre, _ := reader.ReadString('\n')
+
+			// Nos aseguramos de que el nombre no sea vacío.
+			if len(nombre) > 1 {
+
+				conn.Write([]byte(nombre))
+
+				fmt.Print("Introduce la contraseña:")
+				password, _ := reader.ReadString('\n')
+
+				// Nos aseguramos de que la contraseña no sea vacía.
+				if len(password) > 1 {
+
+					conn.Write([]byte(password))
+
+					message, _ := bufio.NewReader(conn).ReadString('\n')
+
+					// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+					if message != "" {
+						log.Print("Respuesta del Registry: ", message)
+					} else {
+						log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+					}
+
+				} else {
+					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+				}
+
+			} else {
+				fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+			}
+
 		} else {
-			panic("ERROR: Por favor introduzca un ID que no sea vacío.")
-		}
-
-		fmt.Print("Introduce el nombre:")
-		nombre, _ := reader.ReadString('\n')
-
-		// Nos aseguramos de que el nombre no sea vacío.
-		if len(nombre) > 1 {
-			conn.Write([]byte(nombre))
-		} else {
-			panic("ERROR: Por favor introduzca un nombre que no sea vacío.")
-		}
-
-		fmt.Print("Introduce la contraseña:")
-		password, _ := reader.ReadString('\n')
-
-		// Nos aseguramos de que la contraseña no sea vacía.
-		if len(password) > 1 {
-			conn.Write([]byte(password))
-		} else {
-			panic("ERROR: Por favor introduzca una contraseña que no sea vacía.")
-		}
-
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-
-		// Comprobamos si el Registry nos devuelve un mensaje de respuesta
-		if message != "" {
-			log.Print("Respuesta del Registry: ", message)
-		} else {
-			log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 		}
 
 	}
