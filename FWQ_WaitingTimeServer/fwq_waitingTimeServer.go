@@ -98,7 +98,7 @@ func recibirInfoSensores(IpBroker, PuertoBroker string) {
 		}
 
 		if strings.Contains(string(m.Value), "desconectado") {
-			fmt.Println(string(m.Value))
+			log.Println(string(m.Value))
 		} else {
 			fmt.Println("[", string(m.Value)+" personas en cola", "]")
 
@@ -155,7 +155,7 @@ func manejoConexion(conn net.Conn) {
 	}
 
 	//fmt.Println("Petición del Engine: " + string(buffer))
-	fmt.Println("Petición del engine recibida.")
+	log.Println("Petición de un engine recibida.")
 
 	infoAtracciones := strings.Split(string(buffer), "|")
 

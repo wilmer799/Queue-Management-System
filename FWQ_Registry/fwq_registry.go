@@ -53,7 +53,7 @@ func main() {
 		// Atendemos conexiones entrantes
 		c, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error conectando con un visitante: ", err.Error())
+			log.Println("Error conectando con un visitante: ", err.Error())
 		}
 
 		// Imprimimos la dirección de conexión del cliente

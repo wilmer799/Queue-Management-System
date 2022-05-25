@@ -68,7 +68,7 @@ func main() {
 	enviaInformacion(s, brokerAddress, tiempoAleatorio)
 
 	defer func() {
-		fmt.Println("El sensor ha sido apagado.")
+		log.Println("El sensor ha sido apagado.")
 	}()
 
 }
@@ -128,7 +128,7 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		// Cada 1 a 3 segundos el sensor envía la información al servidor de tiempos
 		time.Sleep(time.Duration(tiempoAleatorio) * time.Second)
 
-		fmt.Println("En la atracción [" + s.IdAtraccion + "] hay " + strconv.Itoa(s.Personas) + " personas en cola")
+		log.Println("En la atracción [" + s.IdAtraccion + "] hay " + strconv.Itoa(s.Personas) + " personas en cola")
 
 	}
 

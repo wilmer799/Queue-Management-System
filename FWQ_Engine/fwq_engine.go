@@ -585,12 +585,13 @@ func conexionTiempoEspera(db *sql.DB, IpFWQWating, PuertoWaiting string, atracci
 
 	fmt.Println() // Por limpieza
 	fmt.Println("***Conexión con el servidor de tiempo de espera***")
+	fmt.Println() // Por limpieza
 	//fmt.Println("Arrancando el engine para atender los tiempos en el puerto: " + IpFWQWating + ":" + PuertoWaiting)
 	var connType string = "tcp"
 	conn, err := net.Dial(connType, IpFWQWating+":"+PuertoWaiting)
 
 	if err != nil {
-		fmt.Println("ERROR: El servidor de tiempos de espera no está disponible", err.Error())
+		log.Println("ERROR: El servidor de tiempos de espera no está disponible", err.Error())
 	} else {
 
 		fmt.Println("***Actualizando los tiempos de espera***")

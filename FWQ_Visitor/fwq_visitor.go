@@ -354,7 +354,7 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 		}
 
 		respuestaEngine = strings.TrimSpace(string(m.Value))
-		fmt.Println("Respuesta del engine: " + respuestaEngine)
+		log.Println("Respuesta del engine: " + respuestaEngine)
 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
