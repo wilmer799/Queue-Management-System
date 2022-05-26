@@ -48,8 +48,6 @@ type atraccion struct {
 	Parque       string `json:"parqueAtracciones"`
 }
 
-//var visitantesDelEngine []string
-
 /*
  * @Description : Función main de fwq_engine
  * @Author : Wilmer Fabricio Bravo Shuira
