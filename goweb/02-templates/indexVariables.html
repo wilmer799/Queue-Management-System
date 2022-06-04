@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Index</title>
+</head>
+<body>
+    <!-- Un par de ejemplos donde recibimos datos desde el servidor -->
+    <h3>Hola {{ .UserName }}</h3>
+
+    <p>Edad: {{ .Edad }}</p>-
+
+    <!--
+        Si por ejemplo quisieramos hacer lo de arriba con métodos en lugar de variables
+        tendríamos que hacer la siguiente por poner un ejemplo
+        <h1> {{ .nombreDelMétodo valorParámetro1... }} </h1>
+    -->
+
+    <!-- Variables -->
+    {{ with $valor := "Mi variable" }}
+
+        <p>{{ $valor }}</p>
+
+    {{ end }} <!-- Con esto indicamos dónde termina el ámbito de la variable definida -->    
+</body>
+</html>    
+

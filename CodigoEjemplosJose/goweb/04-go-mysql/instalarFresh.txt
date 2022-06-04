@@ -1,0 +1,7 @@
+Go ya no acepta instalar ejecutables mediante la funcion go get, entonces la ruta que usé fue:
+
+go install github.com/pilu/fresh@latest
+
+Esto como primera instancia, luego en las Variables de Entorno, 
+en el directorio Path (General, o sea de la tabla inferior) inserté como entrada la ruta de trabajo (Workspace)...Go/Bin; 
+o sea tengo ese directorio tanto en GOBIN como en Path, de esa forma fresh me empezó a funcionar perfectamente
