@@ -124,63 +124,84 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 /* Función que se conecta al módulo FWQ_Registry para crear un nuevo usuario */
 func CrearPerfil(ipRegistry, puertoRegistry string) {
 
+	fmt.Println() // Por limpieza
 	fmt.Println("**********Creación de perfil***********")
-	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
+	fmt.Println() // Por limpieza
 
-	if err != nil {
-		fmt.Println("Error al conectarse al Registry:", err.Error())
-	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+	// Damos la posibilidad elegir conexión vía sockets o por API_REST
+	fmt.Println("Selecciona el tipo de conexión al registry:")
+	fmt.Println("1 -> Sockets")
+	fmt.Println("2 -> API_REST")
+	fmt.Println() // Por limpieza
 
-		conn.Write([]byte("1" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+	var eleccion int
+	fmt.Scan(&eleccion)
+	fmt.Println() // Por limpieza
 
-		reader := bufio.NewReader(os.Stdin)
+	// Si el usuario elige la conexión por sockets
+	if eleccion == 1 {
+		conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
 
-		fmt.Print("Introduce tu ID:")
-		id, _ := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error al conectarse al Registry:", err.Error())
+		} else { // Si el visitante establece conexión con el Registry indicado por parámetro
 
-		// Nos aseguramos de que no sea válido un id en blanco
-		if len(id) > 1 {
+			conn.Write([]byte("1" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
 
-			conn.Write([]byte(id))
+			reader := bufio.NewReader(os.Stdin)
 
-			fmt.Print("Introduce tu nombre:")
-			nombre, _ := reader.ReadString('\n')
+			fmt.Print("Introduce tu ID:")
+			id, _ := reader.ReadString('\n')
 
-			// Nos aseguramos de que no sea válido un nombre en blanco
-			if len(nombre) > 1 {
+			// Nos aseguramos de que no sea válido un id en blanco
+			if len(id) > 1 {
 
-				conn.Write([]byte(nombre))
+				conn.Write([]byte(id))
 
-				fmt.Print("Introduce tu contraseña:")
-				password, _ := reader.ReadString('\n')
+				fmt.Print("Introduce tu nombre:")
+				nombre, _ := reader.ReadString('\n')
 
-				// Nos aseguramos de que no sea válida una contraseña en blanco
-				if len(password) > 1 {
+				// Nos aseguramos de que no sea válido un nombre en blanco
+				if len(nombre) > 1 {
 
-					conn.Write([]byte(password))
+					conn.Write([]byte(nombre))
 
-					//Escuchando por el relay el mensaje de respuesta del Registry
-					message, _ := bufio.NewReader(conn).ReadString('\n')
+					fmt.Print("Introduce tu contraseña:")
+					password, _ := reader.ReadString('\n')
 
-					// Comprobamos si el Registry nos devuelve un mensaje de respuesta
-					if message != "" {
-						log.Print("Respuesta del Registry: ", message)
+					// Nos aseguramos de que no sea válida una contraseña en blanco
+					if len(password) > 1 {
+
+						conn.Write([]byte(password))
+
+						//Escuchando por el relay el mensaje de respuesta del Registry
+						message, _ := bufio.NewReader(conn).ReadString('\n')
+
+						// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+						if message != "" {
+							log.Print("Respuesta del Registry: ", message)
+						} else {
+							log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+						}
+
 					} else {
-						log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+						fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
 					}
 
 				} else {
-					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+					fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
 				}
 
 			} else {
-				fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+				fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 			}
 
-		} else {
-			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 		}
-
+	} else if eleccion == 2 { // Si el usuario elige la conexión por API_REST
+		//TODO:
+	} else { // Si la opción introducida no es válida
+		fmt.Println("ERROR: Por favor introduzca 1 o 2")
+		fmt.Println() // Por limpieza
 	}
 
 }
@@ -188,63 +209,84 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 /* Función que se conecta al módulo FWQ_Registry para editar o actualizar el perfil de un usuario existente */
 func EditarPerfil(ipRegistry, puertoRegistry string) {
 
-	fmt.Println("Has entrado a editar perfil")
-	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
+	fmt.Println() // Por limpieza
+	fmt.Println("**********Modificación de perfil**********")
+	fmt.Println() // Por limpieza
 
-	if err != nil {
-		fmt.Println("Error al conectarse al Registry:", err.Error())
-	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+	// Damos la posibilidad elegir conexión vía sockets o por API_REST
+	fmt.Println("Selecciona el tipo de conexión al registry:")
+	fmt.Println("1 -> Sockets")
+	fmt.Println("2 -> API_REST")
+	fmt.Println() // Por limpieza
 
-		conn.Write([]byte("2" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+	var eleccion int
+	fmt.Scan(&eleccion)
+	fmt.Println() // Por limpieza
 
-		reader := bufio.NewReader(os.Stdin)
+	// Si el usuario elige la conexión por sockets
+	if eleccion == 1 {
+		conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
 
-		fmt.Println("Información del visitante que se quiere modificar:")
-		fmt.Print("Introduce el ID:")
-		id, _ := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error al conectarse al Registry:", err.Error())
+		} else { // Si el visitante establece conexión con el Registry indicado por parámetro
 
-		// Nos aseguramos de que el ID no sea vacío.
-		if len(id) > 1 {
+			conn.Write([]byte("2" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
 
-			conn.Write([]byte(id))
+			reader := bufio.NewReader(os.Stdin)
 
-			fmt.Print("Introduce el nombre:")
-			nombre, _ := reader.ReadString('\n')
+			fmt.Println("Información del visitante que se quiere modificar:")
+			fmt.Print("Introduce el ID:")
+			id, _ := reader.ReadString('\n')
 
-			// Nos aseguramos de que el nombre no sea vacío.
-			if len(nombre) > 1 {
+			// Nos aseguramos de que el ID no sea vacío.
+			if len(id) > 1 {
 
-				conn.Write([]byte(nombre))
+				conn.Write([]byte(id))
 
-				fmt.Print("Introduce la contraseña:")
-				password, _ := reader.ReadString('\n')
+				fmt.Print("Introduce el nombre:")
+				nombre, _ := reader.ReadString('\n')
 
-				// Nos aseguramos de que la contraseña no sea vacía.
-				if len(password) > 1 {
+				// Nos aseguramos de que el nombre no sea vacío.
+				if len(nombre) > 1 {
 
-					conn.Write([]byte(password))
+					conn.Write([]byte(nombre))
 
-					message, _ := bufio.NewReader(conn).ReadString('\n')
+					fmt.Print("Introduce la contraseña:")
+					password, _ := reader.ReadString('\n')
 
-					// Comprobamos si el Registry nos devuelve un mensaje de respuesta
-					if message != "" {
-						log.Print("Respuesta del Registry: ", message)
+					// Nos aseguramos de que la contraseña no sea vacía.
+					if len(password) > 1 {
+
+						conn.Write([]byte(password))
+
+						message, _ := bufio.NewReader(conn).ReadString('\n')
+
+						// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+						if message != "" {
+							log.Print("Respuesta del Registry: ", message)
+						} else {
+							log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+						}
+
 					} else {
-						log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+						fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
 					}
 
 				} else {
-					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+					fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
 				}
 
 			} else {
-				fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+				fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 			}
 
-		} else {
-			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 		}
-
+	} else if eleccion == 2 { // Si el usuario elige la conexión por API_REST
+		//TODO:
+	} else { // Si la opción introducida no es válida
+		fmt.Println("ERROR: Por favor introduzca 1 o 2")
+		fmt.Println() // Por limpieza
 	}
 
 }
