@@ -1,3 +1,5 @@
+CREATE DATABASE parque_atracciones;
+
 USE parque_atracciones;
 
 /* Creación de tablas */
@@ -6,7 +8,7 @@ CREATE TABLE parque (id varchar(30) PRIMARY KEY, aforoMaximo int, aforoActual in
 CREATE TABLE visitante (
 id varchar(20) PRIMARY KEY, 
 nombre varchar(30) NOT NULL, 
-contraseña varchar(30) NOT NULL, 
+contraseña varchar(100) NOT NULL, 
 posicionx int DEFAULT 0, 
 posiciony int DEFAULT 0,
 destinox int DEFAULT -1,

@@ -217,7 +217,7 @@ func manejoConexion(conexion net.Conn) {
 			defer sentenciaPreparada.Close()
 
 			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, v.Password, v.IdEnParque)
+			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, HashPassword(v.Password), v.IdEnParque)
 			if err != nil {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
@@ -251,7 +251,7 @@ func manejoConexion(conexion net.Conn) {
 			defer sentenciaPreparada.Close()
 
 			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(v.Nombre, v.Password, v.ID)
+			_, err = sentenciaPreparada.Exec(v.Nombre, HashPassword(v.Password), v.ID)
 			if err != nil {
 				panic("Error al modificar el visitante: " + err.Error())
 			}
