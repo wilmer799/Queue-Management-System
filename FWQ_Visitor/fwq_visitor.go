@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	hho "crypto/rand"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -140,11 +141,26 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 	// Si el usuario elige la conexión por sockets
 	if eleccion == 1 {
-		conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
+
+		cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		config := &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: false,
+		}
+
+		//conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
+		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistry, config) // CONEXIÓN SEGURA
 
 		if err != nil {
 			fmt.Println("Error al conectarse al Registry:", err.Error())
 		} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+
+			defer conn.Close() // Nos aseguramos de cerrar la conexión
 
 			conn.Write([]byte("1" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
 
