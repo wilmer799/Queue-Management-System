@@ -148,13 +148,13 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 			log.Fatal(err)
 		}
 
-		config := &tls.Config{
+		config := tls.Config{
 			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: false,
+			InsecureSkipVerify: true,
 		}
 
 		//conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
-		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistry, config) // CONEXIÓN SEGURA
+		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistry, &config) // CONEXIÓN SEGURA
 
 		if err != nil {
 			fmt.Println("Error al conectarse al Registry:", err.Error())

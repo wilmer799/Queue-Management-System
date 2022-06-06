@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"log"
@@ -34,14 +36,25 @@ func main() {
 	host := os.Args[1]
 	puerto := os.Args[2]
 
+	cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config := tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAnyClientCert,
+	}
+
+	config.Rand = rand.Reader
+
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el Registry, atendiendo en " + host + ":" + puerto)
 
-	l, err := net.Listen("tcp", host+":"+puerto)
-
+	//l, err := net.Listen("tcp", host+":"+puerto) // CONEXIONES INSEGURAS
+	l, err := tls.Listen("tcp", host+":"+puerto, &config) // CONEXIONES SEGURAS
 	if err != nil {
-		fmt.Println("Error escuchando", err.Error())
-		os.Exit(1)
+		log.Fatal("Error escuchando", err.Error())
 	}
 
 	// Cerramos el listener cuando se cierra la aplicación
@@ -51,16 +64,17 @@ func main() {
 	for {
 
 		// Atendemos conexiones entrantes
-		c, err := l.Accept()
+		conn, err := l.Accept()
 		if err != nil {
 			log.Println("Error conectando con un visitante: ", err.Error())
+			continue
 		}
 
 		// Imprimimos la dirección de conexión del cliente
-		log.Println("Visitante " + c.RemoteAddr().String() + " conectado.")
+		log.Println("Visitante " + conn.RemoteAddr().String() + " conectado.")
 
 		// Llamamos a la función de forma asíncrona y manejamos las conexiones de forma concurrente
-		go manejoConexion(c)
+		go manejoConexion(conn)
 
 	}
 
