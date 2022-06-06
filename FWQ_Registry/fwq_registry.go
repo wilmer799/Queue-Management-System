@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 /*
@@ -77,6 +78,18 @@ func main() {
 		go manejoConexion(conn)
 
 	}
+
+}
+
+/* Función que genera y devuelve el hash de la contraseña pasada por parámetro */
+func HashPassword(password string) string {
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(hash)
 
 }
 
