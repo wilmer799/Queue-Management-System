@@ -17,6 +17,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 /*
@@ -177,6 +178,12 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 	return s[:len(s)-1]
 }*/
 
+/* Función que nos sirve para comprobar el hash de un password */
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
 func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisitantes int) {
 
@@ -226,17 +233,32 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			Destinoy: destinoY,
 		}
 
-		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
-		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
+		// Nos guardamos la posible contraseña recibida
+		var contraseña string = v.Password
 
-		if err != nil {
-			fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
-		}
+		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
+		//results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
+
+		// Obtenemos el hash de la contraseña del visitante en caso de que el ID coincida con alguno almacenado en la BD
+		results := db.QueryRow("SELECT contraseña FROM visitante WHERE id = ?", v.ID)
+		/*if err != nil {
+			fmt.Println("Error al hacer la consulta sobre la contraseña para el login: " + err.Error())
+		}*/
+
+		var hash string
+
+		// Si existe una contraseña almacenada para el id recibido
+		//if results.Next() {
+		results.Scan(&hash)
+		//}
+
+		fmt.Println("Contraseña almacenada: ", hash)
+		fmt.Println("Contraseña recibida: ", contraseña)
 
 		var respuesta string = ""
 
 		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
-		if results.Next() && !parqueLleno(db, maxVisitantes) {
+		if CheckPasswordHash(contraseña, hash) && !parqueLleno(db, maxVisitantes) {
 
 			// Actualizamos el estado del visitante en la BD
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1, destinox = ?, destinoy = ? WHERE id = ?")
@@ -258,8 +280,9 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 			sentenciaPreparada.Close()
 
+			// Si se nos ha mandado un movimiento
 		} else if peticion == "IN" || peticion == "N" || peticion == "S" || peticion == "W" || peticion == "E" || peticion == "NW" ||
-			peticion == "NE" || peticion == "SW" || peticion == "SE" { // Si se nos ha mandado un movimiento
+			peticion == "NE" || peticion == "SW" || peticion == "SE" {
 
 			// Comprobamos que el alias pertenezca a un visitante que se encuentra en el parque
 			results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID)
@@ -304,7 +327,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				//Convertimos el mapaActualizado a formato jSON
 				//Esta función devuelve un array de byte
 				mapaJson, err := json.Marshal(representacion)
-				//En formato jSon tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
+				//En formato json tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
 				if err != nil {
 					fmt.Println("Error a la hora de codificar el mapa: %v", err)
 				}
@@ -316,8 +339,8 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
 				results.Close()
 			}
-
-		} else if peticion == "OUT" { // Si se nos ha solicitado una salida del parque
+			// Si se nos ha solicitado una salida del parque
+		} else if peticion == "OUT" {
 
 			// Sacamos del parque al visitante y reinciamos tanto su posición actual como su destino
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
@@ -355,7 +378,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			}
 		}
 
-		results.Close()
+		//results.Close()
 
 	}
 
@@ -384,9 +407,7 @@ func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuest
 
 }
 
-/*
-* Función que abre una conexion con la bd
- */
+/* Función que abre una conexion con la bd */
 func conexionBD() *sql.DB {
 	//Accediendo a la base de datos
 	/*****Flate blod **/
