@@ -109,7 +109,7 @@ func RegistroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion
 	var eventoLog string // Variable donde vamos a guardar la información de log que le vamos a pasar a la BD
 
 	dateTime := time.Now().Format("2006-01-02 15:04:05") // Fecha y hora del evento con formato personalizado
-	ipVisitante := conexion.RemoteAddr().String()        // IP del visitante
+	ipVisitante := conexion.RemoteAddr().String()        // IP y puerto de quién ha provoacdo el evento
 	accionRealizada := accion                            // Que acción se realiza
 	descripcionEvento := descripcion                     // Parámetros o descripción del evento
 

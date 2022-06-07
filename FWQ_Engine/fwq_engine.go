@@ -186,7 +186,7 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 /* Función que almacena los registros de auditoría en la tabla visitante */
-func RegistroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion string) {
+func RegistroLog(db *sql.DB, ipPuerto, idVisitante, accion, descripcion string) {
 
 	// Añadimos el evento de log de error al visitante
 	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET ultimoEvento = ? WHERE id = ?")
@@ -198,12 +198,12 @@ func RegistroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion
 
 	var eventoLog string // Variable donde vamos a guardar la información de log que le vamos a pasar a la BD
 
-	dateTime := time.Now()                        // Fecha y hora del evento
-	ipVisitante := conexion.RemoteAddr().String() // IP del visitante
-	accionRealizada := accion                     // Que acción se realiza
-	descripcionEvento := descripcion              // Parámetros o descripción del evento
+	dateTime := time.Now().Format("2006-01-02 15:04:05") // Fecha y hora del evento
+	ipVisitante := ipPuerto                              // IP y puerto de quién ha provocado el evento
+	accionRealizada := accion                            // Que acción se realiza
+	descripcionEvento := descripcion                     // Parámetros o descripción del evento
 
-	eventoLog += dateTime.String() + " | "
+	eventoLog += dateTime + " | "
 	eventoLog += ipVisitante + " | "
 	eventoLog += accionRealizada + " | "
 	eventoLog += descripcionEvento
@@ -283,8 +283,8 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 		results.Scan(&hash)
 		//}
 
-		fmt.Println("Contraseña almacenada: ", hash)
-		fmt.Println("Contraseña recibida: ", contraseña)
+		//fmt.Println("Contraseña almacenada: ", hash)
+		//fmt.Println("Contraseña recibida: ", contraseña)
 
 		var respuesta string = ""
 
@@ -322,7 +322,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
 			}
 
-			// Actualizamos el estado el destino del visitante en la BD
+			// Actualizamos el destino del visitante en la BD
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET destinox = ?, destinoy = ? WHERE id = ?")
 			if err != nil {
 				panic("Error al preparar la sentencia de modificación de destino: " + err.Error())
@@ -398,7 +398,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 			sentenciaPreparada.Close()
 
-			//RegistroLog(db, conexion, v.ID, "Baja", "El visitante "+v.ID+" ha salido del parque") // Registramos el evento de log
+			RegistroLog(db, IpKafka+":"+PuertoKafka, v.ID, "Baja", "El visitante "+v.ID+" ha salido del parque") // Registramos el evento de log
 
 		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
 
@@ -484,7 +484,7 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.UltimoEvento, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
@@ -529,7 +529,7 @@ func obtenerVisitantesParque(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.UltimoEvento, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
