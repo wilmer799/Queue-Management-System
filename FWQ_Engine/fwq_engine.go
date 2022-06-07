@@ -185,6 +185,36 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+/* Función que almacena los registros de auditoría en la tabla visitante */
+func RegistroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion string) {
+
+	// Añadimos el evento de log de error al visitante
+	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET ultimoEvento = ? WHERE id = ?")
+	if err != nil {
+		panic("Error al preparar la sentencia de inserción: " + err.Error())
+	}
+
+	defer sentenciaPreparada.Close()
+
+	var eventoLog string // Variable donde vamos a guardar la información de log que le vamos a pasar a la BD
+
+	dateTime := time.Now()                        // Fecha y hora del evento
+	ipVisitante := conexion.RemoteAddr().String() // IP del visitante
+	accionRealizada := accion                     // Que acción se realiza
+	descripcionEvento := descripcion              // Parámetros o descripción del evento
+
+	eventoLog += dateTime.String() + " | "
+	eventoLog += ipVisitante + " | "
+	eventoLog += accionRealizada + " | "
+	eventoLog += descripcionEvento
+
+	_, err = sentenciaPreparada.Exec(eventoLog, idVisitante)
+	if err != nil {
+		panic("Error al registrar el evento de log: " + err.Error())
+	}
+
+}
+
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
 func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisitantes int) {
 
@@ -367,6 +397,8 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			}*/
 
 			sentenciaPreparada.Close()
+
+			//RegistroLog(db, conexion, v.ID, "Baja", "El visitante "+v.ID+" ha salido del parque") // Registramos el evento de log
 
 		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
 
