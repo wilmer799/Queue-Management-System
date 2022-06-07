@@ -33,6 +33,7 @@ type visitante struct {
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
 	IdEnParque   string `json:"idEnParque"`
+	UltimoEvento string `json:"ultimoEvento"`
 	Parque       string `json:"parqueAtracciones"`
 }
 

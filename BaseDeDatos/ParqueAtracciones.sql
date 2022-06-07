@@ -15,6 +15,7 @@ destinox int DEFAULT -1,
 destinoy int DEFAULT -1,
 dentroParque int DEFAULT 0,
 idEnParque char(1),
+ultimoEvento varchar(100),
 parqueAtracciones varchar(30) default 'SDpark', 
 CONSTRAINT fk_visitantes_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
@@ -46,6 +47,9 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspe
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion14", 12, 4, 19, 18, 40, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, 74, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, 23, "SDpark");
+
+
+
 /* Visitantes */
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
 VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"w","SDpark");
