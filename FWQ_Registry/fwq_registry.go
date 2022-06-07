@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
@@ -94,6 +95,36 @@ func HashPassword(password string) string {
 
 }
 
+/* Función que almacena los registros de auditoría en la tabla visitante */
+func registroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion string) {
+
+	// Añadimos el evento de log de error al visitante
+	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET ultimoEvento = ? WHERE id = ?")
+	if err != nil {
+		panic("Error al preparar la sentencia de inserción: " + err.Error())
+	}
+
+	defer sentenciaPreparada.Close()
+
+	var eventoLog string // Variable donde vamos a guardar la información de log que le vamos a pasar a la BD
+
+	dateTime := time.Now()                        // Fecha y hora del evento
+	ipVisitante := conexion.RemoteAddr().String() // IP del visitante
+	accionRealizada := accion                     // Que acción se realiza
+	descripcionEvento := descripcion              // Parámetros o descripción del evento
+
+	eventoLog += dateTime.String() + " | "
+	eventoLog += ipVisitante + " | "
+	eventoLog += accionRealizada + " | "
+	eventoLog += descripcionEvento
+
+	_, err = sentenciaPreparada.Exec(eventoLog, idVisitante)
+	if err != nil {
+		panic("Error al registrar el evento de log: " + err.Error())
+	}
+
+}
+
 /* Función que procesa concurrentemente los registros o actualizaciones de los visitantes */
 func manejoConexion(conexion net.Conn) {
 
@@ -146,7 +177,7 @@ func manejoConexion(conexion net.Conn) {
 		fmt.Println("Visitante a registrar -> ID: " + strings.TrimSpace(string(id)) +
 			" | Nombre: " + strings.TrimSpace(string(nombre)) + " | Password: " + strings.TrimSpace(string(password)))
 
-		// Si se ha solicitado editar/actualizar un perfil de usuario existente
+		// Si se ha solicitado editar/actualizar el perfil de usuario existente
 	} else if opcionElegida == "2" {
 
 		// Imprimimos la información del visitante a editar
@@ -189,8 +220,12 @@ func manejoConexion(conexion net.Conn) {
 
 		// Si el visitante ya se había registrado
 		if results.Next() {
-			conexion.Write([]byte("El visitante ya está registrado en la aplicación"))
+
+			conexion.Write([]byte("ERROR: El visitante ya estaba registrado en la aplicación"))
 			conexion.Close()
+
+			registroLog(db, conexion, v.ID, "Error", "El visitante ya está registrado en la aplicación") // Registramos el evento de log
+
 		} else { // Si es un nuevo usuario
 
 			results, err := db.Query("SELECT * FROM visitante") // Devuelve los visitantes que hay registrados en la aplicación

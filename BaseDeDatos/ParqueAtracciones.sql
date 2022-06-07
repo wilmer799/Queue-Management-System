@@ -15,7 +15,7 @@ destinox int DEFAULT -1,
 destinoy int DEFAULT -1,
 dentroParque int DEFAULT 0,
 idEnParque char(1),
-ultimoEvento varchar(100),
+ultimoEvento varchar(150),
 parqueAtracciones varchar(30) default 'SDpark', 
 CONSTRAINT fk_visitantes_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
@@ -70,6 +70,7 @@ UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
 
 select * from atraccion;
 select * from visitante;
+select ultimoEvento from visitante; /* Para ver los logs de la tabla visitante */
 select * from parque;
 
 SHOW STATUS LIKE 'max_used_connections';
