@@ -339,14 +339,15 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		password, _ := reader.ReadString('\n')
 
 		if len(password) > 1 {
+
 			v.Password += strings.TrimSpace(string(password))
 
-			ctx := context.Background()
+			//ctx := context.Background()
 
 			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
 			// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
-			productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
+			productorLogin(IpBroker, PuertoBroker, mensaje)
 
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
@@ -354,7 +355,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 				for sig := range c {
 					log.Printf("captured %v, stopping profiler and exiting..", sig)
 					mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-					productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+					productorSalir(IpBroker, PuertoBroker, mensaje)
 					fmt.Println()
 					fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
 					pprof.StopCPUProfile()
@@ -363,7 +364,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 			}()
 
 			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
+			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker)
 
 		} else {
 			fmt.Println("ERROR: Por favor introduzca un password no vacío.")
@@ -376,7 +377,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 }
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
-func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
+func productorLogin(IpBroker, PuertoBroker, credenciales string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "peticiones"
@@ -387,7 +388,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Login"),
 		Value: []byte(credenciales),
 	})
@@ -400,7 +401,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context) {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string) {
 
 	respuestaEngine := ""
 
@@ -432,8 +433,8 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			peticionEntrada := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, peticionEntrada, ctx) // Le indicamos al engine que el visitante desea entrar al parque
-			consumidorMapa(IpBroker, PuertoBroker, ctx)
+			productorMovimientos(IpBroker, PuertoBroker, peticionEntrada) // Le indicamos al engine que el visitante desea entrar al parque
+			consumidorMapa(IpBroker, PuertoBroker)
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
@@ -698,7 +699,7 @@ func actualizaPosicion(movimiento string) {
 }
 
 /* Función que se encarga de enviar los movimientos de los visitantes al engine */
-func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
+func productorMovimientos(IpBroker, PuertoBroker, movimiento string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "peticiones"
@@ -709,7 +710,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Moves"),
 		Value: []byte(movimiento),
 	})
@@ -722,7 +723,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 }
 
 /* Función que se encarga de mandar la solicitud de salida del parque al engine */
-func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context) {
+func productorSalir(IpBroker, PuertoBroker, peticion string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "peticiones"
@@ -733,7 +734,7 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Salir"),
 		Value: []byte(peticion),
 	})
@@ -744,7 +745,7 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 }
 
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
+func consumidorMapa(IpBroker, PuertoBroker string) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -789,7 +790,7 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 			fmt.Println(mapaObtenido)
 			movimiento := obtenerMovimiento(mapa)
 			peticionMovimiento := v.ID + ":" + movimiento + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
+			productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento)
 
 			/*go func() {
 				var respuesta string

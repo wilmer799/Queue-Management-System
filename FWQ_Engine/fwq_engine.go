@@ -77,8 +77,8 @@ func main() {
 	establecerMaxVisitantes(conn, maxVisitantes)
 
 	//Para empezar con el kafka
-	ctx := context.Background()
-	go consumidorEngine(IpKafka, PuertoKafka, ctx, maxVisitantes)
+	//ctx := context.Background()
+	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -90,7 +90,7 @@ func main() {
 			if err != nil {
 				fmt.Println("Error a la hora de codificar el mensaje: %v", err)
 			}
-			productorMapa(IpKafka, PuertoKafka, ctx, mensajeJson)
+			productorMapa(IpKafka, PuertoKafka, mensajeJson)
 
 			/*for i := 0; i < len(visitantesDelEngine); i++ {
 
@@ -216,7 +216,7 @@ func RegistroLog(db *sql.DB, ipPuerto, idVisitante, accion, descripcion string) 
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisitantes int) {
+func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int) {
 
 	//Accediendo a la base de datos
 	//Abrimos la conexion con la base de datos
@@ -307,7 +307,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			//visitantesDelEngine = append(visitantesDelEngine, v.ID)
 
 			respuesta += alias + ":" + "Acceso concedido"
-			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+			productorLogin(IpKafka, PuertoKafka, respuesta)
 
 			sentenciaPreparada.Close()
 
@@ -362,12 +362,12 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				if err != nil {
 					fmt.Println("Error a la hora de codificar el mapa: %v", err)
 				}
-				productorMapa(IpKafka, PuertoKafka, ctx, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
+				productorMapa(IpKafka, PuertoKafka, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 				results.Close()
 
 			} else { // Si el alias no pertenece a un visitante del parque
 				respuesta += alias + ":" + "Parque cerrado"
-				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				productorLogin(IpKafka, PuertoKafka, respuesta)
 				results.Close()
 			}
 			// Si se nos ha solicitado una salida del parque
@@ -404,10 +404,10 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 			if parqueLleno(db, maxVisitantes) {
 				respuesta += alias + ":" + "Aforo al completo"
-				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				productorLogin(IpKafka, PuertoKafka, respuesta)
 			} else {
 				respuesta += alias + ":" + "Parque cerrado"
-				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				productorLogin(IpKafka, PuertoKafka, respuesta)
 			}
 		}
 
@@ -418,7 +418,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 }
 
 /* Función que envía el mensaje de respuesta a la petición de login de un visitante */
-func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
+func productorLogin(IpBroker, PuertoBroker string, respuesta string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "respuesta-login"
@@ -429,7 +429,7 @@ func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuest
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Login"),
 		Value: []byte(respuesta),
 	})
@@ -789,7 +789,7 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) {
 }
 
 /* Función que envia el mapa a los visitantes */
-func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
+func productorMapa(IpBroker, PuertoBroker string, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "movimiento-mapa"
@@ -800,7 +800,7 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Mapa"), //[]byte(strconv.Itoa(i)),
 		Value: []byte(mapa),
 	})
