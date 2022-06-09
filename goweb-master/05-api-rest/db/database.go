@@ -35,7 +35,7 @@ func Ping() {
 	}
 }
 
-//Ferificar si una tabla existe o no
+//Verificar si una tabla existe o no
 func ExistsTable(tableName string) bool {
 	sql := fmt.Sprintf("SHOW TABLES LIKE '%s'", tableName)
 	rows, err := db.Query(sql)

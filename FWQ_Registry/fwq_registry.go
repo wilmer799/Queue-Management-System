@@ -154,6 +154,54 @@ func SendUnprocessableEntity(rw http.ResponseWriter) {
 	response.Send()
 }
 
+// INICIO BLOQUE DATABASE
+
+//username:password@tcp(host:port)/database?charset=utf8
+const url = "root:1234@tcp(localhost:3306)/parque_atracciones"
+
+//Guarda la conexion
+var db *sql.DB
+
+//Realizar lac conexion
+func Connect() {
+	conection, err := sql.Open("mysql", url)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Conexion exitosa")
+	db = conection
+}
+
+//Cerrar la Conexion
+func Close() {
+	db.Close()
+}
+
+//Polimorfismo a Exec
+func Exec(query string, args ...interface{}) (sql.Result, error) {
+	Connect()
+	result, err := db.Exec(query, args...)
+	Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return result, err
+}
+
+//Polimorfismo a Query
+func Query(query string, args ...interface{}) (*sql.Rows, error) {
+	Connect()
+	rows, err := db.Query(query, args...)
+	Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return rows, nil
+}
+
+// FIN BLOQUE DATABASE
+
 /* Función manejadora para la creación del perfil de un visitante */
 func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
@@ -163,7 +211,9 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 	if err := decoder.Decode(&v); err != nil {
 		SendUnprocessableEntity(rw)
 	} else {
-		v.Save()
+
+		// Insertamos el nuevo visitante en la BD
+
 		SendData(rw, v)
 	}
 
