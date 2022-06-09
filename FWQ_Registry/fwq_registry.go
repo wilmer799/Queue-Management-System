@@ -214,7 +214,65 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
 		// Insertamos el nuevo visitante en la BD
 
-		SendData(rw, v)
+		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Comprueba si el visitante está registrado en la aplicación
+
+		// Comprobamos que no se produzcan errores al hacer la consulta
+		if err != nil {
+			panic("Error al hacer la consulta de la información del visitante indicado: " + err.Error())
+		}
+
+		defer results.Close() // Nos aseguramos de cerrar
+
+		// Si el visitante ya se había registrado
+		if results.Next() {
+
+			//conexion.Write([]byte("ERROR: El visitante ya estaba registrado en la aplicación"))
+			//conexion.Close()
+			//SendData(rw, v) //TODO:
+
+			RegistroLog(db, r.RemoteAddr, v.ID, "Error", "El visitante "+v.ID+" ya estaba registrado en la aplicación") // Registramos el evento de log
+
+		} else { // Si es un nuevo usuario
+
+			results, err := db.Query("SELECT * FROM visitante") // Devuelve los visitantes que hay registrados en la aplicación
+
+			// Comrpobamos que no se produzcan errores al hacer la consulta
+			if err != nil {
+				panic("Error al hacer la consulta a la BD: " + err.Error())
+			}
+
+			defer results.Close() // Nos aseguramos de cerrar
+
+			// Nos guardamos el nº actual de visitantes registrados en la aplicación
+			visitantesActuales := 0
+			for results.Next() {
+				visitantesActuales += 1
+			}
+
+			// INSERTAMOS el nuevo visitante en la BD
+			// Preparamos para prevenir inyecciones SQL
+			sentenciaPreparada, err := db.Prepare("INSERT INTO visitante (id, nombre, contraseña, idEnParque) VALUES(?, ?, ?, ?)")
+			if err != nil {
+				panic("Error al preparar la sentencia de inserción: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, HashPassword(v.Password), v.IdEnParque)
+			if err != nil {
+				panic("Error al registrar el visitante: " + err.Error())
+			}
+
+			//conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
+			//conexion.Close()
+
+			RegistroLog(db, r.RemoteAddr, v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
+
+			SendData(rw, v) //TODO:
+
+		}
+
 	}
 
 }
@@ -262,7 +320,7 @@ func HashPassword(password string) string {
 }
 
 /* Función que almacena los registros de auditoría en la tabla visitante */
-func RegistroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion string) {
+func RegistroLog(db *sql.DB, ipPuerto, idVisitante, accion, descripcion string) {
 
 	// Añadimos el evento de log de error al visitante
 	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET ultimoEvento = ? WHERE id = ?")
@@ -275,9 +333,10 @@ func RegistroLog(db *sql.DB, conexion net.Conn, idVisitante, accion, descripcion
 	var eventoLog string // Variable donde vamos a guardar la información de log que le vamos a pasar a la BD
 
 	dateTime := time.Now().Format("2006-01-02 15:04:05") // Fecha y hora del evento con formato personalizado
-	ipVisitante := conexion.RemoteAddr().String()        // IP y puerto de quién ha provoacdo el evento
-	accionRealizada := accion                            // Que acción se realiza
-	descripcionEvento := descripcion                     // Parámetros o descripción del evento
+	//ipVisitante := conexion.RemoteAddr().String()
+	ipVisitante := ipPuerto          // IP y puerto de quién ha provocado el evento
+	accionRealizada := accion        // Que acción se realiza
+	descripcionEvento := descripcion // Parámetros o descripción del evento
 
 	eventoLog += dateTime + " | "
 	eventoLog += ipVisitante + " | "
@@ -390,7 +449,7 @@ func manejoConexion(conexion net.Conn) {
 			conexion.Write([]byte("ERROR: El visitante ya estaba registrado en la aplicación"))
 			conexion.Close()
 
-			RegistroLog(db, conexion, v.ID, "Error", "El visitante "+v.ID+" ya estaba registrado en la aplicación") // Registramos el evento de log
+			RegistroLog(db, conexion.RemoteAddr().String(), v.ID, "Error", "El visitante "+v.ID+" ya estaba registrado en la aplicación") // Registramos el evento de log
 
 		} else { // Si es un nuevo usuario
 
@@ -427,7 +486,7 @@ func manejoConexion(conexion net.Conn) {
 			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
 			conexion.Close()
 
-			RegistroLog(db, conexion, v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
+			RegistroLog(db, conexion.RemoteAddr().String(), v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
 
 		}
 
@@ -463,7 +522,7 @@ func manejoConexion(conexion net.Conn) {
 			conexion.Write([]byte("Visitante actualizado correctamente"))
 			conexion.Close()
 
-			RegistroLog(db, conexion, v.ID, "Modificación", "Visitante "+v.ID+" actualizado correctamente") // Registramos el evento de log
+			RegistroLog(db, conexion.RemoteAddr().String(), v.ID, "Modificación", "Visitante "+v.ID+" actualizado correctamente") // Registramos el evento de log
 
 		} else {
 			conexion.Write([]byte("El id del visitante no existe"))
