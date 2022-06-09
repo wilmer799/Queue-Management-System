@@ -216,7 +216,12 @@ func GetUser(id int) (*visitante, error) {
 /* Función manejadora para la creación del perfil de un visitante */
 func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
+	//Obtener ID
+	vars := mux.Vars(r)
+	userId := vars["id"]
+
 	v := visitante{}
+	v.ID = userId
 	decoder := json.NewDecoder(r.Body)
 
 	if err := decoder.Decode(&v); err != nil {
@@ -313,7 +318,7 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
 	//Obtener ID
 	vars := mux.Vars(r)
-	userId, _ := vars["id"]
+	userId := vars["id"]
 
 	/*if v, err := getUserByRequest(r); err != nil {
 		SendNotFound(rw)
