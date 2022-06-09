@@ -5,15 +5,18 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -63,6 +66,8 @@ func main() {
 	// Cerramos el listener cuando se cierra la aplicación
 	defer l.Close()
 
+	go lanzarServidor() // El servidor funcionará de forma paralela y concurrente a los sockets
+
 	// Bucle infinito hasta la salida del programa
 	for {
 
@@ -80,6 +85,117 @@ func main() {
 		go manejoConexion(conn)
 
 	}
+
+}
+
+// Estructura con el formato de una respuesta http
+type Response struct {
+	Status        int         `json:"status"`
+	Data          interface{} `json:"data"`
+	Message       string      `json:"message"`
+	contentType   string
+	responseWrite http.ResponseWriter
+}
+
+/* Función que crea una respuesta por defecto para los clientes de la API REST */
+func CreateDefaultResponse(rw http.ResponseWriter) Response {
+	return Response{
+		Status:        http.StatusOK,
+		responseWrite: rw,
+		contentType:   "application/json",
+	}
+}
+
+/* Función que envía las respuestas a los clientes de la API REST */
+func (resp *Response) Send() {
+	resp.responseWrite.Header().Set("Content-Type", resp.contentType)
+	resp.responseWrite.WriteHeader(resp.Status)
+
+	// Marshall devuelve 2 valores: Los valores transformados en tipo byte y un error
+	output, _ := json.Marshal(&resp) // Para responder con json
+	//output, _ := xml.Marshal(&resp) // Para responder con xml
+	//output, _ := yaml.Marshal(&resp) // Para responder con yaml
+	fmt.Fprintln(resp.responseWrite, string(output))
+}
+
+/* Función que envía los datos solicitados al cliente API REST */
+func SendData(rw http.ResponseWriter, data interface{}) {
+	response := CreateDefaultResponse(rw)
+	response.Data = data
+	response.Send()
+}
+
+/* Función utilizada junto a la de abajo al momento de eliminar,
+al momento de recuperar una fila o todas las filas de la BD y
+que se produzcan errores para poder manejarlos. */
+func (resp *Response) NotFound() {
+	resp.Status = http.StatusNotFound
+	resp.Message = "Resource Not Found"
+}
+
+/* Función que manda una respuesta indicando que el recurso solicitado no ha sido encontrado */
+func SendNotFound(rw http.ResponseWriter) {
+	response := CreateDefaultResponse(rw)
+	response.NotFound()
+	response.Send()
+}
+
+/* Función utilizada junto a la de abajo al momento de insertar o
+actualizar una fila de la BD y que se produzcan errores para poder manejarlos. */
+func (resp *Response) UnprocessableEntity() {
+	resp.Status = http.StatusUnprocessableEntity
+	resp.Message = "UnprocessableEntity Not Found"
+}
+
+/* Función que manda una respuesta indicando que la entidad recibida no es procesable */
+func SendUnprocessableEntity(rw http.ResponseWriter) {
+	response := CreateDefaultResponse(rw)
+	response.UnprocessableEntity()
+	response.Send()
+}
+
+/* Función manejadora para la creación del perfil de un visitante */
+func crearPerfil(rw http.ResponseWriter, r *http.Request) {
+
+	v := visitante{}
+	decoder := json.NewDecoder(r.Body)
+
+	if err := decoder.Decode(&v); err != nil {
+		SendUnprocessableEntity(rw)
+	} else {
+		v.Save()
+		SendData(rw, v)
+	}
+
+}
+
+/* Función manejadora para la modificación del perfil de un visitante */
+func editarPerfil(rw http.ResponseWriter, r *http.Request) {
+
+	/*var userId int
+
+	if v, err := getUserByRequest(r); err != nil {
+		SendNotFound(rw)
+	} else {
+		userId = v.ID
+	}*/
+
+}
+
+/* Función que se encarga de arrancar el servidor API REST */
+func lanzarServidor() {
+
+	// IMPLEMENTAMOS EL API REST
+	// Rutas
+	mux := mux.NewRouter()
+
+	// Responder al cliente
+	mux.HandleFunc("/crear/{id:[A-Za-z0-9_]+}", crearPerfil).Methods("POST")
+	mux.HandleFunc("/editar/{id:[A-Za-z0-9_]+}", editarPerfil).Methods("PUT")
+
+	// Servidor
+	fmt.Println("Servidor corriendo en ...") //TODO:
+	log.Fatal(http.ListenAndServe(":3000", mux))
 
 }
 

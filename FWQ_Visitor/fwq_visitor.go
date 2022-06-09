@@ -344,6 +344,33 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 			//ctx := context.Background()
 
+			// SECURIZAMOS LA COMUNICACIÓN EN KAFKA
+			/*parDeClaves, err := tls.LoadX509KeyPair("cert/kafka/cert.pem", "cert/kafka/key.pem")
+			if err != nil {
+				log.Fatalf("Error al cargar la clave de acceso o el certificado de acceso: %s", err)
+			}
+
+			CAcert, err := ioutil.ReadFile("cert/kafka/cert.pem")
+			if err != nil {
+				log.Fatalf("Error al leer el fichero del certificado autofirmado: %s", err)
+			}
+
+			CAcertPool := x509.NewCertPool()
+			ok := CAcertPool.
+			if !ok {
+				log.Fatalf("Error al parsear el fichero del certificado autofirmado: %s", err)
+			}
+
+			dialer := &kafka.Dialer{
+				Timeout:   10 * time.Second,
+				DualStack: true,
+				TLS: &tls.Config{
+					Certificates: []tls.Certificate{parDeClaves},
+					//RootCAs:      CAcertPool,
+				},
+			}*/
+
+			// Preparamos las credenciales de inicio de sesión del visitante
 			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
 			// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
@@ -386,6 +413,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string) {
 		Brokers:          []string{brokerAddress},
 		Topic:            topic,
 		CompressionCodec: kafka.Snappy.Codec(),
+		//Dialer:           dialer,
 	})
 
 	err := w.WriteMessages(context.Background(), kafka.Message{
@@ -732,6 +760,7 @@ func productorSalir(IpBroker, PuertoBroker, peticion string) {
 		Brokers:          []string{brokerAddress},
 		Topic:            topic,
 		CompressionCodec: kafka.Snappy.Codec(),
+		//Dialer:           dialer,
 	})
 
 	err := w.WriteMessages(context.Background(), kafka.Message{
