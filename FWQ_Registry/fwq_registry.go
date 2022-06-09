@@ -88,6 +88,8 @@ func main() {
 
 }
 
+// INICIO BLOQUE RESPONSE
+
 // Estructura con el formato de una respuesta http
 type Response struct {
 	Status        int         `json:"status"`
@@ -126,7 +128,7 @@ func SendData(rw http.ResponseWriter, data interface{}) {
 }
 
 /* Función utilizada junto a la de abajo al momento de eliminar,
-al momento de recuperar una fila o todas las filas de la BD y
+recuperar una fila o todas las filas de la BD y
 que se produzcan errores para poder manejarlos. */
 func (resp *Response) NotFound() {
 	resp.Status = http.StatusNotFound
@@ -137,6 +139,21 @@ func (resp *Response) NotFound() {
 func SendNotFound(rw http.ResponseWriter) {
 	response := CreateDefaultResponse(rw)
 	response.NotFound()
+	response.Send()
+}
+
+/* Función utilizada junto a la de abajo al momento de eliminar,
+recuperar una fila o todas las filas de la BD y
+que se produzcan errores para poder manejarlos. */
+func (resp *Response) YaExiste() {
+	resp.Status = http.StatusNoContent
+	resp.Message = "El visitante ya estaba registrado"
+}
+
+/* Función que manda una respuesta indicando que el recurso solicitado no ha sido encontrado */
+func SendYaExiste(rw http.ResponseWriter) {
+	response := CreateDefaultResponse(rw)
+	response.YaExiste()
 	response.Send()
 }
 
@@ -154,53 +171,47 @@ func SendUnprocessableEntity(rw http.ResponseWriter) {
 	response.Send()
 }
 
-// INICIO BLOQUE DATABASE
+// FIN BLOQUE RESPONSE
 
-//username:password@tcp(host:port)/database?charset=utf8
-const url = "root:1234@tcp(localhost:3306)/parque_atracciones"
+// INICIO BLOQUE FUNCIONES VISITANTES
 
-//Guarda la conexion
-var db *sql.DB
+//Construir visitante
+/*func NewUser(username, password, email string) *visitante {
+	user := &visitante{Username: username, Password: password, Email: email}
+	return user
+}
 
-//Realizar lac conexion
-func Connect() {
-	conection, err := sql.Open("mysql", url)
-	if err != nil {
-		panic(err)
+//Obtener un visitante
+func GetUser(id int) (*visitante, error) {
+	user := NewUser("", "", "")
+
+	sql := "SELECT id, username, password, email FROM users WHERE id=?"
+	if rows, err := db.Query(sql, id); err != nil {
+		return nil, err
+	} else {
+		for rows.Next() {
+			rows.Scan(&user.Id, &user.Username, &user.Password, &user.Email)
+		}
+		return user, nil
 	}
-	fmt.Println("Conexion exitosa")
-	db = conection
-}
+}*/
 
-//Cerrar la Conexion
-func Close() {
-	db.Close()
-}
+// FIN BLOQUE FUNCIONES VISITANTES
 
-//Polimorfismo a Exec
-func Exec(query string, args ...interface{}) (sql.Result, error) {
-	Connect()
-	result, err := db.Exec(query, args...)
-	Close()
-	if err != nil {
-		fmt.Println(err)
+// INICIO BLOQUE HANDLERS
+
+/* Función que devuelve un visitante dependiendo del id pasado en el request */
+/*func getVisitanteByRequest(r *http.Request) (visitante, error) {
+	//Obtener ID
+	vars := mux.Vars(r)
+	userId, _ := strconv.Atoi(vars["id"])
+
+	if user, err := GetVisitante(userId); err != nil {
+		return *user, err
+	} else {
+		return *user, nil
 	}
-	return result, err
-}
-
-//Polimorfismo a Query
-func Query(query string, args ...interface{}) (*sql.Rows, error) {
-	Connect()
-	rows, err := db.Query(query, args...)
-	Close()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return rows, nil
-}
-
-// FIN BLOQUE DATABASE
+}*/
 
 /* Función manejadora para la creación del perfil de un visitante */
 func crearPerfil(rw http.ResponseWriter, r *http.Request) {
@@ -213,6 +224,16 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 	} else {
 
 		// Insertamos el nuevo visitante en la BD
+
+		// Accedemos a la base de datos, empezando por abrir la conexión
+		db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+
+		// Comprobamos que no haya error al conectarse
+		if err != nil {
+			panic("Error al conectarse con la BD: " + err.Error())
+		}
+
+		defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
 
 		results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Comprueba si el visitante está registrado en la aplicación
 
@@ -280,15 +301,78 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 /* Función manejadora para la modificación del perfil de un visitante */
 func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
-	/*var userId int
+	// Accedemos a la base de datos, empezando por abrir la conexión
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
 
-	if v, err := getUserByRequest(r); err != nil {
+	// Comprobamos que no haya error al conectarse
+	if err != nil {
+		panic("Error al conectarse con la BD: " + err.Error())
+	}
+
+	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
+
+	//Obtener ID
+	vars := mux.Vars(r)
+	userId, _ := vars["id"]
+
+	/*if v, err := getUserByRequest(r); err != nil {
 		SendNotFound(rw)
 	} else {
 		userId = v.ID
 	}*/
 
+	results, err := db.Query("SELECT * FROM visitante WHERE id = ?", userId) // Comprueba si el visitante está registrado en la aplicación
+
+	// Comprobamos que no se produzcan errores al hacer la consulta
+	if err != nil {
+		panic("Error al hacer la consulta de la información del visitante indicado: " + err.Error())
+	}
+
+	defer results.Close() // Nos aseguramos de cerrar
+
+	// Si el ID del visitante indicado por el cliente existe
+	if results.Next() {
+
+		v := visitante{}
+		decoder := json.NewDecoder(r.Body)
+
+		if err := decoder.Decode(&v); err != nil {
+			SendUnprocessableEntity(rw)
+		} else {
+
+			// MODIFICAMOS la información de dicho visitante en la BD
+			// Preparamos para prevenir inyecciones SQL
+			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET nombre = ?, contraseña = ? WHERE id = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de actualización: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(v.Nombre, HashPassword(v.Password), v.ID)
+			if err != nil {
+				panic("Error al modificar el visitante: " + err.Error())
+			}
+
+			//conexion.Write([]byte("Visitante actualizado correctamente"))
+			//conexion.Close()
+
+			RegistroLog(db, r.RemoteAddr, v.ID, "Modificación", "Visitante "+v.ID+" actualizado correctamente") // Registramos el evento de log
+
+			//v.ID = userId
+			SendData(rw, v)
+		}
+
+	} else {
+		//conexion.Write([]byte("El id del visitante no existe"))
+		//conexion.Close()
+		SendNotFound(rw)
+	}
+
 }
+
+// FIN BLOQUE HANDLERS
 
 /* Función que se encarga de arrancar el servidor API REST */
 func lanzarServidor() {
