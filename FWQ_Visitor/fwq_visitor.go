@@ -3,10 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/aes"
 	hho "crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
@@ -91,6 +94,7 @@ func main() {
 
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
+
 	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
 
 }
@@ -345,30 +349,13 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 			//ctx := context.Background()
 
 			// SECURIZAMOS LA COMUNICACIÓN EN KAFKA
-			/*parDeClaves, err := tls.LoadX509KeyPair("cert/kafka/cert.pem", "cert/kafka/key.pem")
+			// Cargamos la clave de cifrado AES del archivo
+			fichero, err := ioutil.ReadFile("claveCifradoAES.txt")
 			if err != nil {
-				log.Fatalf("Error al cargar la clave de acceso o el certificado de acceso: %s", err)
+				log.Fatal("Error al leer el archivo de la clave de cifrado AES: ", err)
 			}
 
-			CAcert, err := ioutil.ReadFile("cert/kafka/cert.pem")
-			if err != nil {
-				log.Fatalf("Error al leer el fichero del certificado autofirmado: %s", err)
-			}
-
-			CAcertPool := x509.NewCertPool()
-			ok := CAcertPool.
-			if !ok {
-				log.Fatalf("Error al parsear el fichero del certificado autofirmado: %s", err)
-			}
-
-			dialer := &kafka.Dialer{
-				Timeout:   10 * time.Second,
-				DualStack: true,
-				TLS: &tls.Config{
-					Certificates: []tls.Certificate{parDeClaves},
-					//RootCAs:      CAcertPool,
-				},
-			}*/
+			claveCifrado := string(fichero) // Clave de cifrado AES de 32 bits
 
 			// Preparamos las credenciales de inicio de sesión del visitante
 			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
@@ -402,6 +389,25 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 	}
 
 }
+
+/* Función que realizar la encriptación mediante el algoritmo AES*/
+func encriptacionAES(claveCifrado []byte, textoPlano string) string {
+
+	// Creamos el cifrado AES
+	cifradoAES, err := aes.NewCipher(claveCifrado)
+	if err != nil {
+		log.Fatal("Error al crear el cifrado AES: ", err)
+	}
+
+	salida := make([]byte, len(textoPlano))
+
+	cifradoAES.Encrypt(salida, []byte(textoPlano))
+
+	return hex.EncodeToString(salida)
+
+}
+
+/* Función que realiza la desencriptación utilizando el algoritmo AES */
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
 func productorLogin(IpBroker, PuertoBroker, credenciales string) {
