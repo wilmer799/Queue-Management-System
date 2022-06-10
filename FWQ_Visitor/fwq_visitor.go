@@ -346,8 +346,6 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 			v.Password += strings.TrimSpace(string(password))
 
-			//ctx := context.Background()
-
 			// SECURIZAMOS LA COMUNICACIÓN EN KAFKA
 			// Cargamos la clave de cifrado AES del archivo
 			fichero, err := ioutil.ReadFile("claveCifradoAES.txt")
@@ -355,13 +353,16 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 				log.Fatal("Error al leer el archivo de la clave de cifrado AES: ", err)
 			}
 
-			claveCifrado := string(fichero) // Clave de cifrado AES de 32 bits
+			clave := string(fichero) // Clave de 32 bits
 
 			// Preparamos las credenciales de inicio de sesión del visitante
 			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
+			// Ciframos el mensaje
+			mensajeCifrado := encriptacionAES([]byte(clave), mensaje)
+
 			// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
-			productorLogin(IpBroker, PuertoBroker, mensaje)
+			productorLogin(IpBroker, PuertoBroker, mensajeCifrado)
 
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
@@ -369,7 +370,8 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 				for sig := range c {
 					log.Printf("captured %v, stopping profiler and exiting..", sig)
 					mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-					productorSalir(IpBroker, PuertoBroker, mensaje)
+					mensajeCifrado := encriptacionAES([]byte(clave), mensaje)
+					productorSalir(IpBroker, PuertoBroker, mensajeCifrado)
 					fmt.Println()
 					fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
 					pprof.StopCPUProfile()
@@ -378,7 +380,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 			}()
 
 			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker)
+			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, clave)
 
 		} else {
 			fmt.Println("ERROR: Por favor introduzca un password no vacío.")
@@ -391,23 +393,41 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 }
 
 /* Función que realizar la encriptación mediante el algoritmo AES*/
-func encriptacionAES(claveCifrado []byte, textoPlano string) string {
+func encriptacionAES(clave []byte, textoPlano string) string {
 
 	// Creamos el cifrado AES
-	cifradoAES, err := aes.NewCipher(claveCifrado)
+	c, err := aes.NewCipher(clave)
 	if err != nil {
 		log.Fatal("Error al crear el cifrado AES: ", err)
 	}
 
 	salida := make([]byte, len(textoPlano))
 
-	cifradoAES.Encrypt(salida, []byte(textoPlano))
+	c.Encrypt(salida, []byte(textoPlano))
 
 	return hex.EncodeToString(salida)
 
 }
 
 /* Función que realiza la desencriptación utilizando el algoritmo AES */
+func desencriptacionAES(clave []byte, texto string) string {
+
+	textoCifrado, _ := hex.DecodeString(texto)
+
+	// Creamos el cifrado AES
+	c, err := aes.NewCipher(clave)
+	if err != nil {
+		log.Fatal("Error al crear el cifrado AES: ", err)
+	}
+
+	textoPlano := make([]byte, len(textoCifrado))
+	c.Decrypt(textoPlano, textoCifrado)
+
+	salida := string(textoPlano[:])
+
+	return salida
+
+}
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
 func productorLogin(IpBroker, PuertoBroker, credenciales string) {
@@ -435,7 +455,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string) {
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string) {
+func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, clave string) {
 
 	respuestaEngine := ""
 
@@ -460,15 +480,16 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string) 
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		respuestaEngine = strings.TrimSpace(string(m.Value))
+		respuestaEngine = desencriptacionAES([]byte(clave), strings.TrimSpace(string(m.Value)))
 		log.Println("Respuesta del engine: " + respuestaEngine)
 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			peticionEntrada := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, peticionEntrada) // Le indicamos al engine que el visitante desea entrar al parque
-			consumidorMapa(IpBroker, PuertoBroker)
+			peticionEntradaCifrada := encriptacionAES([]byte(clave), peticionEntrada)
+			productorMovimientos(IpBroker, PuertoBroker, peticionEntradaCifrada) // Le indicamos al engine que el visitante desea entrar al parque
+			consumidorMapa(IpBroker, PuertoBroker, clave)
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
@@ -780,7 +801,7 @@ func productorSalir(IpBroker, PuertoBroker, peticion string) {
 }
 
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpBroker, PuertoBroker string) {
+func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -800,8 +821,12 @@ func consumidorMapa(IpBroker, PuertoBroker string) {
 		if err != nil {
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
+
+		// Desciframos el mapa
+		mapaDescifrado := desencriptacionAES([]byte(clave), string(m.Value))
+
 		var mapaObtenido string
-		err = json.Unmarshal(m.Value, &mapaObtenido)
+		err = json.Unmarshal([]byte(mapaDescifrado), &mapaObtenido)
 
 		if err != nil {
 			fmt.Println("Error al decodificar el mapa: %v\n", err)
@@ -825,7 +850,8 @@ func consumidorMapa(IpBroker, PuertoBroker string) {
 			fmt.Println(mapaObtenido)
 			movimiento := obtenerMovimiento(mapa)
 			peticionMovimiento := v.ID + ":" + movimiento + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento)
+			peticionMovimientoCifrada := encriptacionAES([]byte(clave), peticionMovimiento)
+			productorMovimientos(IpBroker, PuertoBroker, peticionMovimientoCifrada)
 
 			/*go func() {
 				var respuesta string
