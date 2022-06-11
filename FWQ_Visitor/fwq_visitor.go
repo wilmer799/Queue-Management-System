@@ -423,7 +423,7 @@ func desencriptacionAES(clave []byte, texto string) string {
 	textoPlano := make([]byte, len(textoCifrado))
 	c.Decrypt(textoPlano, textoCifrado)
 
-	salida := string(textoPlano[:])
+	salida := string(textoPlano[:]) //Crea e inicializa salida con el contenido total del slice textoPlano
 
 	return salida
 

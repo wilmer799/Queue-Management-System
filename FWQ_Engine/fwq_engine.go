@@ -297,9 +297,9 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
 		}
 
-		//fmt.Println("Petición recibida: " + string(m.Value))
-
 		cadena := desencriptacionAES([]byte(clave), string(m.Value))
+
+		fmt.Println("Petición recibida: " + cadena)
 
 		cadenaPeticion := strings.Split(cadena, ":")
 
