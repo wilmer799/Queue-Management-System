@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"context"
 	"crypto/aes"
+	"crypto/cipher"
 	"database/sql"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -53,6 +54,9 @@ type atraccion struct {
 	Parque       string `json:"parqueAtracciones"`
 }
 
+// Initialize victor, which is the random bytes
+var iv = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
+
 /*
  * @Description : Función main de fwq_engine
  * @Author : Wilmer Fabricio Bravo Shuira
@@ -98,11 +102,15 @@ func main() {
 		for sig := range c {
 			log.Printf("captured %v, stopping profiler and exiting..", sig)
 			mensaje := "Engine no disponible"
-			mensajeCifrado := encriptacionAES([]byte(clave), mensaje)
+			mensajeCifrado, err := encriptacionAES(string(mensaje), clave)
+			if err != nil {
+				panic(err)
+			}
 			mensajeJson, err := json.Marshal(mensajeCifrado)
 			if err != nil {
 				fmt.Printf("Error a la hora de codificar el mensaje: %v\n", err)
 			}
+
 			productorMapa(IpKafka, PuertoKafka, mensajeJson)
 
 			/*for i := 0; i < len(visitantesDelEngine); i++ {
@@ -198,41 +206,42 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-/* Función que realizar la encriptación mediante el algoritmo AES*/
-func encriptacionAES(clave []byte, textoPlano string) string {
-
-	// Creamos el cifrado AES
-	c, err := aes.NewCipher(clave)
-	if err != nil {
-		log.Fatal("Error al crear el cifrado AES: ", err)
-	}
-
-	salida := make([]byte, len(textoPlano))
-
-	c.Encrypt(salida, []byte(textoPlano))
-
-	return hex.EncodeToString(salida)
-
+func encodeBase64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
 }
 
-/* Función que realiza la desencriptación utilizando el algoritmo AES */
-func desencriptacionAES(clave []byte, texto string) string {
-
-	textoCifrado, _ := hex.DecodeString(texto)
-
-	// Creamos el cifrado AES
-	c, err := aes.NewCipher(clave)
+func decodeBase64(s string) []byte {
+	data, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		log.Fatal("Error al crear el cifrado AES: ", err)
+		panic(err)
 	}
+	return data
+}
 
-	textoPlano := make([]byte, len(textoCifrado))
-	c.Decrypt(textoPlano, textoCifrado)
+// Encrypt method is to encrypt or hide any classified text
+func encriptacionAES(text, secretKey string) (string, error) {
+	block, err := aes.NewCipher([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+	plainText := []byte(text)
+	cfb := cipher.NewCFBEncrypter(block, iv)
+	cipherText := make([]byte, len(plainText))
+	cfb.XORKeyStream(cipherText, plainText)
+	return encodeBase64(cipherText), nil
+}
 
-	salida := string(textoPlano[:])
-
-	return salida
-
+// Decrypt method is to extract back the encrypted text
+func desencriptacionAES(text, secretKey string) (string, error) {
+	block, err := aes.NewCipher([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+	cipherText := decodeBase64(text)
+	cfb := cipher.NewCFBDecrypter(block, iv)
+	plainText := make([]byte, len(cipherText))
+	cfb.XORKeyStream(plainText, cipherText)
+	return string(plainText), nil
 }
 
 /* Función que almacena los registros de auditoría en la tabla visitante */
@@ -297,7 +306,10 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
 		}
 
-		cadena := desencriptacionAES([]byte(clave), string(m.Value))
+		cadena, err := desencriptacionAES(string(m.Value), clave)
+		if err != nil {
+			panic(err)
+		}
 
 		fmt.Println("Petición recibida: " + cadena)
 
@@ -359,7 +371,10 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 			//visitantesDelEngine = append(visitantesDelEngine, v.ID)
 
 			respuesta += alias + ":" + "Acceso concedido"
-			respuestaCifrada := encriptacionAES([]byte(clave), respuesta)
+			respuestaCifrada, err := encriptacionAES(respuesta, clave)
+			if err != nil {
+				panic(err)
+			}
 			productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 
 			sentenciaPreparada.Close()
@@ -408,8 +423,12 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 						}
 					}
 				}
+
 				// Encriptamos el mapa
-				representacionCifrada := encriptacionAES([]byte(clave), representacion)
+				representacionCifrada, err := encriptacionAES(representacion, clave)
+				if err != nil {
+					panic(err)
+				}
 
 				//Convertimos el mapaActualizado a formato jSON
 				//Esta función devuelve un array de byte
@@ -418,12 +437,16 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 				if err != nil {
 					fmt.Printf("Error a la hora de codificar el mapa: %v\n", err)
 				}
+
 				productorMapa(IpKafka, PuertoKafka, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 				results.Close()
 
 			} else { // Si el alias no pertenece a un visitante del parque
 				respuesta += alias + ":" + "Parque cerrado"
-				respuestaCifrada := encriptacionAES([]byte(clave), respuesta)
+				respuestaCifrada, err := encriptacionAES(respuesta, clave)
+				if err != nil {
+					panic(err)
+				}
 				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 				results.Close()
 			}
@@ -461,11 +484,17 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 
 			if parqueLleno(db, maxVisitantes) {
 				respuesta += alias + ":" + "Aforo al completo"
-				respuestaCifrada := encriptacionAES([]byte(clave), respuesta)
+				respuestaCifrada, err := encriptacionAES(respuesta, clave)
+				if err != nil {
+					panic(err)
+				}
 				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 			} else {
 				respuesta += alias + ":" + "Parque cerrado"
-				respuestaCifrada := encriptacionAES([]byte(clave), respuesta)
+				respuestaCifrada, err := encriptacionAES(respuesta, clave)
+				if err != nil {
+					panic(err)
+				}
 				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 			}
 		}

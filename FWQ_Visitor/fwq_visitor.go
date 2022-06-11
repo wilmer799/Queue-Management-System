@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"context"
 	"crypto/aes"
+	"crypto/cipher"
 	hho "crypto/rand"
 	"crypto/tls"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -74,6 +75,11 @@ var a = atraccion{ // Guardamos la información de la atraccion que nos hace fal
 	Posiciony:    -1,
 	TiempoEspera: -1,
 }
+
+// Initialize victor, which is the random bytes
+var iv = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
+
+//type HexData []byte
 
 /**
 * Función main de los visitantes
@@ -359,7 +365,10 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
 			// Ciframos el mensaje
-			mensajeCifrado := encriptacionAES([]byte(clave), mensaje)
+			mensajeCifrado, err := encriptacionAES(mensaje, clave)
+			if err != nil {
+				panic(err)
+			}
 
 			// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
 			productorLogin(IpBroker, PuertoBroker, mensajeCifrado)
@@ -370,7 +379,10 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 				for sig := range c {
 					log.Printf("captured %v, stopping profiler and exiting..", sig)
 					mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-					mensajeCifrado := encriptacionAES([]byte(clave), mensaje)
+					mensajeCifrado, err := encriptacionAES(mensaje, clave)
+					if err != nil {
+						panic(err)
+					}
 					productorSalir(IpBroker, PuertoBroker, mensajeCifrado)
 					fmt.Println()
 					fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
@@ -392,41 +404,42 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 }
 
-/* Función que realizar la encriptación mediante el algoritmo AES*/
-func encriptacionAES(clave []byte, textoPlano string) string {
-
-	// Creamos el cifrado AES
-	c, err := aes.NewCipher(clave)
-	if err != nil {
-		log.Fatal("Error al crear el cifrado AES: ", err)
-	}
-
-	salida := make([]byte, len(textoPlano))
-
-	c.Encrypt(salida, []byte(textoPlano))
-
-	return hex.EncodeToString(salida)
-
+func encodeBase64(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
 }
 
-/* Función que realiza la desencriptación utilizando el algoritmo AES */
-func desencriptacionAES(clave []byte, texto string) string {
-
-	textoCifrado, _ := hex.DecodeString(texto)
-
-	// Creamos el cifrado AES
-	c, err := aes.NewCipher(clave)
+func decodeBase64(s string) []byte {
+	data, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		log.Fatal("Error al crear el cifrado AES: ", err)
+		panic(err)
 	}
+	return data
+}
 
-	textoPlano := make([]byte, len(textoCifrado))
-	c.Decrypt(textoPlano, textoCifrado)
+// Encrypt method is to encrypt or hide any classified text
+func encriptacionAES(text, secretKey string) (string, error) {
+	block, err := aes.NewCipher([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+	plainText := []byte(text)
+	cfb := cipher.NewCFBEncrypter(block, iv)
+	cipherText := make([]byte, len(plainText))
+	cfb.XORKeyStream(cipherText, plainText)
+	return encodeBase64(cipherText), nil
+}
 
-	salida := string(textoPlano[:]) //Crea e inicializa salida con el contenido total del slice textoPlano
-
-	return salida
-
+// Decrypt method is to extract back the encrypted text
+func desencriptacionAES(text, secretKey string) (string, error) {
+	block, err := aes.NewCipher([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+	cipherText := decodeBase64(text)
+	cfb := cipher.NewCFBDecrypter(block, iv)
+	plainText := make([]byte, len(cipherText))
+	cfb.XORKeyStream(plainText, cipherText)
+	return string(plainText), nil
 }
 
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
@@ -480,14 +493,21 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, clave s
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		respuestaEngine = desencriptacionAES([]byte(clave), strings.TrimSpace(string(m.Value)))
+		respuestaEngine, err = desencriptacionAES(strings.TrimSpace(string(m.Value)), clave)
+		if err != nil {
+			panic(err)
+		}
+
 		log.Println("Respuesta del engine: " + respuestaEngine)
 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			peticionEntrada := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			peticionEntradaCifrada := encriptacionAES([]byte(clave), peticionEntrada)
+			peticionEntradaCifrada, err := encriptacionAES(peticionEntrada, clave)
+			if err != nil {
+				panic(err)
+			}
 			productorMovimientos(IpBroker, PuertoBroker, peticionEntradaCifrada) // Le indicamos al engine que el visitante desea entrar al parque
 			consumidorMapa(IpBroker, PuertoBroker, clave)
 			dentroParque = false
@@ -800,6 +820,19 @@ func productorSalir(IpBroker, PuertoBroker, peticion string) {
 
 }
 
+/*func (h *HexData) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	*h = HexData(decoded)
+	return nil
+}*/
+
 /* Función que recibe el mapa del engine y lo devuelve formateado */
 func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 
@@ -822,18 +855,21 @@ func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		// Desciframos el mapa
-		mapaDescifrado := desencriptacionAES([]byte(clave), string(m.Value))
-
 		var mapaObtenido string
-		err = json.Unmarshal([]byte(mapaDescifrado), &mapaObtenido)
+		err = json.Unmarshal([]byte(string(m.Value)), &mapaObtenido)
 
 		if err != nil {
 			fmt.Printf("Error al decodificar el mapa: %v\n", err)
 		}
 
+		// Desciframos el mapa
+		mapaDescifrado, err := desencriptacionAES(mapaObtenido, clave)
+		if err != nil {
+			panic(err)
+		}
+
 		// Como el parque ha cerrado tenemos que reiniciar la información del visitante
-		if mapaObtenido == "Engine no disponible" {
+		if mapaDescifrado == "Engine no disponible" {
 			fmt.Println("El engine ha dejado de estar disponible")
 			v.DentroParque = 0
 			v.ID = ""
@@ -845,12 +881,16 @@ func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 		} else {
 
 			// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
-			cadenaProcesada := strings.Split(string(m.Value), "|")
+			//cadenaProcesada := strings.Split(string(m.Value), "|")
+			cadenaProcesada := strings.Split(mapaDescifrado, "|")
 			var mapa [20][20]string = procesarMapa(cadenaProcesada)
-			fmt.Println(mapaObtenido)
+			fmt.Println(mapaDescifrado)
 			movimiento := obtenerMovimiento(mapa)
 			peticionMovimiento := v.ID + ":" + movimiento + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			peticionMovimientoCifrada := encriptacionAES([]byte(clave), peticionMovimiento)
+			peticionMovimientoCifrada, err := encriptacionAES(peticionMovimiento, clave)
+			if err != nil {
+				panic(err)
+			}
 			productorMovimientos(IpBroker, PuertoBroker, peticionMovimientoCifrada)
 
 			/*go func() {
