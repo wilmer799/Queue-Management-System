@@ -829,7 +829,7 @@ func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 		err = json.Unmarshal([]byte(mapaDescifrado), &mapaObtenido)
 
 		if err != nil {
-			fmt.Println("Error al decodificar el mapa: %v\n", err)
+			fmt.Printf("Error al decodificar el mapa: %v\n", err)
 		}
 
 		// Como el parque ha cerrado tenemos que reiniciar la información del visitante
