@@ -66,7 +66,7 @@ func main() {
 	// Cerramos el listener cuando se cierra la aplicación
 	defer l.Close()
 
-	go lanzarServidor() // El servidor funcionará de forma paralela y concurrente a los sockets
+	go lanzarServidor(host) // El servidor funcionará de forma paralela y concurrente a los sockets
 
 	// Bucle infinito hasta la salida del programa
 	for {
@@ -285,7 +285,7 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 			defer sentenciaPreparada.Close()
 
 			// Ejecutar sentencia, un valor por cada '?'
-			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, HashPassword(v.Password), v.IdEnParque)
+			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, HashPassword(v.Password), string(v.ID[0]))
 			if err != nil {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
@@ -380,7 +380,7 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 // FIN BLOQUE HANDLERS
 
 /* Función que se encarga de arrancar el servidor API REST */
-func lanzarServidor() {
+func lanzarServidor(host string) {
 
 	// IMPLEMENTAMOS EL API REST
 	// Rutas
@@ -391,7 +391,7 @@ func lanzarServidor() {
 	mux.HandleFunc("/editar/{id:[A-Za-z0-9_]+}", editarPerfil).Methods("PUT")
 
 	// Servidor
-	fmt.Println("Servidor corriendo en ...") //TODO:
+	fmt.Println("Servidor corriendo en https://" + host + ":3000") //TODO:
 	log.Fatal(http.ListenAndServe(":3000", mux))
 
 }
