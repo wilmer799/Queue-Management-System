@@ -206,42 +206,52 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func encodeBase64(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
+/* Función que nos simplifica la llamada de la función EncodeToString en base 64 */
+func encodeBase64(src []byte) string {
+	return base64.StdEncoding.EncodeToString(src)
 }
 
+/* Función que nos simplifica la llamada a DecodeString en base 64 */
 func decodeBase64(s string) []byte {
-	data, err := base64.StdEncoding.DecodeString(s)
+	datos, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		panic(err)
 	}
-	return data
+	return datos
 }
 
-// Encrypt method is to encrypt or hide any classified text
-func encriptacionAES(text, secretKey string) (string, error) {
-	block, err := aes.NewCipher([]byte(secretKey))
+/* Función de encriptación que utiliza el algoritmo AES */
+func encriptacionAES(texto, claveSecreta string) (string, error) {
+
+	bloqueDeCifrado, err := aes.NewCipher([]byte(claveSecreta)) // Creamos un nuevo bloque de cifrado AES
 	if err != nil {
 		return "", err
 	}
-	plainText := []byte(text)
-	cfb := cipher.NewCFBEncrypter(block, iv)
-	cipherText := make([]byte, len(plainText))
-	cfb.XORKeyStream(cipherText, plainText)
-	return encodeBase64(cipherText), nil
+
+	textoPlano := []byte(texto)
+	cfb := cipher.NewCFBEncrypter(bloqueDeCifrado, iv) // Creamos el stream de encriptación
+	textoCifrado := make([]byte, len(textoPlano))
+	cfb.XORKeyStream(textoCifrado, textoPlano) // Sustituye cada byte de textoPlano por cada byte en el stream de bytes cifrado (textoCifrado)
+
+	return encodeBase64(textoCifrado), nil
+
 }
 
-// Decrypt method is to extract back the encrypted text
-func desencriptacionAES(text, secretKey string) (string, error) {
-	block, err := aes.NewCipher([]byte(secretKey))
+/* Función de desencriptación que utiliza el algoritmo AES */
+func desencriptacionAES(texto, claveSecreta string) (string, error) {
+
+	bloqueDeCifrado, err := aes.NewCipher([]byte(claveSecreta)) // Creamos un nuevo bloque de cifrado AES
 	if err != nil {
 		return "", err
 	}
-	cipherText := decodeBase64(text)
-	cfb := cipher.NewCFBDecrypter(block, iv)
-	plainText := make([]byte, len(cipherText))
-	cfb.XORKeyStream(plainText, cipherText)
-	return string(plainText), nil
+
+	textoCifrado := decodeBase64(texto)
+	cfb := cipher.NewCFBDecrypter(bloqueDeCifrado, iv) // Creamos el stream de desencriptación
+	textoPlano := make([]byte, len(textoCifrado))
+	cfb.XORKeyStream(textoPlano, textoCifrado) // Sustituye cada byte de textoCifrado por cada byte en textoPlano
+
+	return string(textoPlano), nil
+
 }
 
 /* Función que almacena los registros de auditoría en la tabla visitante */
