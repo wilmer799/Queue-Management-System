@@ -120,10 +120,19 @@ func (resp *Response) Send() {
 	fmt.Fprintln(resp.responseWrite, string(output))
 }
 
-/* Función que envía los datos solicitados al cliente API REST */
-func SendData(rw http.ResponseWriter, data interface{}) {
+/* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
+func SendDataCrearPerfil(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
-	response.Data = data
+	//response.Data = data
+	response.Message = "Visitante registrado correctamente"
+	response.Send()
+}
+
+/* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
+func SendDataEditarPerfil(rw http.ResponseWriter, data interface{}) {
+	response := CreateDefaultResponse(rw)
+	//response.Data = data
+	response.Message = "Visitante modificado correctamente"
 	response.Send()
 }
 
@@ -173,45 +182,7 @@ func SendUnprocessableEntity(rw http.ResponseWriter) {
 
 // FIN BLOQUE RESPONSE
 
-// INICIO BLOQUE FUNCIONES VISITANTES
-
-//Construir visitante
-/*func NewUser(username, password, email string) *visitante {
-	user := &visitante{Username: username, Password: password, Email: email}
-	return user
-}
-
-//Obtener un visitante
-func GetUser(id int) (*visitante, error) {
-	user := NewUser("", "", "")
-
-	sql := "SELECT id, username, password, email FROM users WHERE id=?"
-	if rows, err := db.Query(sql, id); err != nil {
-		return nil, err
-	} else {
-		for rows.Next() {
-			rows.Scan(&user.Id, &user.Username, &user.Password, &user.Email)
-		}
-		return user, nil
-	}
-}*/
-
-// FIN BLOQUE FUNCIONES VISITANTES
-
 // INICIO BLOQUE HANDLERS
-
-/* Función que devuelve un visitante dependiendo del id pasado en el request */
-/*func getVisitanteByRequest(r *http.Request) (visitante, error) {
-	//Obtener ID
-	vars := mux.Vars(r)
-	userId, _ := strconv.Atoi(vars["id"])
-
-	if user, err := GetVisitante(userId); err != nil {
-		return *user, err
-	} else {
-		return *user, nil
-	}
-}*/
 
 /* Función manejadora para la creación del perfil de un visitante */
 func crearPerfil(rw http.ResponseWriter, r *http.Request) {
@@ -254,9 +225,7 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 		// Si el visitante ya se había registrado
 		if results.Next() {
 
-			//conexion.Write([]byte("ERROR: El visitante ya estaba registrado en la aplicación"))
-			//conexion.Close()
-			//SendData(rw, v) //TODO:
+			SendYaExiste(rw)
 
 			RegistroLog(db, r.RemoteAddr, v.ID, "Error", "El visitante "+v.ID+" ya estaba registrado en la aplicación") // Registramos el evento de log
 
@@ -297,7 +266,7 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
 			RegistroLog(db, r.RemoteAddr, v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
 
-			SendData(rw, v) //TODO:
+			SendDataCrearPerfil(rw, v)
 
 		}
 
@@ -371,7 +340,7 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 			RegistroLog(db, r.RemoteAddr, v.ID, "Modificación", "Visitante "+v.ID+" actualizado correctamente") // Registramos el evento de log
 
 			//v.ID = userId
-			SendData(rw, v)
+			SendDataEditarPerfil(rw, v)
 		}
 
 	} else {
@@ -396,7 +365,7 @@ func lanzarServidor(host string) {
 	mux.HandleFunc("/editar/{id:[A-Za-z0-9_]+}", editarPerfil).Methods("PUT")
 
 	// Servidor
-	fmt.Println("Servidor corriendo en https://" + host + ":3000") //TODO:
+	fmt.Println("Servidor corriendo en https://" + host + ":3000")
 	log.Fatal(http.ListenAndServe(":3000", mux))
 
 }

@@ -15,6 +15,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -88,27 +89,28 @@ func main() {
 
 	//Argumentos iniciales
 	IpFWQ_Registry := os.Args[1]
-	PuertoFWQ := os.Args[2]
-	IpBroker := os.Args[3]
-	PuertoBroker := os.Args[4]
+	PuertoRegistrySockets := os.Args[2]
+	PuertoRegistryApiRest := os.Args[3]
+	IpBroker := os.Args[4]
+	PuertoBroker := os.Args[5]
 	crearTopic(IpBroker, PuertoBroker, "peticiones")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	crearTopic(IpBroker, PuertoBroker, "movimiento-mapa")
 
-	fmt.Println("Creado un visitante que envía peticiones a un registry por " + IpFWQ_Registry + ":" + PuertoFWQ + " y a un engine por " + IpBroker + ":" + PuertoBroker)
+	fmt.Println("Creado un visitante que envía peticiones a un registry por " + IpFWQ_Registry + ":" + PuertoRegistrySockets + "/" + PuertoRegistryApiRest + " y a un engine por " + IpBroker + ":" + PuertoBroker)
 	fmt.Println() // Por limpieza
 
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
 
-	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+	MenuParque(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest, IpBroker, PuertoBroker)
 
 }
 
 /*
 * Función que pinta el menu del parque
  */
-func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
+func MenuParque(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest, IpBroker, PuertoBroker string) {
 	var opcion int
 	//Guardamos la opcion elegida
 	for {
@@ -122,11 +124,11 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 
 		switch os := opcion; os {
 		case 1:
-			CrearPerfil(IpFWQ_Registry, PuertoFWQ)
+			CrearPerfil(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest)
 		case 2:
-			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
+			EditarPerfil(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest)
 		case 3:
-			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+			EntradaParque(IpBroker, PuertoBroker)
 		default:
 			fmt.Println("Opción invalida, elige otra opción")
 		}
@@ -134,7 +136,7 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 }
 
 /* Función que se conecta al módulo FWQ_Registry para crear un nuevo usuario */
-func CrearPerfil(ipRegistry, puertoRegistry string) {
+func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string) {
 
 	fmt.Println() // Por limpieza
 	fmt.Println("**********Creación de perfil***********")
@@ -164,7 +166,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 		}
 
 		//conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
-		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistry, &config) // CONEXIÓN SEGURA
+		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistrySockets, &config) // CONEXIÓN SEGURA
 
 		if err != nil {
 			fmt.Println("Error al conectarse al Registry:", err.Error())
@@ -224,7 +226,65 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 
 		}
 	} else if eleccion == 2 { // Si el usuario elige la conexión por API_REST
-		//TODO:
+
+		var id string
+
+		fmt.Print("Introduce tu ID:")
+		fmt.Scanln(&id)
+
+		// Nos aseguramos de que no sea válido un id en blanco
+		if len(id) > 1 {
+
+			var nombre string
+
+			fmt.Print("Introduce tu nombre:")
+			fmt.Scanln(&nombre)
+
+			// Nos aseguramos de que no sea válido un nombre en blanco
+			if len(nombre) > 1 {
+
+				var password string
+
+				fmt.Print("Introduce tu contraseña:")
+				fmt.Scanln(&password)
+
+				// Nos aseguramos de que no sea válida una contraseña en blanco
+				if len(password) > 1 {
+
+					// Realizamos la composición de los datos
+					datos := strings.NewReader(`{"nombre":"$nombre", "password":"$password"}`)
+
+					// Ahora realizamos el envío de los datos
+					res, err := http.Post("http://"+ipRegistry+":"+puertoRegistryApiRest+"/crear/"+id, "application/json", datos)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					// Nos aseguramos de que se cierra el body
+					defer res.Body.Close()
+
+					// Realizamos la lectura del body
+					body, err := ioutil.ReadAll(res.Body)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					fmt.Println() // Por limpieza
+					fmt.Printf("%s", body)
+					fmt.Println() // Por limpieza
+
+				} else {
+					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+				}
+
+			} else {
+				fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+			}
+
+		} else {
+			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
+		}
+
 	} else { // Si la opción introducida no es válida
 		fmt.Println("ERROR: Por favor introduzca 1 o 2")
 		fmt.Println() // Por limpieza
@@ -233,7 +293,7 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 }
 
 /* Función que se conecta al módulo FWQ_Registry para editar o actualizar el perfil de un usuario existente */
-func EditarPerfil(ipRegistry, puertoRegistry string) {
+func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string) {
 
 	fmt.Println() // Por limpieza
 	fmt.Println("**********Modificación de perfil**********")
@@ -263,7 +323,7 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 		}
 
 		// conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
-		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistry, &config) // CONEXIÓN SEGURA
+		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistrySockets, &config) // CONEXIÓN SEGURA
 
 		if err != nil {
 			fmt.Println("Error al conectarse al Registry:", err.Error())
@@ -323,7 +383,81 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 
 		}
 	} else if eleccion == 2 { // Si el usuario elige la conexión por API_REST
-		//TODO:
+
+		var id string
+
+		fmt.Print("Introduce tu ID:")
+		fmt.Scanln(&id)
+
+		// Nos aseguramos de que no sea válido un id en blanco
+		if len(id) > 1 {
+
+			var nombre string
+
+			fmt.Print("Introduce tu nombre:")
+			fmt.Scanln(&nombre)
+
+			// Nos aseguramos de que no sea válido un nombre en blanco
+			if len(nombre) > 1 {
+
+				var password string
+
+				fmt.Print("Introduce tu contraseña:")
+				fmt.Scanln(&password)
+
+				// Nos aseguramos de que no sea válida una contraseña en blanco
+				if len(password) > 1 {
+
+					// Accedemos al cliente mediante http.Client
+					clienteHttp := &http.Client{}
+
+					// Nos guardamos la url de la petición a realizar
+					url := "http://" + ipRegistry + ":" + puertoRegistryApiRest + "/crear/" + id
+
+					// Realizamos la composición de los datos
+					datos := strings.NewReader(`{"nombre":"$nombre", "password":"$password"}`)
+
+					// Creamos una nueva petición tipo PUT mediante http.NewRequest
+					peticion, err := http.NewRequest("PUT", url, datos)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					// Agregamos los encabezadops que queramos
+					peticion.Header.Add("Content-Type", "application/json")
+
+					respuesta, err := clienteHttp.Do(peticion)
+					if err != nil {
+						log.Fatalf("Error al realizar la petición PUT: %v", err)
+					}
+
+					// Nos aseguramos de que se cierra el body
+					defer respuesta.Body.Close()
+
+					// Realizamos la lectura del body
+					cuerpoRespuesta, err := ioutil.ReadAll(respuesta.Body)
+					if err != nil {
+						log.Fatalf("Error leyendo respuesta: %v", err)
+					}
+
+					// Aquí podemos decodificar la respuesta si es un JSON, o convertirla a cadena
+
+					fmt.Println() // Por limpieza
+					fmt.Printf("%s", cuerpoRespuesta)
+					fmt.Println() // Por limpieza
+
+				} else {
+					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+				}
+
+			} else {
+				fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+			}
+
+		} else {
+			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
+		}
+
 	} else { // Si la opción introducida no es válida
 		fmt.Println("ERROR: Por favor introduzca 1 o 2")
 		fmt.Println() // Por limpieza
@@ -332,7 +466,7 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 }
 
 /* Función que envía las credenciales de acceso del visitante para entrar en el parque */
-func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
+func EntradaParque(IpBroker, PuertoBroker string) {
 
 	fmt.Println("*Bienvenido al parque de atracciones*")
 
@@ -392,7 +526,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 			}()
 
 			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, clave)
+			consumidorLogin(IpBroker, PuertoBroker, clave)
 
 		} else {
 			fmt.Println("ERROR: Por favor introduzca un password no vacío.")
@@ -478,7 +612,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string) {
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker, clave string) {
+func consumidorLogin(IpBroker, PuertoBroker, clave string) {
 
 	respuestaEngine := ""
 
