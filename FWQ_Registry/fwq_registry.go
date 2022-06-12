@@ -216,6 +216,8 @@ func GetUser(id int) (*visitante, error) {
 /* Función manejadora para la creación del perfil de un visitante */
 func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
+	log.Println("Petición de creación de perfil recibida -> " + r.URL.Path)
+
 	//Obtener ID
 	vars := mux.Vars(r)
 	userId := vars["id"]
@@ -306,6 +308,8 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 /* Función manejadora para la modificación del perfil de un visitante */
 func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
+	log.Println("Petición de modificación de perfil recibida -> " + r.URL.Path)
+
 	// Accedemos a la base de datos, empezando por abrir la conexión
 	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
 
@@ -319,6 +323,8 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 	//Obtener ID
 	vars := mux.Vars(r)
 	userId := vars["id"]
+	v := visitante{}
+	v.ID = userId
 
 	/*if v, err := getUserByRequest(r); err != nil {
 		SendNotFound(rw)
@@ -326,7 +332,7 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 		userId = v.ID
 	}*/
 
-	results, err := db.Query("SELECT * FROM visitante WHERE id = ?", userId) // Comprueba si el visitante está registrado en la aplicación
+	results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Comprueba si el visitante está registrado en la aplicación
 
 	// Comprobamos que no se produzcan errores al hacer la consulta
 	if err != nil {
@@ -338,7 +344,6 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 	// Si el ID del visitante indicado por el cliente existe
 	if results.Next() {
 
-		v := visitante{}
 		decoder := json.NewDecoder(r.Body)
 
 		if err := decoder.Decode(&v); err != nil {
