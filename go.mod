@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/kabukky/httpscerts v0.0.0-20150320125433-617593d7dcb3 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
 )
 

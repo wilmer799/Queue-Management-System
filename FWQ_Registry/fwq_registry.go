@@ -17,6 +17,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"github.com/kabukky/httpscerts"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -266,13 +267,15 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
 			defer sentenciaPreparada.Close()
 
-			fmt.Println("ID: ", v.ID, "Nombre: ", v.Nombre, "Password: ", v.Password)
+			fmt.Println("Visitante a registrar -> ID: ", v.ID, "Nombre: ", v.Nombre, "Password: ", v.Password)
 
 			// Ejecutar sentencia, un valor por cada '?'
 			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, HashPassword(v.Password), string(v.ID[0]))
 			if err != nil {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
+
+			fmt.Println("Registro completado. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados.")
 
 			RegistroLog(db, r.RemoteAddr, v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
 
@@ -332,7 +335,7 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
 			defer sentenciaPreparada.Close()
 
-			fmt.Println("ID: ", v.ID, "Nombre: ", v.Nombre, "Password: ", v.Password)
+			fmt.Println("Visitante a editar -> ID: ", v.ID, "Nombre: ", v.Nombre, "Password: ", v.Password)
 
 			// Ejecutar sentencia, un valor por cada '?'
 			_, err = sentenciaPreparada.Exec(v.Nombre, HashPassword(v.Password), v.ID)
@@ -342,7 +345,6 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
 			RegistroLog(db, r.RemoteAddr, v.ID, "Modificación", "Visitante "+v.ID+" actualizado correctamente") // Registramos el evento de log
 
-			//v.ID = userId
 			SendDataEditarPerfil(rw, v)
 		}
 
@@ -352,10 +354,26 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
 }
 
+/* Función que redirecciona las peticiones http a https */
+/*func redirectToHttps(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://localhost:3001"+r.RequestURI, http.StatusMovedPermanently)
+}*/
+
 // FIN BLOQUE HANDLERS
 
 /* Función que se encarga de arrancar el servidor API REST */
 func lanzarServidor(host string) {
+
+	// Comprobamos si los ficheros de certificado están disponibles
+	err := httpscerts.Check("cert.pem", "key.pem")
+
+	// Si no están disponibles, generamos unos nuevos
+	if err != nil {
+		err = httpscerts.Generate("cert.pem", "key.pem", host+":8081")
+		if err != nil {
+			log.Fatal("ERROR: No se pudieron crear los certificados https.")
+		}
+	}
 
 	// IMPLEMENTAMOS EL API REST
 	// Rutas
@@ -365,9 +383,11 @@ func lanzarServidor(host string) {
 	mux.HandleFunc("/crear/{id:[A-Za-z0-9_]+}", crearPerfil).Methods("POST")
 	mux.HandleFunc("/editar/{id:[A-Za-z0-9_]+}", editarPerfil).Methods("PUT")
 
-	// Servidor
-	fmt.Println("Servidor API REST corriendo en https://" + host + ":3000")
-	log.Fatal(http.ListenAndServe(":3000", mux))
+	// SERVIDOR
+	// Arrancamos el servidor https en una go routine
+	go http.ListenAndServeTLS(":8081", "cert.pem", "key.pem", mux)
+	fmt.Println("Servidor API REST corriendo en https://" + host + ":8081")
+	//log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(redirectToHttps)))
 
 }
 
@@ -547,7 +567,8 @@ func manejoConexion(conexion net.Conn) {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
 
-			conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
+			conexion.Write([]byte("Visitante registrado en el parque."))
+			fmt.Println("Registro completado. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados.")
 			conexion.Close()
 
 			RegistroLog(db, conexion.RemoteAddr().String(), v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
