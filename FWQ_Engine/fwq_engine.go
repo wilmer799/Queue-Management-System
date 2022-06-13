@@ -25,8 +25,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
-
 /**
 * Estructura del visitante
 * https://devjaime.medium.com/mi-primer-api-en-golang-9461996753dc
@@ -1075,14 +1073,15 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 *
  */
 func cambiarCiudad(w http.ResponseWriter, r *http.Request) {
+	var apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
 	//Declaramos las variables que vamos a utilizar para las peticiones
 	var coordenadasCiudad coord
 	var climaCiudad ciudad
 	//Obtenemos todos los parametros pasado a esta función cuando se le llame
 	vars := mux.Vars(r)
 	//Obtenemos los parametros y los almacenamos en la variable coordenadasCiudad
-	coordenadasCiudad.lon = vars["lon"]
-	coordenadasCiudad.lat = vars["lat"]
+	coordenadasCiudad.lon = float32(vars["lon"])
+	coordenadasCiudad.lat = float32(vars["lat"])
 
 	fmt.Println("coordenadasCiudad")
 	//Realizamos la petición a la api de terceros
