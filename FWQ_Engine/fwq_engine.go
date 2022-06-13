@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -19,8 +21,11 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-/*
+const apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
+
+/**
 * Estructura del visitante
+* https://devjaime.medium.com/mi-primer-api-en-golang-9461996753dc
  */
 type visitante struct {
 	ID           string `json:"id"`
@@ -35,7 +40,7 @@ type visitante struct {
 	Parque       string `json:"parqueAtracciones"`
 }
 
-/*
+/**
 * Estructura de las atracciones
  */
 type atraccion struct {
@@ -46,6 +51,81 @@ type atraccion struct {
 	Posiciony    int    `json:"posiciony"`
 	TiempoEspera int    `json:"tiempoEspera"`
 	Parque       string `json:"parqueAtracciones"`
+}
+
+/**
+* Estructura del objeto coord que almacenan las coordenadas de la cuidad
+ */
+type coord struct {
+	lon float32 `json: "lon"`
+	lat float32 `json: "lat"`
+}
+
+/**
+* Estructura que almacena la información de la temperatura
+ */
+type weather struct {
+	id          int    `json: "id"`
+	main        string `json: "main"`
+	description string `json: "description"`
+	icon        string `json: "icon"`
+}
+
+/**
+* Estructura que almacena la información de la temperatura de la cuidad
+ */
+type temperatura struct {
+	temp       float32 `json:"temp"`
+	feels_like float32 `json:"feels_like"`
+	temp_min   float32 `json:"temp_min"`
+	temp_max   float32 `json:"temp_max"`
+	pressure   float32 `json: "pressure"`
+	humidity   float32 `json:"humidity"`
+}
+
+/**
+* Estructura que almacena la información del viento
+ */
+type wind struct {
+	speed float32 `json:"speed"`
+	deg   float32 `json: "deg"`
+}
+
+/**
+* Estructura que almacena la candiad de nubes que hay
+ */
+type clouds struct {
+	all float32 `json:"all"`
+}
+
+/**
+* Estructura que almacena información de la cuidad
+ */
+type sys struct {
+	tipo    int     `json:"tipo"`
+	id      float32 `json:"id"`
+	country string  `json:"country"`
+	sunrise float32 `json:"sunrise"`
+	sunset  float32 `json:"sunset"`
+}
+
+/**
+* Estructura que almacena la información de la cuidad y su temperatura
+ */
+type ciudad struct {
+	coordenadas       coord       `json:"coordenadas"`
+	tiempo            weather     `json:"tiempo"`
+	base              string      `json:"base"`
+	temperaturaciudad temperatura `json:"temperaturaciudad"`
+	visibility        float32     `json:"visibility"`
+	viento            wind        `json:"viento"`
+	nubes             clouds      `json:"nubes"`
+	dt                float32     `json:"dt"`
+	informacionciudad sys         `json:"informacionciudad"`
+	timezone          float32     `json:"timezone"`
+	id                float32     `json:"id"`
+	name              string      `json:"name"`
+	cod               float32     `json:"cod"`
 }
 
 /*
@@ -660,9 +740,7 @@ func establecerMaxVisitantes(db *sql.DB, numero int) {
 		if err != nil {
 			panic("Error al establecer el número máximo de visitantes" + err.Error())
 		}
-
 	}
-
 }
 
 /* Función que modifica las posiciones de los visitantes en el parque en base a sus movimientos */
@@ -734,7 +812,9 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) {
 
 }
 
-/* Función que envia el mapa a los visitantes */
+/**
+ * Función que envia el mapa a los visitantes
+ */
 func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
@@ -840,4 +920,42 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+/**
+*	Función que nos conecta a la API externa para obtener el tiempo
+*
+ */
+func cambiarCiudad(w http.ResponseWriter, r *http.Request) {
+	//Declaramos las variables que vamos a utilizar para las peticiones
+	var coordenadasCiudad coord
+	var climaCiudad ciudad
+	//Obtenemos todos los parametros pasado a esta función cuando se le llame
+	vars := mux.Vars(r)
+	//Obtenemos los parametros y los almacenamos en la variable coordenadasCiudad
+	coordenadasCiudad.lon = vars["lon"]
+	coordenadasCiudad.lat = vars["lat"]
+
+	fmt.Println("coordenadasCiudad")
+	//Realizamos la petición a la api de terceros
+	peticion, err := http.NewRequest("GET", "https://api.openweathermap.org/data/2.5/weather?lat="+
+		coordenadasCiudad.lat+"lon="+coordenadasCiudad.lon+"appid="+apiKey+"lang=es"+"units=metric")
+	//Comprobamos que no haya ningun error
+	if err != nil {
+		log.Fatal("Error al crear la petición: %v", err)
+	}
+	//Cerramos la petición get
+	defer respuesta.Body.Close()
+	//Agregamos encabezados
+	peticion.Header.Add("Content-Type", "application/json")
+	//Decodificamos el body de la respuesta y lo almacenamos en el climaCiudad parametro
+	body, err := json.NewDecoder(peticion.Body).Decode(&climaCiudad)
+	//Comprobamos que no haya ningun error
+	if err != nil {
+		log.Fatal(err)
+	}
+	//Imprimimos el cuerpo
+	fmt.Println(body)
+	fmt.Println(climaCiudad)
+
 }
