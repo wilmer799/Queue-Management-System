@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -230,7 +231,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 		var id string
 
 		fmt.Print("Introduce tu ID:")
-		fmt.Scanln(&id)
+		fmt.Scan(&id)
 
 		// Nos aseguramos de que no sea válido un id en blanco
 		if len(id) > 1 {
@@ -238,7 +239,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 			var nombre string
 
 			fmt.Print("Introduce tu nombre:")
-			fmt.Scanln(&nombre)
+			fmt.Scan(&nombre)
 
 			// Nos aseguramos de que no sea válido un nombre en blanco
 			if len(nombre) > 1 {
@@ -246,16 +247,26 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 				var password string
 
 				fmt.Print("Introduce tu contraseña:")
-				fmt.Scanln(&password)
+				fmt.Scan(&password)
 
 				// Nos aseguramos de que no sea válida una contraseña en blanco
 				if len(password) > 1 {
 
+					v := visitante{
+						ID:       id,
+						Nombre:   nombre,
+						Password: password,
+					}
+					vComoJson, err := json.Marshal(v)
+					if err != nil {
+						log.Fatalf("Error codificando visitante como JSON: %v", err)
+					}
+
 					// Realizamos la composición de los datos
-					datos := strings.NewReader(`{"nombre":"$nombre", "password":"$password"}`)
+					datos := strings.NewReader(string(vComoJson))
 
 					// Ahora realizamos el envío de los datos
-					res, err := http.Post("http://"+ipRegistry+":"+puertoRegistryApiRest+"/crear/"+id, "application/json", datos)
+					res, err := http.Post("http://"+ipRegistry+":"+puertoRegistryApiRest+"/crear/"+v.ID, "application/json", datos)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -411,19 +422,23 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 					// Accedemos al cliente mediante http.Client
 					clienteHttp := &http.Client{}
 
-					// Nos guardamos la url de la petición a realizar
-					url := "http://" + ipRegistry + ":" + puertoRegistryApiRest + "/crear/" + id
-
-					// Realizamos la composición de los datos
-					datos := strings.NewReader(`{"nombre":"$nombre", "password":"$password"}`)
-
-					// Creamos una nueva petición tipo PUT mediante http.NewRequest
-					peticion, err := http.NewRequest("PUT", url, datos)
+					v := visitante{
+						ID:       id,
+						Nombre:   nombre,
+						Password: password,
+					}
+					vComoJson, err := json.Marshal(v)
 					if err != nil {
-						log.Fatal(err)
+						log.Fatalf("Error codificando visitante como JSON: %v", err)
 					}
 
-					// Agregamos los encabezadops que queramos
+					// Creamos una nueva petición tipo PUT mediante http.NewRequest
+					peticion, err := http.NewRequest("PUT", "http://"+ipRegistry+":"+puertoRegistryApiRest+"/editar/"+v.ID, bytes.NewBuffer(vComoJson))
+					if err != nil {
+						log.Fatalf("Error creando la petición PUT: %v", err)
+					}
+
+					// Agregamos las cabeceras que queramos
 					peticion.Header.Add("Content-Type", "application/json")
 
 					respuesta, err := clienteHttp.Do(peticion)
@@ -431,7 +446,7 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 						log.Fatalf("Error al realizar la petición PUT: %v", err)
 					}
 
-					// Nos aseguramos de que se cierra el body
+					// Nos aseguramos de que se cierra el body recibido
 					defer respuesta.Body.Close()
 
 					// Realizamos la lectura del body

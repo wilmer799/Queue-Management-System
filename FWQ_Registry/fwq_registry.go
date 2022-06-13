@@ -55,7 +55,7 @@ func main() {
 	config.Rand = rand.Reader
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
-	fmt.Println("Arrancando el Registry, atendiendo en " + host + ":" + puerto)
+	fmt.Println("Arrancando el Registry, atendiendo vía sockets en " + host + ":" + puerto)
 
 	//l, err := net.Listen("tcp", host+":"+puerto) // CONEXIONES INSEGURAS
 	l, err := tls.Listen("tcp", host+":"+puerto, &config) // CONEXIONES SEGURAS
@@ -151,18 +151,29 @@ func SendNotFound(rw http.ResponseWriter) {
 	response.Send()
 }
 
-/* Función utilizada junto a la de abajo al momento de eliminar,
-recuperar una fila o todas las filas de la BD y
-que se produzcan errores para poder manejarlos. */
+/* Función que prepara la respuesta para cuando el id ya existe y se pide un registro sobre dicho id */
 func (resp *Response) YaExiste() {
 	resp.Status = http.StatusNoContent
 	resp.Message = "El visitante ya estaba registrado"
 }
 
-/* Función que manda una respuesta indicando que el recurso solicitado no ha sido encontrado */
+/* Función que manda una respuesta indicando que el id indicado ya existe */
 func SendYaExiste(rw http.ResponseWriter) {
 	response := CreateDefaultResponse(rw)
 	response.YaExiste()
+	response.Send()
+}
+
+/* Función que prepara la respuesta para cuando el id ya existe y se pide un registro sobre dicho id */
+func (resp *Response) NoExiste() {
+	resp.Status = http.StatusNotModified
+	resp.Message = "El id del visitante indicado no corresponde con uno existente"
+}
+
+/* Función que manda una respuesta indicando que el id indicado ya existe */
+func SendNoExiste(rw http.ResponseWriter) {
+	response := CreateDefaultResponse(rw)
+	response.NoExiste()
 	response.Send()
 }
 
@@ -255,14 +266,13 @@ func crearPerfil(rw http.ResponseWriter, r *http.Request) {
 
 			defer sentenciaPreparada.Close()
 
+			fmt.Println("ID: ", v.ID, "Nombre: ", v.Nombre, "Password: ", v.Password)
+
 			// Ejecutar sentencia, un valor por cada '?'
 			_, err = sentenciaPreparada.Exec(v.ID, v.Nombre, HashPassword(v.Password), string(v.ID[0]))
 			if err != nil {
 				panic("Error al registrar el visitante: " + err.Error())
 			}
-
-			//conexion.Write([]byte("Visitante registrado en el parque. Actualmente hay " + strconv.Itoa(visitantesActuales+1) + " visitantes registrados."))
-			//conexion.Close()
 
 			RegistroLog(db, r.RemoteAddr, v.ID, "Alta", "Visitante "+v.ID+" registrado correctamente") // Registramos el evento de log
 
@@ -295,12 +305,6 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 	v := visitante{}
 	v.ID = userId
 
-	/*if v, err := getUserByRequest(r); err != nil {
-		SendNotFound(rw)
-	} else {
-		userId = v.ID
-	}*/
-
 	results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID) // Comprueba si el visitante está registrado en la aplicación
 
 	// Comprobamos que no se produzcan errores al hacer la consulta
@@ -328,14 +332,13 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 
 			defer sentenciaPreparada.Close()
 
+			fmt.Println("ID: ", v.ID, "Nombre: ", v.Nombre, "Password: ", v.Password)
+
 			// Ejecutar sentencia, un valor por cada '?'
 			_, err = sentenciaPreparada.Exec(v.Nombre, HashPassword(v.Password), v.ID)
 			if err != nil {
 				panic("Error al modificar el visitante: " + err.Error())
 			}
-
-			//conexion.Write([]byte("Visitante actualizado correctamente"))
-			//conexion.Close()
 
 			RegistroLog(db, r.RemoteAddr, v.ID, "Modificación", "Visitante "+v.ID+" actualizado correctamente") // Registramos el evento de log
 
@@ -344,9 +347,7 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		//conexion.Write([]byte("El id del visitante no existe"))
-		//conexion.Close()
-		SendNotFound(rw)
+		SendNoExiste(rw)
 	}
 
 }
@@ -365,7 +366,7 @@ func lanzarServidor(host string) {
 	mux.HandleFunc("/editar/{id:[A-Za-z0-9_]+}", editarPerfil).Methods("PUT")
 
 	// Servidor
-	fmt.Println("Servidor corriendo en https://" + host + ":3000")
+	fmt.Println("Servidor API REST corriendo en https://" + host + ":3000")
 	log.Fatal(http.ListenAndServe(":3000", mux))
 
 }

@@ -58,7 +58,7 @@ VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"e","SDpark");
 
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
 VALUES ("rafajaja", "rafa","1234",13,7,17,9,1,"r","SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idEnParque, parqueAtracciones)
 VALUES ("hcarlos", "carlos","1234",19,19,6,11,1,"h","SDpark");
 
 delete from visitante;
