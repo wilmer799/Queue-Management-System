@@ -2,14 +2,21 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	hho "crypto/rand"
+	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -34,6 +41,7 @@ type visitante struct {
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
 	IdEnParque   string `json:"idParque"`
+	UltimoEvento string `json:"ultimoEvento"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -70,6 +78,11 @@ var a = atraccion{ // Guardamos la información de la atraccion que nos hace fal
 	TiempoEspera: -1,
 }
 
+// Ininicializamos un vector con bytes aleatorios
+var iv = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
+
+//type HexData []byte
+
 /**
 * Función main de los visitantes
 **/
@@ -77,26 +90,28 @@ func main() {
 
 	//Argumentos iniciales
 	IpFWQ_Registry := os.Args[1]
-	PuertoFWQ := os.Args[2]
-	IpBroker := os.Args[3]
-	PuertoBroker := os.Args[4]
+	PuertoRegistrySockets := os.Args[2]
+	PuertoRegistryApiRest := os.Args[3]
+	IpBroker := os.Args[4]
+	PuertoBroker := os.Args[5]
 	crearTopic(IpBroker, PuertoBroker, "peticiones")
 	crearTopic(IpBroker, PuertoBroker, "respuesta-login")
 	crearTopic(IpBroker, PuertoBroker, "movimiento-mapa")
 
-	fmt.Println("Creado un visitante que envía peticiones a un registry por " + IpFWQ_Registry + ":" + PuertoFWQ + " y a un engine por " + IpBroker + ":" + PuertoBroker)
+	fmt.Println("Creado un visitante que envía peticiones a un registry por " + IpFWQ_Registry + ":" + PuertoRegistrySockets + "/" + PuertoRegistryApiRest + " y a un engine por " + IpBroker + ":" + PuertoBroker)
 	fmt.Println() // Por limpieza
 
 	fmt.Println("**Bienvenido al parque de atracciones**")
 	fmt.Println()
-	MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+
+	MenuParque(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest, IpBroker, PuertoBroker)
 
 }
 
 /*
 * Función que pinta el menu del parque
  */
-func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
+func MenuParque(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest, IpBroker, PuertoBroker string) {
 	var opcion int
 	//Guardamos la opcion elegida
 	for {
@@ -110,11 +125,11 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 
 		switch os := opcion; os {
 		case 1:
-			CrearPerfil(IpFWQ_Registry, PuertoFWQ)
+			CrearPerfil(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest)
 		case 2:
-			EditarPerfil(IpFWQ_Registry, PuertoFWQ)
+			EditarPerfil(IpFWQ_Registry, PuertoRegistrySockets, PuertoRegistryApiRest)
 		case 3:
-			EntradaParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker)
+			EntradaParque(IpBroker, PuertoBroker)
 		default:
 			fmt.Println("Opción invalida, elige otra opción")
 		}
@@ -122,52 +137,152 @@ func MenuParque(IpFWQ_Registry, PuertoFWQ, IpBroker, PuertoBroker string) {
 }
 
 /* Función que se conecta al módulo FWQ_Registry para crear un nuevo usuario */
-func CrearPerfil(ipRegistry, puertoRegistry string) {
+func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string) {
 
+	fmt.Println() // Por limpieza
 	fmt.Println("**********Creación de perfil***********")
-	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
+	fmt.Println() // Por limpieza
 
-	if err != nil {
-		fmt.Println("Error al conectarse al Registry:", err.Error())
-	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+	// Damos la posibilidad elegir conexión vía sockets o por API_REST
+	fmt.Println("Selecciona el tipo de conexión al registry:")
+	fmt.Println("1 -> Sockets")
+	fmt.Println("2 -> API_REST")
+	fmt.Println() // Por limpieza
 
-		conn.Write([]byte("1" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+	var eleccion int
+	fmt.Scan(&eleccion)
+	fmt.Println() // Por limpieza
 
-		reader := bufio.NewReader(os.Stdin)
+	// Si el usuario elige la conexión por sockets
+	if eleccion == 1 {
+
+		cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		config := tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}
+
+		//conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
+		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistrySockets, &config) // CONEXIÓN SEGURA
+
+		if err != nil {
+			fmt.Println("Error al conectarse al Registry:", err.Error())
+		} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+
+			defer conn.Close() // Nos aseguramos de cerrar la conexión
+
+			conn.Write([]byte("1" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+
+			reader := bufio.NewReader(os.Stdin)
+
+			fmt.Print("Introduce tu ID:")
+			id, _ := reader.ReadString('\n')
+
+			// Nos aseguramos de que no sea válido un id en blanco
+			if len(id) > 1 {
+
+				conn.Write([]byte(id))
+
+				fmt.Print("Introduce tu nombre:")
+				nombre, _ := reader.ReadString('\n')
+
+				// Nos aseguramos de que no sea válido un nombre en blanco
+				if len(nombre) > 1 {
+
+					conn.Write([]byte(nombre))
+
+					fmt.Print("Introduce tu contraseña:")
+					password, _ := reader.ReadString('\n')
+
+					// Nos aseguramos de que no sea válida una contraseña en blanco
+					if len(password) > 1 {
+
+						conn.Write([]byte(password))
+
+						//Escuchando por el relay el mensaje de respuesta del Registry
+						message, _ := bufio.NewReader(conn).ReadString('\n')
+
+						// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+						if message != "" {
+							log.Print("Respuesta del Registry: ", message)
+						} else {
+							log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+						}
+
+					} else {
+						fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+					}
+
+				} else {
+					fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+				}
+
+			} else {
+				fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
+			}
+
+		}
+	} else if eleccion == 2 { // Si el usuario elige la conexión por API_REST
+
+		var id string
 
 		fmt.Print("Introduce tu ID:")
-		id, _ := reader.ReadString('\n')
+		fmt.Scan(&id)
 
 		// Nos aseguramos de que no sea válido un id en blanco
 		if len(id) > 1 {
 
-			conn.Write([]byte(id))
+			var nombre string
 
 			fmt.Print("Introduce tu nombre:")
-			nombre, _ := reader.ReadString('\n')
+			fmt.Scan(&nombre)
 
 			// Nos aseguramos de que no sea válido un nombre en blanco
 			if len(nombre) > 1 {
 
-				conn.Write([]byte(nombre))
+				var password string
 
 				fmt.Print("Introduce tu contraseña:")
-				password, _ := reader.ReadString('\n')
+				fmt.Scan(&password)
 
 				// Nos aseguramos de que no sea válida una contraseña en blanco
 				if len(password) > 1 {
 
-					conn.Write([]byte(password))
-
-					//Escuchando por el relay el mensaje de respuesta del Registry
-					message, _ := bufio.NewReader(conn).ReadString('\n')
-
-					// Comprobamos si el Registry nos devuelve un mensaje de respuesta
-					if message != "" {
-						log.Print("Respuesta del Registry: ", message)
-					} else {
-						log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+					v := visitante{
+						ID:       id,
+						Nombre:   nombre,
+						Password: password,
 					}
+					vComoJson, err := json.Marshal(v)
+					if err != nil {
+						log.Fatalf("Error codificando visitante como JSON: %v", err)
+					}
+
+					// Realizamos la composición de los datos
+					datos := strings.NewReader(string(vComoJson))
+
+					// Ahora realizamos el envío de los datos
+					res, err := http.Post("http://"+ipRegistry+":"+puertoRegistryApiRest+"/crear/"+v.ID, "application/json", datos)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					// Nos aseguramos de que se cierra el body
+					defer res.Body.Close()
+
+					// Realizamos la lectura del body
+					body, err := ioutil.ReadAll(res.Body)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					fmt.Println() // Por limpieza
+					fmt.Printf("%s", body)
+					fmt.Println() // Por limpieza
 
 				} else {
 					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
@@ -181,57 +296,170 @@ func CrearPerfil(ipRegistry, puertoRegistry string) {
 			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 		}
 
+	} else { // Si la opción introducida no es válida
+		fmt.Println("ERROR: Por favor introduzca 1 o 2")
+		fmt.Println() // Por limpieza
 	}
 
 }
 
 /* Función que se conecta al módulo FWQ_Registry para editar o actualizar el perfil de un usuario existente */
-func EditarPerfil(ipRegistry, puertoRegistry string) {
+func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string) {
 
-	fmt.Println("Has entrado a editar perfil")
-	conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry)
+	fmt.Println() // Por limpieza
+	fmt.Println("**********Modificación de perfil**********")
+	fmt.Println() // Por limpieza
 
-	if err != nil {
-		fmt.Println("Error al conectarse al Registry:", err.Error())
-	} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+	// Damos la posibilidad elegir conexión vía sockets o por API_REST
+	fmt.Println("Selecciona el tipo de conexión al registry:")
+	fmt.Println("1 -> Sockets")
+	fmt.Println("2 -> API_REST")
+	fmt.Println() // Por limpieza
 
-		conn.Write([]byte("2" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+	var eleccion int
+	fmt.Scan(&eleccion)
+	fmt.Println() // Por limpieza
 
-		reader := bufio.NewReader(os.Stdin)
+	// Si el usuario elige la conexión por sockets
+	if eleccion == 1 {
 
-		fmt.Println("Información del visitante que se quiere modificar:")
-		fmt.Print("Introduce el ID:")
-		id, _ := reader.ReadString('\n')
+		cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		// Nos aseguramos de que el ID no sea vacío.
+		config := tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}
+
+		// conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
+		conn, err := tls.Dial(connType, ipRegistry+":"+puertoRegistrySockets, &config) // CONEXIÓN SEGURA
+
+		if err != nil {
+			fmt.Println("Error al conectarse al Registry:", err.Error())
+		} else { // Si el visitante establece conexión con el Registry indicado por parámetro
+
+			defer conn.Close() // Nos aseguramos de cerrar la conexión
+
+			conn.Write([]byte("2" + "\n")) // Le pasamos al Registry la opción elegida por el visitante
+
+			reader := bufio.NewReader(os.Stdin)
+
+			fmt.Println("Información del visitante que se quiere modificar:")
+			fmt.Print("Introduce el ID:")
+			id, _ := reader.ReadString('\n')
+
+			// Nos aseguramos de que el ID no sea vacío.
+			if len(id) > 1 {
+
+				conn.Write([]byte(id))
+
+				fmt.Print("Introduce el nombre:")
+				nombre, _ := reader.ReadString('\n')
+
+				// Nos aseguramos de que el nombre no sea vacío.
+				if len(nombre) > 1 {
+
+					conn.Write([]byte(nombre))
+
+					fmt.Print("Introduce la contraseña:")
+					password, _ := reader.ReadString('\n')
+
+					// Nos aseguramos de que la contraseña no sea vacía.
+					if len(password) > 1 {
+
+						conn.Write([]byte(password))
+
+						message, _ := bufio.NewReader(conn).ReadString('\n')
+
+						// Comprobamos si el Registry nos devuelve un mensaje de respuesta
+						if message != "" {
+							log.Print("Respuesta del Registry: ", message)
+						} else {
+							log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+						}
+
+					} else {
+						fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
+					}
+
+				} else {
+					fmt.Println("ERROR: Por favor introduzca un nombre que no sea vacío.")
+				}
+
+			} else {
+				fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
+			}
+
+		}
+	} else if eleccion == 2 { // Si el usuario elige la conexión por API_REST
+
+		var id string
+
+		fmt.Print("Introduce tu ID:")
+		fmt.Scanln(&id)
+
+		// Nos aseguramos de que no sea válido un id en blanco
 		if len(id) > 1 {
 
-			conn.Write([]byte(id))
+			var nombre string
 
-			fmt.Print("Introduce el nombre:")
-			nombre, _ := reader.ReadString('\n')
+			fmt.Print("Introduce tu nombre:")
+			fmt.Scanln(&nombre)
 
-			// Nos aseguramos de que el nombre no sea vacío.
+			// Nos aseguramos de que no sea válido un nombre en blanco
 			if len(nombre) > 1 {
 
-				conn.Write([]byte(nombre))
+				var password string
 
-				fmt.Print("Introduce la contraseña:")
-				password, _ := reader.ReadString('\n')
+				fmt.Print("Introduce tu contraseña:")
+				fmt.Scanln(&password)
 
-				// Nos aseguramos de que la contraseña no sea vacía.
+				// Nos aseguramos de que no sea válida una contraseña en blanco
 				if len(password) > 1 {
 
-					conn.Write([]byte(password))
+					// Accedemos al cliente mediante http.Client
+					clienteHttp := &http.Client{}
 
-					message, _ := bufio.NewReader(conn).ReadString('\n')
-
-					// Comprobamos si el Registry nos devuelve un mensaje de respuesta
-					if message != "" {
-						log.Print("Respuesta del Registry: ", message)
-					} else {
-						log.Print("Lo siento, el Registry no está disponible en estos momentos.")
+					v := visitante{
+						ID:       id,
+						Nombre:   nombre,
+						Password: password,
 					}
+					vComoJson, err := json.Marshal(v)
+					if err != nil {
+						log.Fatalf("Error codificando visitante como JSON: %v", err)
+					}
+
+					// Creamos una nueva petición tipo PUT mediante http.NewRequest
+					peticion, err := http.NewRequest("PUT", "http://"+ipRegistry+":"+puertoRegistryApiRest+"/editar/"+v.ID, bytes.NewBuffer(vComoJson))
+					if err != nil {
+						log.Fatalf("Error creando la petición PUT: %v", err)
+					}
+
+					// Agregamos las cabeceras que queramos
+					peticion.Header.Add("Content-Type", "application/json")
+
+					respuesta, err := clienteHttp.Do(peticion)
+					if err != nil {
+						log.Fatalf("Error al realizar la petición PUT: %v", err)
+					}
+
+					// Nos aseguramos de que se cierra el body recibido
+					defer respuesta.Body.Close()
+
+					// Realizamos la lectura del body
+					cuerpoRespuesta, err := ioutil.ReadAll(respuesta.Body)
+					if err != nil {
+						log.Fatalf("Error leyendo respuesta: %v", err)
+					}
+
+					// Aquí podemos decodificar la respuesta si es un JSON, o convertirla a cadena
+
+					fmt.Println() // Por limpieza
+					fmt.Printf("%s", cuerpoRespuesta)
+					fmt.Println() // Por limpieza
 
 				} else {
 					fmt.Println("ERROR: Por favor introduzca una contraseña que no sea vacía.")
@@ -245,12 +473,15 @@ func EditarPerfil(ipRegistry, puertoRegistry string) {
 			fmt.Println("ERROR: Por favor introduzca un ID que no sea vacío.")
 		}
 
+	} else { // Si la opción introducida no es válida
+		fmt.Println("ERROR: Por favor introduzca 1 o 2")
+		fmt.Println() // Por limpieza
 	}
 
 }
 
 /* Función que envía las credenciales de acceso del visitante para entrar en el parque */
-func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
+func EntradaParque(IpBroker, PuertoBroker string) {
 
 	fmt.Println("*Bienvenido al parque de atracciones*")
 
@@ -267,14 +498,29 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 		password, _ := reader.ReadString('\n')
 
 		if len(password) > 1 {
+
 			v.Password += strings.TrimSpace(string(password))
 
-			ctx := context.Background()
+			// SECURIZAMOS LA COMUNICACIÓN EN KAFKA
+			// Cargamos la clave de cifrado AES del archivo
+			fichero, err := ioutil.ReadFile("claveCifradoAES.txt")
+			if err != nil {
+				log.Fatal("Error al leer el archivo de la clave de cifrado AES: ", err)
+			}
 
+			clave := string(fichero) // Clave de 24 bits
+
+			// Preparamos las credenciales de inicio de sesión del visitante
 			mensaje := strings.TrimSpace(string(alias)) + ":" + strings.TrimSpace(string(password)) + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
 
+			// Ciframos el mensaje
+			mensajeCifrado, err := encriptacionAES(mensaje, clave)
+			if err != nil {
+				panic(err)
+			}
+
 			// Mandamos al engine las credenciales de inicio de sesión del visitante para entrar al parque
-			productorLogin(IpBroker, PuertoBroker, mensaje, ctx)
+			productorLogin(IpBroker, PuertoBroker, mensajeCifrado)
 
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
@@ -282,7 +528,11 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 				for sig := range c {
 					log.Printf("captured %v, stopping profiler and exiting..", sig)
 					mensaje := v.ID + ":" + "OUT" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-					productorSalir(IpBroker, PuertoBroker, mensaje, ctx)
+					mensajeCifrado, err := encriptacionAES(mensaje, clave)
+					if err != nil {
+						panic(err)
+					}
+					productorSalir(IpBroker, PuertoBroker, mensajeCifrado)
 					fmt.Println()
 					fmt.Println("Adios, esperamos que haya disfrutado su estancia en el parque.")
 					pprof.StopCPUProfile()
@@ -291,7 +541,7 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 			}()
 
 			// Recibe del engine el mapa actualizado o un mensaje de parque cerrado
-			consumidorLogin(ipRegistry, puertoRegistry, IpBroker, PuertoBroker, ctx)
+			consumidorLogin(IpBroker, PuertoBroker, clave)
 
 		} else {
 			fmt.Println("ERROR: Por favor introduzca un password no vacío.")
@@ -303,8 +553,56 @@ func EntradaParque(ipRegistry, puertoRegistry, IpBroker, PuertoBroker string) {
 
 }
 
+/* Función que nos simplifica la llamada de la función EncodeToString en base 64 */
+func encodeBase64(src []byte) string {
+	return base64.StdEncoding.EncodeToString(src)
+}
+
+/* Función que nos simplifica la llamada a DecodeString en base 64 */
+func decodeBase64(s string) []byte {
+	datos, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return datos
+}
+
+/* Función de encriptación que utiliza el algoritmo AES */
+func encriptacionAES(texto, claveSecreta string) (string, error) {
+
+	bloqueDeCifrado, err := aes.NewCipher([]byte(claveSecreta)) // Creamos un nuevo bloque de cifrado AES
+	if err != nil {
+		return "", err
+	}
+
+	textoPlano := []byte(texto)
+	cfb := cipher.NewCFBEncrypter(bloqueDeCifrado, iv) // Creamos el stream de encriptación
+	textoCifrado := make([]byte, len(textoPlano))
+	cfb.XORKeyStream(textoCifrado, textoPlano) // Sustituye cada byte de textoPlano por cada byte en el stream de bytes cifrado (textoCifrado)
+
+	return encodeBase64(textoCifrado), nil
+
+}
+
+/* Función de desencriptación que utiliza el algoritmo AES */
+func desencriptacionAES(texto, claveSecreta string) (string, error) {
+
+	bloqueDeCifrado, err := aes.NewCipher([]byte(claveSecreta)) // Creamos un nuevo bloque de cifrado AES
+	if err != nil {
+		return "", err
+	}
+
+	textoCifrado := decodeBase64(texto)
+	cfb := cipher.NewCFBDecrypter(bloqueDeCifrado, iv) // Creamos el stream de desencriptación
+	textoPlano := make([]byte, len(textoCifrado))
+	cfb.XORKeyStream(textoPlano, textoCifrado) // Sustituye cada byte de textoCifrado por cada byte en textoPlano
+
+	return string(textoPlano), nil
+
+}
+
 /* Función que se encarga de enviar las credenciales de inicio de sesión */
-func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Context) {
+func productorLogin(IpBroker, PuertoBroker, credenciales string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "peticiones"
@@ -313,9 +611,10 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 		Brokers:          []string{brokerAddress},
 		Topic:            topic,
 		CompressionCodec: kafka.Snappy.Codec(),
+		//Dialer:           dialer,
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Login"),
 		Value: []byte(credenciales),
 	})
@@ -328,7 +627,7 @@ func productorLogin(IpBroker, PuertoBroker, credenciales string, ctx context.Con
 }
 
 /* Función que recibe el mensaje de parque cerrado por parte del engine o no */
-func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, ctx context.Context) {
+func consumidorLogin(IpBroker, PuertoBroker, clave string) {
 
 	respuestaEngine := ""
 
@@ -353,15 +652,23 @@ func consumidorLogin(IpRegistry, PuertoRegistry, IpBroker, PuertoBroker string, 
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
 
-		respuestaEngine = strings.TrimSpace(string(m.Value))
+		respuestaEngine, err = desencriptacionAES(strings.TrimSpace(string(m.Value)), clave)
+		if err != nil {
+			panic(err)
+		}
+
 		log.Println("Respuesta del engine: " + respuestaEngine)
 
 		if respuestaEngine == (v.ID + ":" + "Acceso concedido") {
 			v.DentroParque = 1 // El visitante está dentro del parque
 			fmt.Println("El visitante está dentro del parque")
 			peticionEntrada := v.ID + ":" + "IN" + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, peticionEntrada, ctx) // Le indicamos al engine que el visitante desea entrar al parque
-			consumidorMapa(IpBroker, PuertoBroker, ctx)
+			peticionEntradaCifrada, err := encriptacionAES(peticionEntrada, clave)
+			if err != nil {
+				panic(err)
+			}
+			productorMovimientos(IpBroker, PuertoBroker, peticionEntradaCifrada) // Le indicamos al engine que el visitante desea entrar al parque
+			consumidorMapa(IpBroker, PuertoBroker, clave)
 			dentroParque = false
 		} else if respuestaEngine == (v.ID + ":" + "Parque cerrado") {
 			fmt.Println("Parque cerrado")
@@ -626,7 +933,7 @@ func actualizaPosicion(movimiento string) {
 }
 
 /* Función que se encarga de enviar los movimientos de los visitantes al engine */
-func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context.Context) {
+func productorMovimientos(IpBroker, PuertoBroker, movimiento string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "peticiones"
@@ -637,7 +944,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Moves"),
 		Value: []byte(movimiento),
 	})
@@ -650,7 +957,7 @@ func productorMovimientos(IpBroker, PuertoBroker, movimiento string, ctx context
 }
 
 /* Función que se encarga de mandar la solicitud de salida del parque al engine */
-func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context) {
+func productorSalir(IpBroker, PuertoBroker, peticion string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "peticiones"
@@ -659,9 +966,10 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 		Brokers:          []string{brokerAddress},
 		Topic:            topic,
 		CompressionCodec: kafka.Snappy.Codec(),
+		//Dialer:           dialer,
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Salir"),
 		Value: []byte(peticion),
 	})
@@ -671,8 +979,21 @@ func productorSalir(IpBroker, PuertoBroker, peticion string, ctx context.Context
 
 }
 
+/*func (h *HexData) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	*h = HexData(decoded)
+	return nil
+}*/
+
 /* Función que recibe el mapa del engine y lo devuelve formateado */
-func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
+func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 
 	broker := IpBroker + ":" + PuertoBroker
 	r := kafka.ReaderConfig(kafka.ReaderConfig{
@@ -692,15 +1013,22 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 		if err != nil {
 			panic("Ha ocurrido algún error a la hora de conectarse con kafka: " + err.Error())
 		}
+
 		var mapaObtenido string
-		err = json.Unmarshal(m.Value, &mapaObtenido)
+		err = json.Unmarshal([]byte(string(m.Value)), &mapaObtenido)
 
 		if err != nil {
-			fmt.Println("Error al decodificar el mapa: %v\n", err)
+			fmt.Printf("Error al decodificar el mapa: %v\n", err)
+		}
+
+		// Desciframos el mapa
+		mapaDescifrado, err := desencriptacionAES(mapaObtenido, clave)
+		if err != nil {
+			panic(err)
 		}
 
 		// Como el parque ha cerrado tenemos que reiniciar la información del visitante
-		if mapaObtenido == "Engine no disponible" {
+		if mapaDescifrado == "Engine no disponible" {
 			fmt.Println("El engine ha dejado de estar disponible")
 			v.DentroParque = 0
 			v.ID = ""
@@ -712,12 +1040,17 @@ func consumidorMapa(IpBroker, PuertoBroker string, ctx context.Context) {
 		} else {
 
 			// Procesamos el mapa recibido y lo convertimos a un array bidimensional de strings
-			cadenaProcesada := strings.Split(string(m.Value), "|")
+			//cadenaProcesada := strings.Split(string(m.Value), "|")
+			cadenaProcesada := strings.Split(mapaDescifrado, "|")
 			var mapa [20][20]string = procesarMapa(cadenaProcesada)
-			fmt.Println(mapaObtenido)
+			fmt.Println(mapaDescifrado)
 			movimiento := obtenerMovimiento(mapa)
 			peticionMovimiento := v.ID + ":" + movimiento + ":" + strconv.Itoa(v.Destinox) + "," + strconv.Itoa(v.Destinoy)
-			productorMovimientos(IpBroker, PuertoBroker, peticionMovimiento, ctx)
+			peticionMovimientoCifrada, err := encriptacionAES(peticionMovimiento, clave)
+			if err != nil {
+				panic(err)
+			}
+			productorMovimientos(IpBroker, PuertoBroker, peticionMovimientoCifrada)
 
 			/*go func() {
 				var respuesta string

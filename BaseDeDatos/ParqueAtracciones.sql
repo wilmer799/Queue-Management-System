@@ -1,3 +1,5 @@
+CREATE DATABASE parque_atracciones;
+
 USE parque_atracciones;
 
 /* Creación de tablas */
@@ -6,13 +8,14 @@ CREATE TABLE parque (id varchar(30) PRIMARY KEY, aforoMaximo int, aforoActual in
 CREATE TABLE visitante (
 id varchar(20) PRIMARY KEY, 
 nombre varchar(30) NOT NULL, 
-contraseña varchar(30) NOT NULL, 
+contraseña varchar(100) NOT NULL, 
 posicionx int DEFAULT 0, 
 posiciony int DEFAULT 0,
 destinox int DEFAULT -1,
 destinoy int DEFAULT -1,
 dentroParque int DEFAULT 0,
 idEnParque char(1),
+ultimoEvento varchar(150),
 parqueAtracciones varchar(30) default 'SDpark', 
 CONSTRAINT fk_visitantes_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
@@ -44,6 +47,9 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspe
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion14", 12, 4, 19, 18, 40, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, 74, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, 23, "SDpark");
+
+
+
 /* Visitantes */
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
 VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"w","SDpark");
@@ -52,7 +58,7 @@ VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"e","SDpark");
 
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
 VALUES ("rafajaja", "rafa","1234",13,7,17,9,1,"r","SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
+INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idEnParque, parqueAtracciones)
 VALUES ("hcarlos", "carlos","1234",19,19,6,11,1,"h","SDpark");
 
 delete from visitante;
@@ -64,6 +70,7 @@ UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
 
 select * from atraccion;
 select * from visitante;
+select ultimoEvento from visitante; /* Para ver los logs de la tabla visitante */
 select * from parque;
 
 SHOW STATUS LIKE 'max_used_connections';

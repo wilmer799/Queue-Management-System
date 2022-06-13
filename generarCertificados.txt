@@ -1,0 +1,17 @@
+Generación de certificados autofirmados
+A través de OpenSSL se va a generar el certificado autofirmado (cert.pem) y la clave privada (key.pem). Se debe entrar en el directorio “cert” donde ubicaremos el certificado y la clave privada.
+$ openssl genrsa -out key.pem
+$ openssl req -new -key key.pem -out csr.pem
+$ openssl x509 -req -days 9999 -in csr.pem -signkey key.pem -out cert.pem
+$ rm csr.pem
+
+Al ejecutar el segundo comando nos pedirá la siguiente información:
+- Country name: ES
+- State or province name: Comunidad Valenciana
+- Locality: Alicante
+- Organization name: UA
+- Organizational Unit name (section): SD
+- Common name: host/nombre de DNS para el que está hecho el certificado SSL autofirmado 
+- Email: xxx@yyy
+
+Una vez ejecutados los comandos deben aparecer 2 ficheros en el directorio “cert”: cert.pem y key.pem

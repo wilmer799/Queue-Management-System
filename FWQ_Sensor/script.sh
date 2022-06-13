@@ -1,4 +1,5 @@
 #!/bin/bash
 echo
-./fwq_sensor localhost 9092 atraccion1
+go build fwq_sensor.go
+./fwq_sensor localhost 9092 atraccion15
 

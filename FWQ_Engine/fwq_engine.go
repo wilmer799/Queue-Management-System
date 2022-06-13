@@ -3,7 +3,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -19,6 +22,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
@@ -37,6 +41,7 @@ type visitante struct {
 	Destinoy     int    `json:"destinoy"`
 	DentroParque int    `json:"dentroParque"`
 	IdEnParque   string `json:"idEnParque"`
+	UltimoEvento string `json:"ultimoEvento"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -148,6 +153,15 @@ func main() {
 	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
 	crearTopics(IpKafka, PuertoKafka, "movimiento-mapa")
 
+	// SECURIZAMOS LA COMUNICACIÓN EN KAFKA
+	// Cargamos la clave de cifrado AES del archivo
+	fichero, err := ioutil.ReadFile("claveCifradoAES.txt")
+	if err != nil {
+		log.Fatal("Error al leer el archivo de la clave de cifrado AES: ", err)
+	}
+
+	clave := string(fichero) // Clave de 32 bits
+
 	// Visitantes, atracciones que se encuentran en la BD
 	var visitantesRegistrados []visitante
 	var conn = conexionBD()
@@ -155,8 +169,8 @@ func main() {
 	establecerMaxVisitantes(conn, maxVisitantes)
 
 	//Para empezar con el kafka
-	ctx := context.Background()
-	go consumidorEngine(IpKafka, PuertoKafka, ctx, maxVisitantes)
+	//ctx := context.Background()
+	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes, clave)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -164,11 +178,16 @@ func main() {
 		for sig := range c {
 			log.Printf("captured %v, stopping profiler and exiting..", sig)
 			mensaje := "Engine no disponible"
-			mensajeJson, err := json.Marshal(mensaje)
+			mensajeCifrado, err := encriptacionAES(string(mensaje), clave)
 			if err != nil {
-				fmt.Println("Error a la hora de codificar el mensaje: %v", err)
+				panic(err)
 			}
-			productorMapa(IpKafka, PuertoKafka, ctx, mensajeJson)
+			mensajeJson, err := json.Marshal(mensajeCifrado)
+			if err != nil {
+				fmt.Printf("Error a la hora de codificar el mensaje: %v\n", err)
+			}
+
+			productorMapa(IpKafka, PuertoKafka, mensajeJson)
 
 			/*for i := 0; i < len(visitantesDelEngine); i++ {
 
@@ -250,15 +269,99 @@ func parqueLleno(db *sql.DB, maxAforo int) bool {
 
 }
 
-/* Función que permite eliminar un element de un slice */
+/* Función que permite eliminar un elemento de un slice */
 /*func remove(s []string, i int) []string {
 	s[i] = s[len(s)-1]
 	// We do not need to put s[i] at the end, as it will be discarded anyway
 	return s[:len(s)-1]
 }*/
 
+/* Función que nos sirve para comprobar el hash de un password */
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+/* Función que nos simplifica la llamada de la función EncodeToString en base 64 */
+func encodeBase64(src []byte) string {
+	return base64.StdEncoding.EncodeToString(src)
+}
+
+/* Función que nos simplifica la llamada a DecodeString en base 64 */
+func decodeBase64(s string) []byte {
+	datos, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return datos
+}
+
+/* Función de encriptación que utiliza el algoritmo AES */
+func encriptacionAES(texto, claveSecreta string) (string, error) {
+
+	bloqueDeCifrado, err := aes.NewCipher([]byte(claveSecreta)) // Creamos un nuevo bloque de cifrado AES
+	if err != nil {
+		return "", err
+	}
+
+	textoPlano := []byte(texto)
+	cfb := cipher.NewCFBEncrypter(bloqueDeCifrado, iv) // Creamos el stream de encriptación
+	textoCifrado := make([]byte, len(textoPlano))
+	cfb.XORKeyStream(textoCifrado, textoPlano) // Sustituye cada byte de textoPlano por cada byte en el stream de bytes cifrado (textoCifrado)
+
+	return encodeBase64(textoCifrado), nil
+
+}
+
+/* Función de desencriptación que utiliza el algoritmo AES */
+func desencriptacionAES(texto, claveSecreta string) (string, error) {
+
+	bloqueDeCifrado, err := aes.NewCipher([]byte(claveSecreta)) // Creamos un nuevo bloque de cifrado AES
+	if err != nil {
+		return "", err
+	}
+
+	textoCifrado := decodeBase64(texto)
+	cfb := cipher.NewCFBDecrypter(bloqueDeCifrado, iv) // Creamos el stream de desencriptación
+	textoPlano := make([]byte, len(textoCifrado))
+	cfb.XORKeyStream(textoPlano, textoCifrado) // Sustituye cada byte de textoCifrado por cada byte en textoPlano
+
+	return string(textoPlano), nil
+
+}
+
+/* Función que almacena los registros de auditoría en la tabla visitante */
+func RegistroLog(db *sql.DB, ipPuerto, idVisitante, accion, descripcion string) {
+
+	// Añadimos el evento de log de error al visitante
+	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET ultimoEvento = ? WHERE id = ?")
+	if err != nil {
+		panic("Error al preparar la sentencia de inserción: " + err.Error())
+	}
+
+	defer sentenciaPreparada.Close()
+
+	var eventoLog string // Variable donde vamos a guardar la información de log que le vamos a pasar a la BD
+
+	dateTime := time.Now().Format("2006-01-02 15:04:05") // Fecha y hora del evento
+	ipVisitante := ipPuerto                              // IP y puerto de quién ha provocado el evento
+	accionRealizada := accion                            // Que acción se realiza
+	descripcionEvento := descripcion                     // Parámetros o descripción del evento
+
+	eventoLog += dateTime + " | "
+	eventoLog += ipVisitante + " | "
+	eventoLog += accionRealizada + " | "
+	eventoLog += descripcionEvento
+
+	_, err = sentenciaPreparada.Exec(eventoLog, idVisitante)
+	if err != nil {
+		panic("Error al registrar el evento de log: " + err.Error())
+	}
+
+}
+
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisitantes int) {
+func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave string) {
 
 	//Accediendo a la base de datos
 	//Abrimos la conexion con la base de datos
@@ -289,9 +392,14 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			fmt.Println("Ha ocurrido algún error a la hora de conectarse con el kafka", err)
 		}
 
-		//fmt.Println("Petición recibida: " + string(m.Value))
+		cadena, err := desencriptacionAES(string(m.Value), clave)
+		if err != nil {
+			panic(err)
+		}
 
-		cadenaPeticion := strings.Split(string(m.Value), ":")
+		fmt.Println("Petición recibida: " + cadena)
+
+		cadenaPeticion := strings.Split(cadena, ":")
 
 		alias := cadenaPeticion[0]
 		peticion := cadenaPeticion[1]
@@ -306,17 +414,32 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			Destinoy: destinoY,
 		}
 
-		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
-		results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
+		// Nos guardamos la posible contraseña recibida
+		var contraseña string = v.Password
 
-		if err != nil {
-			fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
-		}
+		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
+		//results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
+
+		// Obtenemos el hash de la contraseña del visitante en caso de que el ID coincida con alguno almacenado en la BD
+		results := db.QueryRow("SELECT contraseña FROM visitante WHERE id = ?", v.ID)
+		/*if err != nil {
+			fmt.Println("Error al hacer la consulta sobre la contraseña para el login: " + err.Error())
+		}*/
+
+		var hash string
+
+		// Si existe una contraseña almacenada para el id recibido
+		//if results.Next() {
+		results.Scan(&hash)
+		//}
+
+		//fmt.Println("Contraseña almacenada: ", hash)
+		//fmt.Println("Contraseña recibida: ", contraseña)
 
 		var respuesta string = ""
 
 		// Si las credenciales coinciden con las de un visitante registrado en la BD y el parque no está lleno
-		if results.Next() && !parqueLleno(db, maxVisitantes) {
+		if CheckPasswordHash(contraseña, hash) && !parqueLleno(db, maxVisitantes) {
 
 			// Actualizamos el estado del visitante en la BD
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 1, destinox = ?, destinoy = ? WHERE id = ?")
@@ -334,12 +457,17 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 			//visitantesDelEngine = append(visitantesDelEngine, v.ID)
 
 			respuesta += alias + ":" + "Acceso concedido"
-			productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+			respuestaCifrada, err := encriptacionAES(respuesta, clave)
+			if err != nil {
+				panic(err)
+			}
+			productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 
 			sentenciaPreparada.Close()
 
+			// Si se nos ha mandado un movimiento
 		} else if peticion == "IN" || peticion == "N" || peticion == "S" || peticion == "W" || peticion == "E" || peticion == "NW" ||
-			peticion == "NE" || peticion == "SW" || peticion == "SE" { // Si se nos ha mandado un movimiento
+			peticion == "NE" || peticion == "SW" || peticion == "SE" {
 
 			// Comprobamos que el alias pertenezca a un visitante que se encuentra en el parque
 			results, err := db.Query("SELECT * FROM visitante WHERE id = ?", v.ID)
@@ -348,7 +476,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 				fmt.Println("Error al hacer la consulta sobre la BD para el login: " + err.Error())
 			}
 
-			// Actualizamos el estado el destino del visitante en la BD
+			// Actualizamos el destino del visitante en la BD
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET destinox = ?, destinoy = ? WHERE id = ?")
 			if err != nil {
 				panic("Error al preparar la sentencia de modificación de destino: " + err.Error())
@@ -381,23 +509,35 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 						}
 					}
 				}
+
+				// Encriptamos el mapa
+				representacionCifrada, err := encriptacionAES(representacion, clave)
+				if err != nil {
+					panic(err)
+				}
+
 				//Convertimos el mapaActualizado a formato jSON
 				//Esta función devuelve un array de byte
-				mapaJson, err := json.Marshal(representacion)
-				//En formato jSon tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
+				mapaJson, err := json.Marshal(representacionCifrada)
+				//En formato json tiene encuenta el salto de linea por lo que hay que ver si al decodificarlo se quita
 				if err != nil {
-					fmt.Println("Error a la hora de codificar el mapa: %v", err)
+					fmt.Printf("Error a la hora de codificar el mapa: %v\n", err)
 				}
-				productorMapa(IpKafka, PuertoKafka, ctx, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
+
+				productorMapa(IpKafka, PuertoKafka, mapaJson) // Mandamos el mapa actualizado a los visitantes que se encuentran en el parque
 				results.Close()
 
 			} else { // Si el alias no pertenece a un visitante del parque
 				respuesta += alias + ":" + "Parque cerrado"
-				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				respuestaCifrada, err := encriptacionAES(respuesta, clave)
+				if err != nil {
+					panic(err)
+				}
+				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 				results.Close()
 			}
-
-		} else if peticion == "OUT" { // Si se nos ha solicitado una salida del parque
+			// Si se nos ha solicitado una salida del parque
+		} else if peticion == "OUT" {
 
 			// Sacamos del parque al visitante y reinciamos tanto su posición actual como su destino
 			sentenciaPreparada, err := db.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
@@ -424,25 +564,35 @@ func consumidorEngine(IpKafka, PuertoKafka string, ctx context.Context, maxVisit
 
 			sentenciaPreparada.Close()
 
+			RegistroLog(db, IpKafka+":"+PuertoKafka, v.ID, "Baja", "El visitante "+v.ID+" ha salido del parque") // Registramos el evento de log
+
 		} else { // Si las credenciales enviadas para iniciar sesión no son válidas
 
 			if parqueLleno(db, maxVisitantes) {
 				respuesta += alias + ":" + "Aforo al completo"
-				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				respuestaCifrada, err := encriptacionAES(respuesta, clave)
+				if err != nil {
+					panic(err)
+				}
+				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 			} else {
 				respuesta += alias + ":" + "Parque cerrado"
-				productorLogin(IpKafka, PuertoKafka, ctx, respuesta)
+				respuestaCifrada, err := encriptacionAES(respuesta, clave)
+				if err != nil {
+					panic(err)
+				}
+				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 			}
 		}
 
-		results.Close()
+		//results.Close()
 
 	}
 
 }
 
 /* Función que envía el mensaje de respuesta a la petición de login de un visitante */
-func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuesta string) {
+func productorLogin(IpBroker, PuertoBroker string, respuesta string) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "respuesta-login"
@@ -453,7 +603,7 @@ func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuest
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Login"),
 		Value: []byte(respuesta),
 	})
@@ -464,9 +614,7 @@ func productorLogin(IpBroker, PuertoBroker string, ctx context.Context, respuest
 
 }
 
-/*
-* Función que abre una conexion con la bd
- */
+/* Función que abre una conexion con la bd */
 func conexionBD() *sql.DB {
 	//Accediendo a la base de datos
 	/*****Flate blod **/
@@ -510,7 +658,7 @@ func obtenerVisitantesBD(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.UltimoEvento, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
@@ -555,7 +703,7 @@ func obtenerVisitantesParque(db *sql.DB) ([]visitante, error) {
 		if err := results.Scan(&fwq_visitante.ID, &fwq_visitante.Nombre,
 			&fwq_visitante.Password, &fwq_visitante.Posicionx,
 			&fwq_visitante.Posiciony, &fwq_visitante.Destinox, &fwq_visitante.Destinoy,
-			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.Parque); err != nil {
+			&fwq_visitante.DentroParque, &fwq_visitante.IdEnParque, &fwq_visitante.UltimoEvento, &fwq_visitante.Parque); err != nil {
 			return visitantes, err
 		}
 
@@ -826,7 +974,7 @@ func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []by
 		CompressionCodec: kafka.Snappy.Codec(),
 	})
 
-	err := w.WriteMessages(ctx, kafka.Message{
+	err := w.WriteMessages(context.Background(), kafka.Message{
 		Key:   []byte("Key-Mapa"), //[]byte(strconv.Itoa(i)),
 		Value: []byte(mapa),
 	})
