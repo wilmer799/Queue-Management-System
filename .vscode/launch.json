@@ -10,8 +10,8 @@
             "type": "go",
             "request": "launch",
             "mode": "exec",
-            "program": "FWQ_WaitingTimeServer/fwq_waitingTimeServer",
-            "args": ["localhost","9094","localhost","9092"]
+            "program": "FWQ_Registry/fwq_registry",
+            "args": ["localhost","9093"]
         }
 
     ]

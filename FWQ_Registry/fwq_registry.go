@@ -124,7 +124,7 @@ func (resp *Response) Send() {
 func SendDataCrearPerfil(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
 	//response.Data = data
-	response.Message = "Visitante registrado correctamente"
+	response.Message = "OK: Visitante registrado correctamente"
 	response.Send()
 }
 
@@ -132,7 +132,7 @@ func SendDataCrearPerfil(rw http.ResponseWriter, data interface{}) {
 func SendDataEditarPerfil(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
 	//response.Data = data
-	response.Message = "Visitante modificado correctamente"
+	response.Message = "OK: Visitante modificado correctamente"
 	response.Send()
 }
 
@@ -141,7 +141,7 @@ recuperar una fila o todas las filas de la BD y
 que se produzcan errores para poder manejarlos. */
 func (resp *Response) NotFound() {
 	resp.Status = http.StatusNotFound
-	resp.Message = "Resource Not Found"
+	resp.Message = "ERROR: Resource Not Found"
 }
 
 /* Función que manda una respuesta indicando que el recurso solicitado no ha sido encontrado */
@@ -153,8 +153,8 @@ func SendNotFound(rw http.ResponseWriter) {
 
 /* Función que prepara la respuesta para cuando el id ya existe y se pide un registro sobre dicho id */
 func (resp *Response) YaExiste() {
-	resp.Status = http.StatusNoContent
-	resp.Message = "El visitante ya estaba registrado"
+	resp.Status = http.StatusBadRequest
+	resp.Message = "ERROR: El visitante ya estaba registrado"
 }
 
 /* Función que manda una respuesta indicando que el id indicado ya existe */
@@ -166,8 +166,8 @@ func SendYaExiste(rw http.ResponseWriter) {
 
 /* Función que prepara la respuesta para cuando el id ya existe y se pide un registro sobre dicho id */
 func (resp *Response) NoExiste() {
-	resp.Status = http.StatusNotModified
-	resp.Message = "El id del visitante indicado no corresponde con uno existente"
+	resp.Status = http.StatusBadRequest
+	resp.Message = "ERROR: El id del visitante indicado no corresponde con uno existente"
 }
 
 /* Función que manda una respuesta indicando que el id indicado ya existe */
@@ -181,7 +181,7 @@ func SendNoExiste(rw http.ResponseWriter) {
 actualizar una fila de la BD y que se produzcan errores para poder manejarlos. */
 func (resp *Response) UnprocessableEntity() {
 	resp.Status = http.StatusUnprocessableEntity
-	resp.Message = "UnprocessableEntity Not Found"
+	resp.Message = "ERROR: UnprocessableEntity Not Found"
 }
 
 /* Función que manda una respuesta indicando que la entidad recibida no es procesable */
