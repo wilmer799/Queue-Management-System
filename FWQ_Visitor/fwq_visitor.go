@@ -55,6 +55,7 @@ type atraccion struct {
 	Posicionx    int    `json:"posicionx"`
 	Posiciony    int    `json:"posiciony"`
 	TiempoEspera int    `json:"tiempoEspera"`
+	Estado       string `json:"estado"`
 	Parque       string `json:"parqueAtracciones"`
 }
 

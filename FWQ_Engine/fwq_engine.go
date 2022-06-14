@@ -20,8 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
 	"golang.org/x/crypto/bcrypt"
@@ -55,6 +53,7 @@ type atraccion struct {
 	Posicionx    int    `json:"posicionx"`
 	Posiciony    int    `json:"posiciony"`
 	TiempoEspera int    `json:"tiempoEspera"`
+	Estado       string `json:"estado"`
 	Parque       string `json:"parqueAtracciones"`
 }
 
@@ -235,6 +234,8 @@ func main() {
 		time.Sleep(time.Duration(5 * time.Second))
 		atracciones, _ := obtenerAtraccionesBD(conn) // Obtenemos las atracciones actualizadas
 		conexionTiempoEspera(conn, IpFWQWaiting, PuertoWaiting, atracciones)
+
+		obtenerTiempoCiudades()
 
 		fmt.Println() // Para mejorar la visualización
 
@@ -751,7 +752,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 		if err := results.Scan(&fwq_atraccion.ID, &fwq_atraccion.TCiclo,
 			&fwq_atraccion.NVisitantes, &fwq_atraccion.Posicionx,
 			&fwq_atraccion.Posiciony, &fwq_atraccion.TiempoEspera,
-			&fwq_atraccion.Parque); err != nil {
+			&fwq_atraccion.Estado, &fwq_atraccion.Parque); err != nil {
 			return atraccionesParque, err
 		}
 
@@ -1073,6 +1074,11 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 	}
 }
 
+/* Función que muestra un menú para poder seleccionar las 4 ciudades del listado */
+func obtenerTiempoCiudades() {
+
+}
+
 /**
 *	Función que nos conecta a la API externa para obtener el tiempo
  */
@@ -1114,8 +1120,18 @@ func obtenerCiudad(w http.ResponseWriter, r *http.Request) {
 */
 
 func obtenerClimaCiudad(lon float32, lat float32) {
+
 	clienteHttp := &http.Client{}
-	var apiKey string = "c3d8572d0046f36f0c586caa0e2e1d23"
+
+	// Cargamos la clave de cifrado AES del archivo
+	fichero, err := ioutil.ReadFile("apikey.txt")
+	if err != nil {
+		log.Fatal("Error al leer el archivo de la api key de OpenWeather: ", err)
+	}
+
+	var apiKey string = string(fichero)
+
+	//var apiKey string = "c3d8572d0046f36f0c586caa0e2e1d23"
 	var climaCiudad ciudad
 
 	//Convertimos los float en string

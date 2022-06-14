@@ -26,6 +26,7 @@ nvisitantes int,
 posicionx int,
 posiciony int,
 tiempoEspera int,
+estado varchar(10) default 'Abierta',
 parqueAtracciones varchar(30),
 CONSTRAINT fk_atracciones_parque FOREIGN KEY (parqueAtracciones) REFERENCES parque (id));
 
