@@ -1,10 +1,1 @@
-Madrid
-Barcelona
-Alicante
-Sevilla
-Valencia
-Zaragoza
-Albacete
-Tenerife
-Mallorca
-Toledo
+Madrid,Barcelona,Paris,London,Berlin,New York,Sydney

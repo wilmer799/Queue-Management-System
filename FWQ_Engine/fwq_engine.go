@@ -1076,6 +1076,17 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 
 /* Función que muestra un menú para poder seleccionar las 4 ciudades del listado */
 func obtenerTiempoCiudades() {
+	var climaCiudad []ciudad
+	// Cargamos la clave de cifrado AES del archivo
+	ficheroCiudades, err := ioutil.ReadFile("ciudades.txt")
+	if err != nil {
+		log.Fatal("No se ha podido leer las ciudades del archivo txt")
+	}
+
+	var ciudades string = Strings.Split(string(ficheroCiudades), ",")
+	for _, s := range ciudades { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
+		obtenerClimaCiudad(s)
+	}
 
 }
 
@@ -1119,27 +1130,17 @@ func obtenerCiudad(w http.ResponseWriter, r *http.Request) {
 }
 */
 
-func obtenerClimaCiudad(lon float32, lat float32) {
-
+func obtenerClimaCiudad(nombreCiudad string) {
 	clienteHttp := &http.Client{}
-
 	// Cargamos la clave de cifrado AES del archivo
 	fichero, err := ioutil.ReadFile("apikey.txt")
 	if err != nil {
 		log.Fatal("Error al leer el archivo de la api key de OpenWeather: ", err)
 	}
-
 	var apiKey string = string(fichero)
 
-	//var apiKey string = "c3d8572d0046f36f0c586caa0e2e1d23"
-	var climaCiudad ciudad
+	peticion, err := http.NewRequest("GET", "https://api.openweathermap.org/data/2.5/weather?q="+nombreCiudad+"&appid="+apiKey+"&lang=es"+"&units=metric", nil)
 
-	//Convertimos los float en string
-	//Con "%g" obtenemos el valor exacto del número
-	s := fmt.Sprintf("%g", lat)
-	t := fmt.Sprintf("%g", lon)
-	//La petición esta bien hecha
-	peticion, err := http.NewRequest("GET", "https://api.openweathermap.org/data/2.5/weather?lat="+s+"&lon="+t+"&appid="+apiKey+"&lang=es"+"&units=metric", nil)
 	if err != nil {
 		log.Fatalf("Error creando petición: %v", err)
 	}
@@ -1159,12 +1160,4 @@ func obtenerClimaCiudad(lon float32, lat float32) {
 	}
 	fmt.Println(body)
 	fmt.Println(climaCiudad)
-	/*
-
-		log.Printf("Código de respuesta: %d", respuesta.StatusCode)
-		log.Printf("Encabezados: '%q'", respuesta.Header)
-		contentType := respuesta.Header.Get("Content-Type")
-		log.Printf("El tipo de contenido: '%s'", contentType)
-	*/
-
 }
