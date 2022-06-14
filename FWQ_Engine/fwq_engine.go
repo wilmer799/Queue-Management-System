@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/segmentio/kafka-go"
 	"golang.org/x/crypto/bcrypt"
@@ -130,6 +132,9 @@ type ciudad struct {
 	name              string      `json:"name"`
 	cod               float32     `json:"cod"`
 }
+
+// Array de bytes aleatorios para la implementación de seguridad del kafka
+var iv = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
 
 /*
  * @Description : Función main de fwq_engine
@@ -961,7 +966,7 @@ func mueveVisitante(db *sql.DB, id, movimiento string, visitantes []visitante) {
 /**
  * Función que envia el mapa a los visitantes
  */
-func productorMapa(IpBroker, PuertoBroker string, ctx context.Context, mapa []byte) {
+func productorMapa(IpBroker, PuertoBroker string, mapa []byte) {
 
 	var brokerAddress string = IpBroker + ":" + PuertoBroker
 	var topic string = "movimiento-mapa"

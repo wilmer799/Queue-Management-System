@@ -158,7 +158,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 
 		cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Error al cargar los ficheros de certificado y clave asociada: ", err)
 		}
 
 		config := tls.Config{
@@ -231,7 +231,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 		var id string
 
 		fmt.Print("Introduce tu ID:")
-		fmt.Scan(&id)
+		fmt.Scanln(&id)
 
 		// Nos aseguramos de que no sea válido un id en blanco
 		if len(id) > 1 {
@@ -239,7 +239,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 			var nombre string
 
 			fmt.Print("Introduce tu nombre:")
-			fmt.Scan(&nombre)
+			fmt.Scanln(&nombre)
 
 			// Nos aseguramos de que no sea válido un nombre en blanco
 			if len(nombre) > 1 {
@@ -247,7 +247,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 				var password string
 
 				fmt.Print("Introduce tu contraseña:")
-				fmt.Scan(&password)
+				fmt.Scanln(&password)
 
 				// Nos aseguramos de que no sea válida una contraseña en blanco
 				if len(password) > 1 {
@@ -265,10 +265,16 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 					// Realizamos la composición de los datos
 					datos := strings.NewReader(string(vComoJson))
 
+					tr := &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					}
+					http := &http.Client{Transport: tr}
+
 					// Ahora realizamos el envío de los datos
-					res, err := http.Post("http://"+ipRegistry+":"+puertoRegistryApiRest+"/crear/"+v.ID, "application/json", datos)
+					res, err := http.Post("https://"+ipRegistry+":"+puertoRegistryApiRest+"/crear/"+v.ID, "application/json", datos)
 					if err != nil {
-						log.Fatal(err)
+						fmt.Printf("Error al realizar la petición al servidor API REST: %v\n", err)
+						return
 					}
 
 					// Nos aseguramos de que se cierra el body
@@ -277,7 +283,8 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 					// Realizamos la lectura del body
 					body, err := ioutil.ReadAll(res.Body)
 					if err != nil {
-						log.Fatal(err)
+						fmt.Printf("Error al leer la respuesta recibida: %v\n", err)
+						return
 					}
 
 					fmt.Println() // Por limpieza
@@ -325,7 +332,7 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 
 		cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Error al cargar los ficheros de certificado y clave asociada: ", err)
 		}
 
 		config := tls.Config{
@@ -419,8 +426,12 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 				// Nos aseguramos de que no sea válida una contraseña en blanco
 				if len(password) > 1 {
 
+					tr := &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					}
+
 					// Accedemos al cliente mediante http.Client
-					clienteHttp := &http.Client{}
+					clienteHttp := &http.Client{Transport: tr}
 
 					v := visitante{
 						ID:       id,
@@ -433,7 +444,7 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 					}
 
 					// Creamos una nueva petición tipo PUT mediante http.NewRequest
-					peticion, err := http.NewRequest("PUT", "http://"+ipRegistry+":"+puertoRegistryApiRest+"/editar/"+v.ID, bytes.NewBuffer(vComoJson))
+					peticion, err := http.NewRequest("PUT", "https://"+ipRegistry+":"+puertoRegistryApiRest+"/editar/"+v.ID, bytes.NewBuffer(vComoJson))
 					if err != nil {
 						log.Fatalf("Error creando la petición PUT: %v", err)
 					}
@@ -443,7 +454,8 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 
 					respuesta, err := clienteHttp.Do(peticion)
 					if err != nil {
-						log.Fatalf("Error al realizar la petición PUT: %v", err)
+						fmt.Printf("Error al realizar la petición al servidor API REST: %v\n", err)
+						return
 					}
 
 					// Nos aseguramos de que se cierra el body recibido
@@ -452,7 +464,8 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 					// Realizamos la lectura del body
 					cuerpoRespuesta, err := ioutil.ReadAll(respuesta.Body)
 					if err != nil {
-						log.Fatalf("Error leyendo respuesta: %v", err)
+						fmt.Printf("Error al leer la respuesta recibida: %v\n", err)
+						return
 					}
 
 					// Aquí podemos decodificar la respuesta si es un JSON, o convertirla a cadena
