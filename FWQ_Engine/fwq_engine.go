@@ -1078,7 +1078,15 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 *
  */
 func cambiarCiudad(w http.ResponseWriter, r *http.Request) {
-	var apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
+
+	// Cargamos el API_KEY del OpenWeather desde un archivo
+	fichero, err := ioutil.ReadFile("apikey.txt")
+	if err != nil {
+		log.Fatal("Error al leer el archivo del API_KEY del OpenWeather: ", err)
+	}
+
+	var apiKey string = string(fichero)
+
 	//Declaramos las variables que vamos a utilizar para las peticiones
 	var coordenadasCiudad coord
 	var climaCiudad ciudad
