@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -1070,9 +1070,9 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 
 /**
 *	Función que nos conecta a la API externa para obtener el tiempo
-*
  */
-func cambiarCiudad(w http.ResponseWriter, r *http.Request) {
+/*
+func obtenerCiudad(w http.ResponseWriter, r *http.Request) {
 	var apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
 	//Declaramos las variables que vamos a utilizar para las peticiones
 	var coordenadasCiudad coord
@@ -1092,7 +1092,7 @@ func cambiarCiudad(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("Error al crear la petición: %v", err)
 	}
 	//Cerramos la petición get
-	defer respuesta.Body.Close()
+	defer peticion.Body.Close()
 	//Agregamos encabezados
 	peticion.Header.Add("Content-Type", "application/json")
 	//Decodificamos el body de la respuesta y lo almacenamos en el climaCiudad parametro
@@ -1104,5 +1104,46 @@ func cambiarCiudad(w http.ResponseWriter, r *http.Request) {
 	//Imprimimos el cuerpo
 	fmt.Println(body)
 	fmt.Println(climaCiudad)
+
+}
+*/
+
+func obtenerClimaCiudad(lon float32, lat float32) {
+	clienteHttp := &http.Client{}
+	var apiKey string = "c3d8572d0046f36f0c586caa0e2e1d23"
+	var climaCiudad ciudad
+
+	//Convertimos los float en string
+	//Con "%g" obtenemos el valor exacto del número
+	s := fmt.Sprintf("%g", lat)
+	t := fmt.Sprintf("%g", lon)
+	//La petición esta bien hecha
+	peticion, err := http.NewRequest("GET", "https://api.openweathermap.org/data/2.5/weather?lat="+s+"&lon="+t+"&appid="+apiKey+"&lang=es"+"&units=metric", nil)
+	if err != nil {
+		log.Fatalf("Error creando petición: %v", err)
+	}
+	peticion.Header.Add("Content-Type", "application/json")
+	respuesta, err := clienteHttp.Do(peticion)
+	if err != nil {
+		// Maneja el error de acuerdo a tu situación
+		log.Fatalf("Error haciendo petición: %v", err)
+	}
+	// No olvides cerrar el cuerpo al terminar
+	defer respuesta.Body.Close()
+	// Vamos a obtener el cuerpo y lo almacenaremos en la variable
+	//cuerpoRespuesta, err := ioutil.ReadAll(respuesta.Body)
+	body := json.NewDecoder(peticion.Body).Decode(&climaCiudad)
+	if err != nil {
+		log.Fatalf("Error leyendo respuesta: %v", err)
+	}
+	fmt.Println(body)
+	fmt.Println(climaCiudad)
+	/*
+
+		log.Printf("Código de respuesta: %d", respuesta.StatusCode)
+		log.Printf("Encabezados: '%q'", respuesta.Header)
+		contentType := respuesta.Header.Get("Content-Type")
+		log.Printf("El tipo de contenido: '%s'", contentType)
+	*/
 
 }

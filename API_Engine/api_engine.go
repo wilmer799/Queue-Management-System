@@ -1,13 +1,16 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
+	"io"
 	"log"
 	"net/http"
 )
 
 /**
+* Para obtener informacion de servidor
+* https://parzibyte.me/blog/2018/12/03/servidor-web-go/
 * Función principal para las rutas
 * Api Key del servidor de tiempos
 * sdpracticas
@@ -22,8 +25,24 @@ import (
  */
 func main() {
 
+	http.HandleFunc("/hola", func(w http.ResponseWriter, peticion *http.Request) {
+		io.WriteString(w, "Solicitaste hola")
+	})
+
 	r := mux.NewRouter()
-	r.HandleFunc("/", Home)
-	r.HandleFunc("/cambiarCiudad/{lat}/{lan}", cambiarCiudad).Methods("GET")
-	log.Fatal(http.ListenAndServe(":8080", router))
+
+	r.HandleFunc("/hola", HomeHandler)
+	r.HandleFunc("obtenerCiudad", ObtenerCiudad)
+
+	direccion := ":8080"
+	fmt.Println("Servidor listo escuchando en" + direccion)
+	log.Fatal(http.ListenAndServe(direccion, nil))
+}
+
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, "Estamos probando la api rest con postman")
+}
+
+func ObtenerCiudad(w http.ResponseWriter, r *http.Request) {
+
 }
