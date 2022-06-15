@@ -61,75 +61,80 @@ type atraccion struct {
 * Estructura del objeto coord que almacenan las coordenadas de la cuidad
  */
 type coord struct {
-	lon float32 `json: "lon"`
-	lat float32 `json: "lat"`
+	Lon float32 `json: "lon"`
+	Lat float32 `json: "lat"`
 }
 
 /**
 * Estructura que almacena la información de la temperatura
  */
 type weather struct {
-	id          int    `json: "id"`
-	main        string `json: "main"`
-	description string `json: "description"`
-	icon        string `json: "icon"`
+	Id          int    `json: "id"`
+	Main        string `json: "main"`
+	Description string `json: "description"`
+	Icon        string `json: "icon"`
 }
 
 /**
 * Estructura que almacena la información de la temperatura de la cuidad
  */
 type temperatura struct {
-	temp       float32 `json:"temp"`
-	feels_like float32 `json:"feels_like"`
-	temp_min   float32 `json:"temp_min"`
-	temp_max   float32 `json:"temp_max"`
-	pressure   float32 `json: "pressure"`
-	humidity   float32 `json:"humidity"`
+	Temp       float32 `json:"temp"`
+	Feels_like float32 `json:"feels_like"`
+	Temp_min   float32 `json:"temp_min"`
+	Temp_max   float32 `json:"temp_max"`
+	Pressure   float32 `json: "pressure"`
+	Humidity   float32 `json:"humidity"`
 }
 
 /**
 * Estructura que almacena la información del viento
  */
 type wind struct {
-	speed float32 `json:"speed"`
-	deg   float32 `json: "deg"`
+	Speed float32 `json:"speed"`
+	Deg   float32 `json: "deg"`
 }
 
 /**
 * Estructura que almacena la candiad de nubes que hay
  */
 type clouds struct {
-	all float32 `json:"all"`
+	All float32 `json:"all"`
 }
 
 /**
 * Estructura que almacena información de la cuidad
  */
 type sys struct {
-	tipo    int     `json:"tipo"`
-	id      float32 `json:"id"`
-	country string  `json:"country"`
-	sunrise float32 `json:"sunrise"`
-	sunset  float32 `json:"sunset"`
+	Tipo    int     `json:"tipo"`
+	Id      float32 `json:"id"`
+	Country string  `json:"country"`
+	Sunrise float32 `json:"sunrise"`
+	Sunset  float32 `json:"sunset"`
 }
 
 /**
 * Estructura que almacena la información de la cuidad y su temperatura
  */
+/*type ciudad struct {
+	Coordenadas       coord       `json:"coordenadas"`
+	Tiempo            weather     `json:"tiempo"`
+	Base              string      `json:"base"`
+	Temperaturaciudad temperatura `json:"temperaturaciudad"`
+	Visibility        float32     `json:"visibility"`
+	Viento            wind        `json:"viento"`
+	Nubes             clouds      `json:"nubes"`
+	Dt                float32     `json:"dt"`
+	Informacionciudad sys         `json:"informacionciudad"`
+	Timezone          float32     `json:"timezone"`
+	Id                float32     `json:"id"`
+	Name              string      `json:"name"`
+	Cod               float32     `json:"cod"`
+}*/
+
 type ciudad struct {
-	coordenadas       coord       `json:"coordenadas"`
-	tiempo            weather     `json:"tiempo"`
-	base              string      `json:"base"`
-	temperaturaciudad temperatura `json:"temperaturaciudad"`
-	visibility        float32     `json:"visibility"`
-	viento            wind        `json:"viento"`
-	nubes             clouds      `json:"nubes"`
-	dt                float32     `json:"dt"`
-	informacionciudad sys         `json:"informacionciudad"`
-	timezone          float32     `json:"timezone"`
-	id                float32     `json:"id"`
-	name              string      `json:"name"`
-	cod               float32     `json:"cod"`
+	nombre      string  `json:"name"`
+	temperatura float32 `json:"temp"`
 }
 
 // Array de bytes aleatorios para la implementación de seguridad del kafka
@@ -144,8 +149,9 @@ func main() {
 	IpKafka := os.Args[1]
 	PuertoKafka := os.Args[2]
 	numeroVisitantes := os.Args[3]
-	IpFWQWaiting := os.Args[4]
-	PuertoWaiting := os.Args[5]
+	ciudadesElegidas := os.Args[4]
+	IpFWQWaiting := os.Args[5]
+	PuertoWaiting := os.Args[6]
 
 	fmt.Println("Creado un engine que atiende peticiones por " + IpKafka + ":" + PuertoKafka + ", limita el parque a " + numeroVisitantes + " visitantes y manda peticiones a un servidor de tiempos de espera situado en " + IpFWQWaiting + ":" + PuertoWaiting + ".\n")
 
@@ -173,6 +179,8 @@ func main() {
 	//Para empezar con el kafka
 	//ctx := context.Background()
 	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes, clave)
+
+	go actualizarClimaParque(ciudadesElegidas)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -235,7 +243,7 @@ func main() {
 		atracciones, _ := obtenerAtraccionesBD(conn) // Obtenemos las atracciones actualizadas
 		conexionTiempoEspera(conn, IpFWQWaiting, PuertoWaiting, atracciones)
 
-		obtenerTiempoCiudades()
+		actualizarClimaParque(ciudadesElegidas)
 
 		fmt.Println() // Para mejorar la visualización
 
@@ -1074,19 +1082,59 @@ func crearTopics(IpBroker, PuertoBroker, nombre string) {
 	}
 }
 
+/* Función que selecciona las 4 ciudades elegidas */
+func seleccionaCiudades(ciudades []string, numCiudadesElegidas string) []string {
+
+	numCiudades := strings.Split(numCiudadesElegidas, ",")
+
+	var nombresCiudades []string
+
+	for i := 0; i < 4; i++ {
+
+		num, _ := strconv.Atoi(numCiudades[i])
+
+		nombresCiudades = append(nombresCiudades, ciudades[num-1])
+
+	}
+
+	return nombresCiudades
+
+}
+
 /* Función que muestra un menú para poder seleccionar las 4 ciudades del listado */
-func obtenerTiempoCiudades() {
-	var climaCiudad []ciudad
+func actualizarClimaParque(numerosCiudadesElegidas string) {
+
 	// Cargamos la clave de cifrado AES del archivo
 	ficheroCiudades, err := ioutil.ReadFile("ciudades.txt")
 	if err != nil {
 		log.Fatal("No se ha podido leer las ciudades del archivo txt")
 	}
 
-	var ciudades string = Strings.Split(string(ficheroCiudades), ",")
-	for _, s := range ciudades { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
-		obtenerClimaCiudad(s)
+	nombresCiudades := strings.Split(string(ficheroCiudades), ",")
+
+	ciudadesElegidas := seleccionaCiudades(nombresCiudades, numerosCiudadesElegidas)
+
+	fmt.Println()
+	fmt.Println("La ciudad del cuadrante arriba-izquierda es:", ciudadesElegidas[0])
+	fmt.Println("La ciudad del cuadrante arriba-derecha es:", ciudadesElegidas[1])
+	fmt.Println("La ciudad del cuadrante abajo-izquierda es:", ciudadesElegidas[2])
+	fmt.Println("La ciudad del cuadrante abajo-derecha es:", ciudadesElegidas[3])
+	fmt.Println()
+
+	var ciudades []ciudad
+
+	for _, nombreCiudad := range ciudadesElegidas { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
+
+		city := ciudad{}
+		city.nombre = nombreCiudad
+		city.temperatura = obtenerClimaCiudad(nombreCiudad)
+
+		ciudades = append(ciudades, city)
+
 	}
+
+	// Actualizamos la situación del parque en base a las temperaturas de las ciudades
+	// OTRA OPCIÓN ES CREAR UNA VARIABLE GLOBAL CON EL ESTADO ACTUAL DE LAS 4 CIUDADES
 
 }
 
@@ -1130,8 +1178,10 @@ func obtenerCiudad(w http.ResponseWriter, r *http.Request) {
 }
 */
 
-func obtenerClimaCiudad(nombreCiudad string) {
+func obtenerClimaCiudad(nombreCiudad string) float32 {
+
 	clienteHttp := &http.Client{}
+
 	// Cargamos la clave de cifrado AES del archivo
 	fichero, err := ioutil.ReadFile("apikey.txt")
 	if err != nil {
@@ -1144,20 +1194,36 @@ func obtenerClimaCiudad(nombreCiudad string) {
 	if err != nil {
 		log.Fatalf("Error creando petición: %v", err)
 	}
+
 	peticion.Header.Add("Content-Type", "application/json")
+
 	respuesta, err := clienteHttp.Do(peticion)
 	if err != nil {
 		// Maneja el error de acuerdo a tu situación
 		log.Fatalf("Error haciendo petición: %v", err)
 	}
+
 	// No olvides cerrar el cuerpo al terminar
 	defer respuesta.Body.Close()
+
 	// Vamos a obtener el cuerpo y lo almacenaremos en la variable
-	//cuerpoRespuesta, err := ioutil.ReadAll(respuesta.Body)
-	body := json.NewDecoder(peticion.Body).Decode(&climaCiudad)
+	cuerpoRespuesta, err := ioutil.ReadAll(respuesta.Body)
+	//var city ciudad
+	//body := json.NewDecoder(peticion.Body).Decode(&city)
 	if err != nil {
 		log.Fatalf("Error leyendo respuesta: %v", err)
 	}
-	fmt.Println(body)
-	fmt.Println(climaCiudad)
+	respuestaString := strings.Split(string(cuerpoRespuesta), ",")
+	respuestaString = strings.Split(respuestaString[7], ":")
+	fmt.Println(respuestaString[2])
+
+	// Convertimos el string a float32
+	value, err := strconv.ParseFloat(respuestaString[2], 32)
+	if err != nil {
+		panic(err)
+	}
+	temperatura := float32(value)
+
+	return temperatura
+
 }
