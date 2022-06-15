@@ -9,9 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/segmentio/kafka-go"
-	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -22,6 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/segmentio/kafka-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 /**
@@ -154,7 +155,8 @@ func main() {
 
 	fmt.Println("Creado un engine que atiende peticiones por " + IpKafka + ":" + PuertoKafka + ", limita el parque a " + numeroVisitantes + " visitantes y manda peticiones a un servidor de tiempos de espera situado en " + IpFWQWaiting + ":" + PuertoWaiting + ".\n")
 
-	//Creamos los topicos
+	//Creamos el topic...Cambiar la Ipkafka en la función principal
+	//Si no se ejecuta el programa, se cierra el kafka?
 	crearTopics(IpKafka, PuertoKafka, "peticiones")
 	crearTopics(IpKafka, PuertoKafka, "respuesta-login")
 	crearTopics(IpKafka, PuertoKafka, "movimiento-mapa")
@@ -171,11 +173,12 @@ func main() {
 	// Visitantes, atracciones que se encuentran en la BD
 	var visitantesRegistrados []visitante
 	var conn = conexionBD()
-	ciudadesConTemperatura := ciudadesElegidas
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
 
-	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes, clave, ciudadesConTemperatura)
+	//Para empezar con el kafka
+	//ctx := context.Background()
+	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes, clave)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -238,7 +241,7 @@ func main() {
 		atracciones, _ := obtenerAtraccionesBD(conn) // Obtenemos las atracciones actualizadas
 		conexionTiempoEspera(conn, IpFWQWaiting, PuertoWaiting, atracciones)
 
-		actualizarClimaParque(ciudadesElegidas)
+		actualizarClimaParque(ciudadesElegidas, atracciones)
 
 		fmt.Println() // Para mejorar la visualización
 
@@ -368,7 +371,7 @@ func RegistroLog(db *sql.DB, ipPuerto, idVisitante, accion, descripcion string) 
 }
 
 /* Función que recibe del gestor de colas las credenciales de los visitantes que quieren iniciar sesión para entrar en el parque */
-func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave string, ciudadesElegidas string) {
+func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave string) {
 
 	//Accediendo a la base de datos
 	//Abrimos la conexion con la base de datos
@@ -503,9 +506,9 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 				visitantesParque, _ := obtenerVisitantesParque(db)             // Obtenemos los visitantes del parque actualizados
 				mueveVisitante(db, alias, peticion, visitantesParque)          // Movemos al visitante en base al movimiento recibido
 				visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
-				atracciones, _ := obtenerAtraccionesBD(db)                     // Obtenemos las atracciones actualizadas
-				ciudadesConClima := actualizarClimaParque(ciudadesElegidas)
-				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa, ciudadesConClima, db)
+				// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
+				atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
+				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
 				var representacion string
 				for i := 0; i < len(mapaActualizado); i++ {
 					for j := 0; j < len(mapaActualizado); j++ {
@@ -776,7 +779,7 @@ func obtenerAtraccionesBD(db *sql.DB) ([]atraccion, error) {
 * Función que forma el mapa del parque conteniendo a los visitantes y las atracciones
 * @return [20][20]string : Matriz bidimensional representando el mapa
  */
-func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string, ciudadesConClima []ciudad, db *sql.DB) [20][20]string {
+func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa [20][20]string) [20][20]string {
 
 	//Asignamos los id de los visitantes
 	for i := 0; i < len(mapa); i++ {
@@ -794,44 +797,7 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(atracciones); k++ {
 				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
-					//Comprobamos las posiciones de las atracciones. Dependiendo de su posicion, estará en un segmento u otro
-					//Primer cuadrante. [5][5]
-					if atracciones[k].Posicionx <= 4 && atracciones[k].Posiciony <= 4 {
-						//Comprobamos la temperatura de la primera ciudad
-						if comprobarTemperatura(ciudadesConClima[0].temperatura) {
-							atracciones[k].Estado = "Cerrado"
-							cambiarEstadoAtraccion(db, atracciones[k].Estado, atracciones[k].ID)
-							//Asignamos el valor que se almacenara en la bd
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						} else {
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						}
-					} else if atracciones[k].Posicionx >= 5 && atracciones[k].Posicionx <= 9 && atracciones[k].Posiciony >= 5 && atracciones[k].Posiciony <= 9 {
-						if comprobarTemperatura(ciudadesConClima[1].temperatura) {
-							atracciones[k].Estado = "Cerrado"
-							cambiarEstadoAtraccion(db, atracciones[k].Estado, atracciones[k].ID)
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						} else {
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						}
-					} else if atracciones[k].Posicionx >= 10 && atracciones[k].Posicionx <= 14 && atracciones[k].Posiciony >= 10 && atracciones[k].Posiciony <= 14 {
-						if comprobarTemperatura(ciudadesConClima[2].temperatura) {
-							atracciones[k].Estado = "Cerrado"
-							cambiarEstadoAtraccion(db, atracciones[k].Estado, atracciones[k].ID)
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						} else {
-
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						}
-					} else if atracciones[k].Posicionx >= 15 && atracciones[k].Posicionx <= 19 && atracciones[k].Posiciony >= 15 && atracciones[k].Posiciony <= 19 {
-						if comprobarTemperatura(ciudadesConClima[3].temperatura) {
-							atracciones[k].Estado = "Cerrado"
-							cambiarEstadoAtraccion(db, atracciones[k].Estado, atracciones[k].ID)
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						} else {
-							mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
-						}
-					}
+					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
 				}
 			}
 		}
@@ -846,44 +812,6 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 		}
 	}
 	return mapa
-}
-
-/*
-* Función que comprueba que la temperatura esta en condiciones
-* @param temperatura : Si la temperatura es <20 o >30
-* @return bool : Si es true es que es < 20 o > 30 y false en caso contrario
- */
-func comprobarTemperatura(temperatura float32) bool {
-	var temperaturaExcedida bool
-	if temperatura < 20 || temperatura > 30 {
-		temperaturaExcedida = true
-	} else {
-		temperaturaExcedida = false
-	}
-	return temperaturaExcedida
-}
-
-/*
-* Función que cambia el estado de la atracción en la base de datos
-*
-* @param db : Conexión con la bd
-* @param estado : Estado de la atracción
-* @param id : Identificación de la atracción
- */
-func cambiarEstadoAtraccion(db *sql.DB, estado, id string) {
-	sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET Estado=? WHERE id=?")
-	if err != nil {
-		panic("Error al preparar la sentencia de modificación de las atracciones: " + err.Error())
-	}
-
-	defer sentenciaPreparada.Close()
-
-	// Ejecutar sentencia, un valor por cada '?'
-	_, err = sentenciaPreparada.Exec(estado, id)
-	if err != nil {
-		panic("Error al modificar el estado de la atraccion en la bd: " + err.Error())
-	}
-
 }
 
 /*
@@ -1164,15 +1092,17 @@ func seleccionaCiudades(ciudades []string, numCiudadesElegidas string) []string 
 		num, _ := strconv.Atoi(numCiudades[i])
 
 		nombresCiudades = append(nombresCiudades, ciudades[num-1])
+
 	}
+
 	return nombresCiudades
+
 }
 
-/*
-* Función que devuelve el nombre de la ciudad y su temperatura
- */
-func actualizarClimaParque(numerosCiudadesElegidas string) []ciudad {
+/* Función que muestra un menú para poder seleccionar las 4 ciudades del listado */
+func actualizarClimaParque(numerosCiudadesElegidas string, atracciones []atraccion) {
 
+	// Cargamos la clave de cifrado AES del archivo
 	ficheroCiudades, err := ioutil.ReadFile("ciudades.txt")
 	if err != nil {
 		log.Fatal("No se ha podido leer las ciudades del archivo txt")
@@ -1181,13 +1111,6 @@ func actualizarClimaParque(numerosCiudadesElegidas string) []ciudad {
 	nombresCiudades := strings.Split(string(ficheroCiudades), ",")
 
 	ciudadesElegidas := seleccionaCiudades(nombresCiudades, numerosCiudadesElegidas)
-
-	fmt.Println()
-	fmt.Println("La ciudad del cuadrante arriba-izquierda es:", ciudadesElegidas[0])
-	fmt.Println("La ciudad del cuadrante arriba-derecha es:", ciudadesElegidas[1])
-	fmt.Println("La ciudad del cuadrante abajo-izquierda es:", ciudadesElegidas[2])
-	fmt.Println("La ciudad del cuadrante abajo-derecha es:", ciudadesElegidas[3])
-	fmt.Println()
 
 	var ciudades []ciudad
 
@@ -1201,16 +1124,205 @@ func actualizarClimaParque(numerosCiudadesElegidas string) []ciudad {
 
 	}
 
-	return ciudades
+	fmt.Println()
+	fmt.Println("La ciudad del cuadrante arriba-izquierda es:", ciudades[0].nombre, "y su temperatura es: ", ciudades[0].temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante arriba-derecha es:", ciudades[1].nombre, "y su temperatura es: ", ciudades[1].temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante abajo-izquierda es:", ciudades[2].nombre, "y su temperatura es: ", ciudades[2].temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante abajo-derecha es:", ciudades[3].nombre, "y su temperatura es: ", ciudades[3].temperatura, "ºC")
+	fmt.Println()
+
+	// Actualizamos la situación del parque en base a las temperaturas de las ciudades
+	// OTRA OPCIÓN ES CREAR UNA VARIABLE GLOBAL CON EL ESTADO ACTUAL DE LAS 4 CIUDADES
+	actualizarClimaAtracciones(ciudades, atracciones)
+
+}
+
+/* Función que actualiza el estado de las atracciones en base al clima del cuadrante donde se encuentre */
+func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
+
+	//Accediendo a la base de datos
+	//Abrimos la conexion con la base de datos
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	//Si la conexión falla mostrara este error
+	if err != nil {
+		panic(err.Error())
+	}
+	//Cierra la conexion con la bd
+	defer db.Close()
+
+	for _, atraccion := range atracciones {
+
+		// Si la atraccion se encuentra en el cuadrante arriba-izquierda
+		if atraccion.Posicionx >= 0 && atraccion.Posicionx <= 9 && atraccion.Posiciony >= 0 && atraccion.Posiciony <= 9 {
+
+			// Comprobamos el clima de la ciudad asociada
+			if ciudades[0].temperatura < 20.0 || ciudades[0].temperatura > 30.0 {
+
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+
+			} else {
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+			}
+			// Si la atraccion se encuentra en el cuadrante arriba-derecha
+		} else if atraccion.Posicionx >= 0 && atraccion.Posicionx <= 9 && atraccion.Posiciony >= 10 && atraccion.Posiciony <= 19 {
+
+			// Comprobamos el clima de la ciudad asociada
+			if ciudades[1].temperatura < 20.0 || ciudades[1].temperatura > 30.0 {
+
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+
+			} else {
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+			}
+			// Si la atraccion se encuentra en el cuadrante abajo-izquierda
+		} else if atraccion.Posicionx >= 10 && atraccion.Posicionx <= 19 && atraccion.Posiciony >= 0 && atraccion.Posiciony <= 9 {
+
+			// Comprobamos el clima de la ciudad asociada
+			if ciudades[2].temperatura < 20.0 || ciudades[2].temperatura > 30.0 {
+
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+
+			} else {
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+			}
+			// Si la atracción se encuentra en el cuadrante abajo-derecha
+		} else if atraccion.Posicionx >= 10 && atraccion.Posicionx <= 19 && atraccion.Posiciony >= 10 && atraccion.Posiciony <= 19 {
+
+			// Comprobamos el clima de la ciudad asociada
+			if ciudades[3].temperatura < 20.0 || ciudades[3].temperatura > 30.0 {
+
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+
+			} else {
+				// Actualizamos el estado de la atracción en la BD
+				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
+				if err != nil {
+					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
+				}
+
+				// Ejecutar sentencia, un valor por cada '?'
+				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
+				if err != nil {
+					panic("Error al actualizar el estado de la atracción: " + err.Error())
+				}
+			}
+
+		}
+
+	}
 
 }
 
 /**
-* Función que obtiene el clima de la ciudad pasado por parametro
-*
-* @param nombreCiudad : Nombre de la ciudad con la que se va hacer la petición a la api OpenWeather
-* @return float32
+*	Función que nos conecta a la API externa para obtener el tiempo
  */
+/*
+func obtenerCiudad(w http.ResponseWriter, r *http.Request) {
+	var apikey string = "c3d8572d0046f36f0c586caa0e2e1d23"
+	//Declaramos las variables que vamos a utilizar para las peticiones
+	var coordenadasCiudad coord
+	var climaCiudad ciudad
+	//Obtenemos todos los parametros pasado a esta función cuando se le llame
+	vars := mux.Vars(r)
+	//Obtenemos los parametros y los almacenamos en la variable coordenadasCiudad
+	coordenadasCiudad.lon = float32(vars["lon"])
+	coordenadasCiudad.lat = float32(vars["lat"])
+
+	fmt.Println("coordenadasCiudad")
+	//Realizamos la petición a la api de terceros
+	peticion, err := http.NewRequest("GET", "https://api.openweathermap.org/data/2.5/weather?lat="+
+		coordenadasCiudad.lat+"lon="+coordenadasCiudad.lon+"appid="+apiKey+"lang=es"+"units=metric")
+	//Comprobamos que no haya ningun error
+	if err != nil {
+		log.Fatal("Error al crear la petición: %v", err)
+	}
+	//Cerramos la petición get
+	defer peticion.Body.Close()
+	//Agregamos encabezados
+	peticion.Header.Add("Content-Type", "application/json")
+	//Decodificamos el body de la respuesta y lo almacenamos en el climaCiudad parametro
+	body, err := json.NewDecoder(peticion.Body).Decode(&climaCiudad)
+	//Comprobamos que no haya ningun error
+	if err != nil {
+		log.Fatal(err)
+	}
+	//Imprimimos el cuerpo
+	fmt.Println(body)
+	fmt.Println(climaCiudad)
+
+}
+*/
+
 func obtenerClimaCiudad(nombreCiudad string) float32 {
 
 	clienteHttp := &http.Client{}
@@ -1248,7 +1360,7 @@ func obtenerClimaCiudad(nombreCiudad string) float32 {
 	}
 	respuestaString := strings.Split(string(cuerpoRespuesta), ",")
 	respuestaString = strings.Split(respuestaString[7], ":")
-	fmt.Println(respuestaString[2])
+	//fmt.Println(respuestaString[2])
 
 	// Convertimos el string a float32
 	value, err := strconv.ParseFloat(respuestaString[2], 32)
