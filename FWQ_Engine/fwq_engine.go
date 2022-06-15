@@ -133,8 +133,8 @@ type sys struct {
 }*/
 
 type ciudad struct {
-	nombre      string  `json:"name"`
-	temperatura float32 `json:"temp"`
+	Nombre      string  `json:"name"`
+	Temperatura float32 `json:"temp"`
 }
 
 // Array de bytes aleatorios para la implementación de seguridad del kafka
@@ -506,7 +506,7 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 				visitantesParque, _ := obtenerVisitantesParque(db)             // Obtenemos los visitantes del parque actualizados
 				mueveVisitante(db, alias, peticion, visitantesParque)          // Movemos al visitante en base al movimiento recibido
 				visitantesParqueActualizados, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
-				// Preparamos el mapa a enviar a los visitantes que se encuentra en el parque
+				// Preparamos el mapa a enviar a los visitantes que se encuentran en el parque
 				atracciones, _ := obtenerAtraccionesBD(db) // Obtenemos las atracciones actualizadas
 				mapaActualizado := asignacionPosiciones(visitantesParqueActualizados, atracciones, mapa)
 				var representacion string
@@ -796,8 +796,10 @@ func asignacionPosiciones(visitantes []visitante, atracciones []atraccion, mapa 
 	for i := 0; i < len(mapa); i++ {
 		for j := 0; j < len(mapa[i]); j++ {
 			for k := 0; k < len(atracciones); k++ {
-				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony {
+				if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony && atracciones[k].Estado == "Abierta" {
 					mapa[i][j] = strconv.Itoa(atracciones[k].TiempoEspera) + "|"
+				} else if i == atracciones[k].Posicionx && j == atracciones[k].Posiciony && atracciones[k].Estado == "Cerrada" {
+					mapa[i][j] = "(" + strconv.Itoa(atracciones[k].TiempoEspera) + ")" + "|"
 				}
 			}
 		}
@@ -1117,18 +1119,18 @@ func actualizarClimaParque(numerosCiudadesElegidas string, atracciones []atracci
 	for _, nombreCiudad := range ciudadesElegidas { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
 
 		city := ciudad{}
-		city.nombre = nombreCiudad
-		city.temperatura = obtenerClimaCiudad(nombreCiudad)
+		city.Nombre = nombreCiudad
+		city.Temperatura = obtenerClimaCiudad(nombreCiudad)
 
 		ciudades = append(ciudades, city)
 
 	}
 
 	fmt.Println()
-	fmt.Println("La ciudad del cuadrante arriba-izquierda es:", ciudades[0].nombre, "y su temperatura es: ", ciudades[0].temperatura, "ºC")
-	fmt.Println("La ciudad del cuadrante arriba-derecha es:", ciudades[1].nombre, "y su temperatura es: ", ciudades[1].temperatura, "ºC")
-	fmt.Println("La ciudad del cuadrante abajo-izquierda es:", ciudades[2].nombre, "y su temperatura es: ", ciudades[2].temperatura, "ºC")
-	fmt.Println("La ciudad del cuadrante abajo-derecha es:", ciudades[3].nombre, "y su temperatura es: ", ciudades[3].temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante arriba-izquierda es:", ciudades[0].Nombre, "y su temperatura es: ", ciudades[0].Temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante arriba-derecha es:", ciudades[1].Nombre, "y su temperatura es: ", ciudades[1].Temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante abajo-izquierda es:", ciudades[2].Nombre, "y su temperatura es: ", ciudades[2].Temperatura, "ºC")
+	fmt.Println("La ciudad del cuadrante abajo-derecha es:", ciudades[3].Nombre, "y su temperatura es: ", ciudades[3].Temperatura, "ºC")
 	fmt.Println()
 
 	// Actualizamos la situación del parque en base a las temperaturas de las ciudades
@@ -1156,7 +1158,7 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 		if atraccion.Posicionx >= 0 && atraccion.Posicionx <= 9 && atraccion.Posiciony >= 0 && atraccion.Posiciony <= 9 {
 
 			// Comprobamos el clima de la ciudad asociada
-			if ciudades[0].temperatura < 20.0 || ciudades[0].temperatura > 30.0 {
+			if ciudades[0].Temperatura < 20.0 || ciudades[0].Temperatura > 30.0 {
 
 				// Actualizamos el estado de la atracción en la BD
 				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
@@ -1187,7 +1189,7 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 		} else if atraccion.Posicionx >= 0 && atraccion.Posicionx <= 9 && atraccion.Posiciony >= 10 && atraccion.Posiciony <= 19 {
 
 			// Comprobamos el clima de la ciudad asociada
-			if ciudades[1].temperatura < 20.0 || ciudades[1].temperatura > 30.0 {
+			if ciudades[1].Temperatura < 20.0 || ciudades[1].Temperatura > 30.0 {
 
 				// Actualizamos el estado de la atracción en la BD
 				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
@@ -1218,7 +1220,7 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 		} else if atraccion.Posicionx >= 10 && atraccion.Posicionx <= 19 && atraccion.Posiciony >= 0 && atraccion.Posiciony <= 9 {
 
 			// Comprobamos el clima de la ciudad asociada
-			if ciudades[2].temperatura < 20.0 || ciudades[2].temperatura > 30.0 {
+			if ciudades[2].Temperatura < 20.0 || ciudades[2].Temperatura > 30.0 {
 
 				// Actualizamos el estado de la atracción en la BD
 				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")
@@ -1249,7 +1251,7 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 		} else if atraccion.Posicionx >= 10 && atraccion.Posicionx <= 19 && atraccion.Posiciony >= 10 && atraccion.Posiciony <= 19 {
 
 			// Comprobamos el clima de la ciudad asociada
-			if ciudades[3].temperatura < 20.0 || ciudades[3].temperatura > 30.0 {
+			if ciudades[3].Temperatura < 20.0 || ciudades[3].Temperatura > 30.0 {
 
 				// Actualizamos el estado de la atracción en la BD
 				sentenciaPreparada, err := db.Prepare("UPDATE atraccion SET estado = ? WHERE id = ?")

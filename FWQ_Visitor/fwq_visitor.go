@@ -704,7 +704,12 @@ func consumidorLogin(IpBroker, PuertoBroker, clave string) {
 
 /* Función que actualiza el tiempo de espera de la atracción destino del visitante en base al mapa recibido */
 func actualizaAtraccion(mapa [20][20]string) {
-	a.TiempoEspera, _ = strconv.Atoi(mapa[a.Posicionx][a.Posiciony])
+	tiempoActualizado, err := strconv.Atoi(mapa[a.Posicionx][a.Posiciony])
+	if err != nil { // Si se produce un error al convertir a entero quiere decir que la atracción se ha cerrado
+		a.Estado = "Cerrada"
+	} else {
+		a.TiempoEspera = tiempoActualizado // Sino actualizamos el tiempo sin más
+	}
 }
 
 /* Función que selecciona una atracción al azar y guarda la posición de dicha atracción en el visitante */
@@ -715,12 +720,14 @@ func seleccionaAtraccionAlAzar(mapa [20][20]string) {
 	//Elegimos una atracción al azar del mapa entre las que el tiempo de espera sea menor de 60 minutos
 	for i := 0; i < 20; i++ {
 		for j := 0; j < 20; j++ {
-			if t, err := strconv.Atoi(mapa[i][j]); err == nil { // Si la posición actual del mapa es un número
+			// Si la posición actual del mapa es un número, con esto nos basta para que no acuda a una atracción cerrada
+			if t, err := strconv.Atoi(mapa[i][j]); err == nil {
 				if t < 60 { // Si el tiempo de espera es menor a 60 minutos
 					atraccionAux := atraccion{
 						Posicionx:    i,
 						Posiciony:    j,
 						TiempoEspera: t,
+						Estado:       "Abierta",
 					}
 					atraccionesDisponibles = append(atraccionesDisponibles, atraccionAux)
 				}
@@ -740,6 +747,7 @@ func seleccionaAtraccionAlAzar(mapa [20][20]string) {
 	a.Posicionx = atraccionesDisponibles[indexAtraccion].Posicionx
 	a.Posiciony = atraccionesDisponibles[indexAtraccion].Posiciony
 	a.TiempoEspera = atraccionesDisponibles[indexAtraccion].TiempoEspera
+	a.Estado = atraccionesDisponibles[indexAtraccion].Estado
 
 	fmt.Println("Me dirijo a la atracción con tiempo de espera igual a " + strconv.Itoa(a.TiempoEspera))
 
@@ -750,8 +758,8 @@ func obtenerMovimiento(mapa [20][20]string) string {
 
 	var movimiento string
 
-	// Si el visitante no sabe a qué atracción dirigirse o la atracción actual elegida tiene un tiempo de espera mayor a 60 minutos
-	if v.Destinox == -1 || v.Destinoy == -1 || a.TiempoEspera >= 60 {
+	// Si el visitante no sabe a qué atracción dirigirse o la atracción actual elegida tiene un tiempo de espera mayor a 60 minutos o está cerrada
+	if v.Destinox == -1 || v.Destinoy == -1 || a.TiempoEspera >= 60 || a.Estado == "Cerrada" {
 		seleccionaAtraccionAlAzar(mapa)
 	} else {
 		actualizaAtraccion(mapa) // Actualizamos el tiempo de espera de la atracción destino del visitante

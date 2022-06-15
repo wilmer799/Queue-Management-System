@@ -68,6 +68,7 @@ delete from visitante;
 UPDATE parque SET aforoMaximo=10 WHERE id = "SDpark";
 UPDATE atraccion SET tciclo = 10, nvisitantes = 6, posicionx = 2, posiciony = 10 WHERE id = "atraccion2";
 UPDATE atraccion SET tiempoEspera = 5 WHERE id = "atraccion10";
+UPDATE atraccion SET estado = "Cerrada" WHERE id = "atraccion10";
 
 select * from atraccion;
 select * from visitante;
