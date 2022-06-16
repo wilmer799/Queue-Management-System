@@ -180,6 +180,9 @@ func main() {
 	//ctx := context.Background()
 	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes, clave)
 
+	// Guardamos el mapa del parque en curso cada cierto tiempo
+	go guardarMapaBD()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
@@ -245,6 +248,60 @@ func main() {
 
 		fmt.Println() // Para mejorar la visualización
 
+	}
+
+}
+
+func guardarMapaBD() {
+
+	//Accediendo a la base de datos
+	//Abrimos la conexion con la base de datos
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	//Si la conexión falla mostrara este error
+	if err != nil {
+		panic(err.Error())
+	}
+	//Cierra la conexion con la bd
+	defer db.Close()
+
+	for {
+
+		var mapa [20][20]string
+
+		visitantes, _ := obtenerVisitantesParque(db) // Obtenemos los visitantes del parque actualizados
+		atracciones, _ := obtenerAtraccionesBD(db)   // Obtenemos las atracciones actualizadas
+		mapaActualizado := asignacionPosiciones(visitantes, atracciones, mapa)
+
+		var filaParque string
+
+		for i := 0; i < len(mapaActualizado); i++ {
+			for j := 0; j < len(mapaActualizado); j++ {
+				if j == 19 { // Si ya estamos en la última columna
+
+					filaParque = filaParque + mapaActualizado[i][j]
+
+					// Preparamos para prevenir inyecciones SQL
+					sentenciaPreparada, err := db.Prepare("UPDATE mapa SET infoParque = ? WHERE fila = ?")
+					if err != nil {
+						panic("Error al preparar la sentencia de modificación del mapa: " + err.Error())
+					}
+
+					// Ejecutar sentencia, un valor por cada '?'
+					_, err = sentenciaPreparada.Exec(filaParque, i+1)
+					if err != nil {
+						panic("Error al modificar la posición del visitante en la BD: " + err.Error())
+					}
+
+					filaParque = "" // Reiniciamos la cadena
+
+				} else {
+					filaParque = filaParque + mapaActualizado[i][j]
+				}
+			}
+
+		}
+
+		time.Sleep(1 * time.Second) // Guardamos el mapa cada segundo en la BD
 	}
 
 }
@@ -346,7 +403,7 @@ func RegistroLog(db *sql.DB, ipPuerto, idVisitante, accion, descripcion string) 
 	// Añadimos el evento de log de error al visitante
 	sentenciaPreparada, err := db.Prepare("UPDATE visitante SET ultimoEvento = ? WHERE id = ?")
 	if err != nil {
-		panic("Error al preparar la sentencia de inserción: " + err.Error())
+		panic("Error al preparar la sentencia de modificación del log: " + err.Error())
 	}
 
 	defer sentenciaPreparada.Close()

@@ -5,6 +5,8 @@ USE parque_atracciones;
 /* Creación de tablas */
 CREATE TABLE parque (id varchar(30) PRIMARY KEY, aforoMaximo int, aforoActual int);
 
+CREATE TABLE mapa(fila int(2) PRIMARY KEY, infoParque varchar(100));
+
 CREATE TABLE visitante (
 id varchar(20) PRIMARY KEY, 
 nombre varchar(30) NOT NULL, 
@@ -49,7 +51,26 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspe
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, 74, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, 23, "SDpark");
 
-
+INSERT INTO mapa (fila) VALUES (1);
+INSERT INTO mapa (fila) VALUES (2);
+INSERT INTO mapa (fila) VALUES (3);
+INSERT INTO mapa (fila) VALUES (4);
+INSERT INTO mapa (fila) VALUES (5);
+INSERT INTO mapa (fila) VALUES (6);
+INSERT INTO mapa (fila) VALUES (7);
+INSERT INTO mapa (fila) VALUES (8);
+INSERT INTO mapa (fila) VALUES (9);
+INSERT INTO mapa (fila) VALUES (10);
+INSERT INTO mapa (fila) VALUES (11);
+INSERT INTO mapa (fila) VALUES (12);
+INSERT INTO mapa (fila) VALUES (13);
+INSERT INTO mapa (fila) VALUES (14);
+INSERT INTO mapa (fila) VALUES (15);
+INSERT INTO mapa (fila) VALUES (16);
+INSERT INTO mapa (fila) VALUES (17);
+INSERT INTO mapa (fila) VALUES (18);
+INSERT INTO mapa (fila) VALUES (19);
+INSERT INTO mapa (fila) VALUES (20);
 
 /* Visitantes */
 INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
@@ -74,5 +95,6 @@ select * from atraccion;
 select * from visitante;
 select ultimoEvento from visitante; /* Para ver los logs de la tabla visitante */
 select * from parque;
+select * from mapa;
 
 SHOW STATUS LIKE 'max_used_connections';
