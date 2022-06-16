@@ -1,11 +1,15 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"io"
 	"log"
 	"net/http"
+	"os"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 
 /**
@@ -23,26 +27,136 @@ import (
 * https://api.openweathermap.org/data/2.5/weather?lat=40.4167047&lon=-3.7035825&appid=c3d8572d0046f36f0c586caa0e2e1d23&lang=es&units=metric
 * https://riptutorial.com/go/example/6628/decoding-json-data-from-a-file
  */
+
+type visitante struct {
+	ID           string `json:"id"`
+	Nombre       string `json:"nombre"`
+	Password     string `json:"contraseña"`
+	Posicionx    int    `json:"posicionx"`
+	Posiciony    int    `json:"posiciony"`
+	Destinox     int    `json:"destinox"`
+	Destinoy     int    `json:"destinoy"`
+	DentroParque int    `json:"dentroParque"`
+	IdEnParque   string `json:"idEnParque"`
+	UltimoEvento string `json:"ultimoEvento"`
+	Parque       string `json:"parqueAtracciones"`
+}
+
 func main() {
 
-	http.HandleFunc("/hola", func(w http.ResponseWriter, peticion *http.Request) {
-		io.WriteString(w, "Solicitaste hola")
-	})
+	ip := os.Args[1]
+	puerto := os.Args[2]
 
-	r := mux.NewRouter()
+	// IMPLEMENTAMOS EL API REST
+	// Rutas
+	mux := mux.NewRouter()
 
-	r.HandleFunc("/hola", HomeHandler)
-	r.HandleFunc("obtenerCiudad", ObtenerCiudad)
+	// Responder al cliente
+	mux.HandleFunc("/visitantes", getVisitantes).Methods("GET")
+	//mux.HandleFunc("/mapa", getMapa).Methods("GET")
 
-	direccion := ":8080"
-	fmt.Println("Servidor listo escuchando en" + direccion)
-	log.Fatal(http.ListenAndServe(direccion, nil))
+	// SERVIDOR
+	// Arrancamos el servidor https en una go routine
+	//go http.ListenAndServeTLS(":8081", "cert.pem", "key.pem", mux)
+	fmt.Println("Servidor API ENGINE corriendo en https://" + ip + ":" + puerto)
+	//log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(redirectToHttps)))
+	log.Fatal(http.ListenAndServe(":"+puerto, mux))
+
 }
 
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Estamos probando la api rest con postman")
+// INICIO BLOQUE RESPONSE
+
+// Estructura con el formato de una respuesta http
+type Response struct {
+	Status        int         `json:"status"`
+	Data          interface{} `json:"data"`
+	Message       string      `json:"message"`
+	contentType   string
+	responseWrite http.ResponseWriter
 }
 
-func ObtenerCiudad(w http.ResponseWriter, r *http.Request) {
+/* Función que crea una respuesta por defecto para los clientes de la API REST */
+func CreateDefaultResponse(rw http.ResponseWriter) Response {
+	return Response{
+		Status:        http.StatusOK,
+		responseWrite: rw,
+		contentType:   "application/json",
+	}
+}
+
+/* Función que envía las respuestas a los clientes de la API REST */
+func (resp *Response) Send() {
+	resp.responseWrite.Header().Set("Content-Type", resp.contentType)
+	resp.responseWrite.WriteHeader(resp.Status)
+
+	// Marshall devuelve 2 valores: Los valores transformados en tipo byte y un error
+	output, _ := json.Marshal(&resp) // Para responder con json
+	//output, _ := xml.Marshal(&resp) // Para responder con xml
+	//output, _ := yaml.Marshal(&resp) // Para responder con yaml
+	fmt.Fprintln(resp.responseWrite, string(output))
+}
+
+/* Función que envía una respuesta a los clientes indicando que la consulta de los visitantes ha sido satisfactoria */
+func SendDataGetVisitantes(rw http.ResponseWriter, data interface{}) {
+	response := CreateDefaultResponse(rw)
+	response.Data = data
+	response.Message = "OK: Visitantes obtenidos."
+	response.Send()
+}
+
+/* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
+func SendDataGetMapa(rw http.ResponseWriter, data interface{}) {
+	response := CreateDefaultResponse(rw)
+	response.Data = data
+	response.Message = "OK: Mapa obtenido."
+	response.Send()
+}
+
+func (resp *Response) NotFound() {
+	resp.Status = http.StatusNotFound
+	resp.Message = "ERROR: Resource Not Found"
+}
+
+/* Función que manda una respuesta indicando que el recurso solicitado no ha sido encontrado */
+func SendNotFound(rw http.ResponseWriter) {
+	response := CreateDefaultResponse(rw)
+	response.NotFound()
+	response.Send()
+}
+
+// FIN BLOQUE RESPONSE
+
+// DEFINIMOS LOS HANDLERS
+/* Función manejadora para la obtención del estado de los visitantes */
+func getVisitantes(rw http.ResponseWriter, r *http.Request) {
+
+	log.Println("Petición de consulta de estado de los visitantes -> " + r.URL.Path)
+
+	visitantes := []visitante{}
+
+	// Accedemos a la base de datos, empezando por abrir la conexión
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+
+	// Comprobamos que no haya error al conectarse
+	if err != nil {
+		panic("Error al conectarse con la BD: " + err.Error())
+	}
+
+	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
+
+	rows, err := db.Query("SELECT * FROM visitante")
+	// Comprobamos que no se produzcan errores al hacer la consulta
+	if err != nil {
+		panic("Error al consultar el estado de los visitantes en la BD: " + err.Error())
+	}
+
+	for rows.Next() {
+		v := visitante{}
+		rows.Scan(&v.ID, &v.Nombre, &v.Password, &v.Posicionx, &v.Posiciony, &v.Destinox, &v.Destinoy, &v.DentroParque, &v.IdEnParque, &v.IdEnParque, &v.UltimoEvento)
+		visitantes = append(visitantes, v)
+	}
+
+	// CONTINUAR IMPLEMENTACIÓN
+	SendDataGetVisitantes(rw, visitantes)
 
 }
