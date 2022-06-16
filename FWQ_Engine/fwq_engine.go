@@ -133,6 +133,7 @@ type sys struct {
 }*/
 
 type ciudad struct {
+	Cuadrante   string  `json:"cuadrante"`
 	Nombre      string  `json:"name"`
 	Temperatura float32 `json:"temp"`
 }
@@ -1173,9 +1174,21 @@ func actualizarClimaParque(numerosCiudadesElegidas string, atracciones []atracci
 
 	var ciudades []ciudad
 
-	for _, nombreCiudad := range ciudadesElegidas { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
+	for i, nombreCiudad := range ciudadesElegidas { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
 
 		city := ciudad{}
+
+		switch i {
+		case 0:
+			city.Cuadrante = "arriba-izquierda"
+		case 1:
+			city.Cuadrante = "arriba-derecha"
+		case 2:
+			city.Cuadrante = "abajo-izquierda"
+		case 3:
+			city.Cuadrante = "abajo-derecha"
+		}
+
 		city.Nombre = nombreCiudad
 		city.Temperatura = obtenerClimaCiudad(nombreCiudad)
 
@@ -1190,9 +1203,75 @@ func actualizarClimaParque(numerosCiudadesElegidas string, atracciones []atracci
 	fmt.Println("La ciudad del cuadrante abajo-derecha es:", ciudades[3].Nombre, "y su temperatura es: ", ciudades[3].Temperatura, "ºC")
 	fmt.Println()
 
+	almacenarCiudades(ciudades) // Almacenamos las ciudades en la BD para poder consultar su información desde el front
+
 	// Actualizamos la situación del parque en base a las temperaturas de las ciudades
 	// OTRA OPCIÓN ES CREAR UNA VARIABLE GLOBAL CON EL ESTADO ACTUAL DE LAS 4 CIUDADES
 	actualizarClimaAtracciones(ciudades, atracciones)
+
+}
+
+/* Función que almacena en la BD la información de las 4 ciudades */
+func almacenarCiudades(ciudades []ciudad) {
+
+	//Accediendo a la base de datos
+	//Abrimos la conexion con la base de datos
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+	//Si la conexión falla mostrara este error
+	if err != nil {
+		panic(err.Error())
+	}
+	//Cierra la conexion con la bd
+	defer db.Close()
+
+	// Comprobamos si existe alguna ciudad almacenada previamente en la BD
+	results, err := db.Query("SELECT * FROM ciudades")
+	if err != nil {
+		fmt.Println("Error al hacer la consulta sobre las ciudades en la BD: " + err.Error())
+	}
+
+	// Si ya había 4 almacenadas previamente modificamos
+	if results.Next() {
+
+		for i := 0; i < 4; i++ {
+
+			// Actualizamos las ciudades en la BD
+			sentenciaPreparada, err := db.Prepare("UPDATE ciudades SET nombre = ?, temperatura = ? WHERE cuadrante = ?")
+			if err != nil {
+				panic("Error al preparar la sentencia de modificación del estado de las ciudades: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(ciudades[i].Nombre, ciudades[i].Temperatura, ciudades[i].Cuadrante)
+			if err != nil {
+				panic("Error al actualizar las ciudades en la BD: " + err.Error())
+			}
+
+		}
+
+	} else { // Sino insertamos las ciudades en la BD
+
+		for i := 0; i < 4; i++ {
+
+			// Preparamos para prevenir inyecciones SQL
+			sentenciaPreparada, err := db.Prepare("INSERT INTO ciudades (cuadrante, nombre, temperatura) VALUES(?, ?, ?)")
+			if err != nil {
+				panic("Error al preparar la sentencia de inserción de las ciudades en la BD: " + err.Error())
+			}
+
+			defer sentenciaPreparada.Close()
+
+			// Ejecutar sentencia, un valor por cada '?'
+			_, err = sentenciaPreparada.Exec(ciudades[i].Cuadrante, ciudades[i].Nombre, ciudades[i].Temperatura)
+			if err != nil {
+				panic("Error al insertar las ciudades en la BD: " + err.Error())
+			}
+
+		}
+
+	}
 
 }
 

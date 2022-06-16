@@ -7,6 +7,8 @@ CREATE TABLE parque (id varchar(30) PRIMARY KEY, aforoMaximo int, aforoActual in
 
 CREATE TABLE mapa(fila int(2) PRIMARY KEY, infoParque varchar(100));
 
+CREATE TABLE ciudades(cuadrante varchar(30) PRIMARY KEY, nombre varchar(30), temperatura float);
+	
 CREATE TABLE visitante (
 id varchar(20) PRIMARY KEY, 
 nombre varchar(30) NOT NULL, 
@@ -96,5 +98,8 @@ select * from visitante;
 select ultimoEvento from visitante; /* Para ver los logs de la tabla visitante */
 select * from parque;
 select * from mapa;
+select * from ciudades;
+
+delete from ciudades;
 
 SHOW STATUS LIKE 'max_used_connections';

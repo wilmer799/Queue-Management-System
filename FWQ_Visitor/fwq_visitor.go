@@ -164,7 +164,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 
 		config := tls.Config{
 			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // Para que admita certificados autofirmados
 		}
 
 		//conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
@@ -267,7 +267,7 @@ func CrearPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest string
 					datos := strings.NewReader(string(vComoJson))
 
 					tr := &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // Para que admita certificados autofirmados
 					}
 					http := &http.Client{Transport: tr}
 
@@ -338,7 +338,7 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 
 		config := tls.Config{
 			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // Para que admita certificados autofirmados
 		}
 
 		// conn, err := net.Dial(connType, ipRegistry+":"+puertoRegistry) CONEXIÓN INSEGURA
@@ -428,7 +428,7 @@ func EditarPerfil(ipRegistry, puertoRegistrySockets, puertoRegistryApiRest strin
 				if len(password) > 1 {
 
 					tr := &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // Para que admita certificados autofirmados
 					}
 
 					// Accedemos al cliente mediante http.Client
