@@ -47,6 +47,12 @@ type mapa struct {
 	InfoParque string `json:"infoParque"`
 }
 
+type ciudad struct {
+	Cuadrante   string  `json:"cuadrante"`
+	Nombre      string  `json:"name"`
+	Temperatura float32 `json:"temp"`
+}
+
 func main() {
 
 	ip := os.Args[1]
@@ -59,6 +65,7 @@ func main() {
 	// Responder al cliente
 	mux.HandleFunc("/visitantes", getVisitantes).Methods("GET")
 	mux.HandleFunc("/mapa", getMapa).Methods("GET")
+	mux.HandleFunc("/ciudades", getCiudades).Methods("GET")
 
 	// SERVIDOR
 	// Arrancamos el servidor https en una go routine
@@ -114,6 +121,14 @@ func SendDataGetMapa(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
 	response.Data = data
 	response.Message = "OK: Estado actual del mapa obtenido."
+	response.Send()
+}
+
+/* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
+func SendDataGetCiudades(rw http.ResponseWriter, data interface{}) {
+	response := CreateDefaultResponse(rw)
+	response.Data = data
+	response.Message = "OK: Información de las ciudades obtenida."
 	response.Send()
 }
 
@@ -197,5 +212,39 @@ func getMapa(rw http.ResponseWriter, r *http.Request) {
 
 	// CONTINUAR IMPLEMENTACIÓN
 	SendDataGetMapa(rw, filasParque)
+
+}
+
+/* Función manejadora para la obtención de la información de las ciudades */
+func getCiudades(rw http.ResponseWriter, r *http.Request) {
+
+	log.Println("Petición de consulta de las ciudades -> " + r.URL.Path)
+
+	ciudades := []ciudad{}
+
+	// Accedemos a la base de datos, empezando por abrir la conexión
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+
+	// Comprobamos que no haya error al conectarse
+	if err != nil {
+		panic("Error al conectarse con la BD: " + err.Error())
+	}
+
+	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
+
+	rows, err := db.Query("SELECT * FROM ciudades")
+	// Comprobamos que no se produzcan errores al hacer la consulta
+	if err != nil {
+		panic("Error al consultar la información de las ciudades: " + err.Error())
+	}
+
+	for rows.Next() {
+		ciudad := ciudad{}
+		rows.Scan(&ciudad.Cuadrante, &ciudad.Nombre, &ciudad.Temperatura)
+		ciudades = append(ciudades, ciudad)
+	}
+
+	// CONTINUAR IMPLEMENTACIÓN
+	SendDataGetCiudades(rw, ciudades)
 
 }
