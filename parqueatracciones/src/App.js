@@ -1,30 +1,28 @@
 import logo from './logo.svg';
-import './App.css';
 
+import './App.css';
 
 import "primereact/resources/themes/lara-light-indigo/theme.css";  //theme
 import "primereact/resources/primereact.min.css";                  //core css
-import "primeicons/primeicons.css";                                //icons
- 
+import "primeicons/primeicons.css";
+                            //icons
+
+import Menu from './componentes/menu/Menu';
+import Footer from './componentes/footer/Footer'
+import Mapa from './componentes/mapa/Mapa'
 
 function App() {
+  function Welcome() {
+    return <h1> HOLA, Wilmer</h1>;
+  }
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Menu />
+     
+      <Mapa />
+      <Footer />
     </div>
+        
   );
 }
 
