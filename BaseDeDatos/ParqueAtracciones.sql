@@ -75,18 +75,9 @@ INSERT INTO mapa (fila, infoParque) VALUES (19, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|
 INSERT INTO mapa (fila, infoParque) VALUES (20, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 
 
-/* Visitantes */
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
-VALUES ("wilmer88", "wilmer","tubaby",1,1,10,14,0,"w","SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
-VALUES ("elbala00", "Valentin","catar2022",5,4,10,14,0,"e","SDpark");
-
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idParque, parqueAtracciones)
-VALUES ("rafajaja", "rafa","1234",13,7,17,9,1,"r","SDpark");
-INSERT INTO visitante (id, nombre, contraseña, posicionx, posiciony, destinox, destinoy, dentroParque, idEnParque, parqueAtracciones)
-VALUES ("hcarlos", "carlos","1234",19,19,6,11,1,"h","SDpark");
-
 delete from visitante;
+delete from ciudad;
+delete from mapa;
 
 /*Actualizar algunos valores */
 UPDATE parque SET aforoMaximo=10 WHERE id = "SDpark";
@@ -100,7 +91,5 @@ select ultimoEvento from visitante; /* Para ver los logs de la tabla visitante *
 select * from parque;
 select * from mapa;
 select * from ciudades;
-
-delete from ciudades;
 
 SHOW STATUS LIKE 'max_used_connections';

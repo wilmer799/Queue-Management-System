@@ -15,9 +15,9 @@ import Ciudad from './componentes/ciudades/Ciudades'
 function App() {
   return (
     <div className="App">
+      <Mapa />
       <Visitante />
       <Ciudad />
-      <Mapa />
     </div>
         
   );

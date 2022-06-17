@@ -19,15 +19,12 @@ class Mapa extends React.Component {
      */
     componentDidMount() {
         fetch("http://localhost:8082/mapa")
-            .then(response => {
-                if (!response.ok) throw Error(response.status);
-                response.json();
-            })
+            .then(response => response.json())
             .then(mapaJson => this.setState( {
                 mapa: mapaJson.data,
                 isFetch: false
             }))
-            .catch(error => console.log(error));
+            .catch(error => console.log(error))
     }
     /**
      * Render de la clase Mapa
@@ -38,9 +35,7 @@ class Mapa extends React.Component {
         const { mapa, isFetch } = this.state
 
         if (isFetch) {
-            return (
-                <div>Información del mapa del parque no disponible</div>
-            )
+            return <div>El mapa del parque no está disponible por el momento</div>
         }
         return (
           <div className ="container">
