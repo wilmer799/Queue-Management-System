@@ -293,6 +293,8 @@ func guardarMapaBD() {
 						panic("Error al modificar la posición del visitante en la BD: " + err.Error())
 					}
 
+					sentenciaPreparada.Close()
+
 					filaParque = "" // Reiniciamos la cadena
 
 				} else {
@@ -1230,6 +1232,8 @@ func almacenarCiudades(ciudades []ciudad) {
 		fmt.Println("Error al hacer la consulta sobre las ciudades en la BD: " + err.Error())
 	}
 
+	defer results.Close()
+
 	// Si ya había 4 almacenadas previamente modificamos
 	if results.Next() {
 
@@ -1302,6 +1306,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
 
+				defer sentenciaPreparada.Close()
+
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
 				if err != nil {
@@ -1314,6 +1320,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 				if err != nil {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
+
+				defer sentenciaPreparada.Close()
 
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
@@ -1333,6 +1341,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
 
+				defer sentenciaPreparada.Close()
+
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
 				if err != nil {
@@ -1345,6 +1355,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 				if err != nil {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
+
+				defer sentenciaPreparada.Close()
 
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
@@ -1364,6 +1376,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
 
+				defer sentenciaPreparada.Close()
+
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
 				if err != nil {
@@ -1376,6 +1390,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 				if err != nil {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
+
+				defer sentenciaPreparada.Close()
 
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
@@ -1395,6 +1411,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
 
+				defer sentenciaPreparada.Close()
+
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Cerrada", atraccion.ID)
 				if err != nil {
@@ -1407,6 +1425,8 @@ func actualizarClimaAtracciones(ciudades []ciudad, atracciones []atraccion) {
 				if err != nil {
 					panic("Error al preparar la sentencia de modificación del estado de la atracción: " + err.Error())
 				}
+
+				defer sentenciaPreparada.Close()
 
 				// Ejecutar sentencia, un valor por cada '?'
 				_, err = sentenciaPreparada.Exec("Abierta", atraccion.ID)
