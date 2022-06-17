@@ -17,7 +17,7 @@ class Mapa extends React.Component {
         fetch("http://localhost:8082/mapa")
             .then(response => response.json())
             .then(mapaJson => this.setState( {
-                mapa: mapaJson.infoParque,
+                mapa: mapaJson.data,
                 isFetch: false
             }))
     }
@@ -39,28 +39,8 @@ class Mapa extends React.Component {
 
           </div>
             
-           /* <div className="container">
-
-                <ol>
-                    <li>this.mapa[0].infoParque</li>
-                </ol>
-
-            </div>*/
-            
         );
     }
 }
 
 export default Mapa;
-
-/*
-function useDatos() {
-        const [weather, setWeather] = useState([])
-        useEffect(() => {
-            
-        return weather
-
-        this.state.clima.map((climas) => (
-                    <li> {climas} </li>)
-    }
-*/

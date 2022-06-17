@@ -99,6 +99,7 @@ func CreateDefaultResponse(rw http.ResponseWriter) Response {
 /* Función que envía las respuestas a los clientes de la API REST */
 func (resp *Response) Send() {
 	resp.responseWrite.Header().Set("Content-Type", resp.contentType)
+	resp.responseWrite.Header().Set("Access-Control-Allow-Origin", "*")
 	resp.responseWrite.WriteHeader(resp.Status)
 
 	// Marshall devuelve 2 valores: Los valores transformados en tipo byte y un error
