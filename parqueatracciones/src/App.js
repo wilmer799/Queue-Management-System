@@ -1,5 +1,3 @@
-import logo from './logo.svg';
-
 import './App.css';
 
 import "primereact/resources/themes/lara-light-indigo/theme.css";  //theme
@@ -10,16 +8,16 @@ import "primeicons/primeicons.css";
 import Menu from './componentes/menu/Menu';
 import Footer from './componentes/footer/Footer'
 import Mapa from './componentes/mapa/Mapa'
+import Visitante from './componentes/visitantes/Visitantes'
+import Ciudad from './componentes/ciudades/Ciudades'
 
 function App() {
-  function Welcome() {
-    return <h1> HOLA, Wilmer</h1>;
-  }
   return (
     <div className="App">
       <Menu />
-     
       <Mapa />
+      <Visitante />
+      <Ciudad />
       <Footer />
     </div>
         

@@ -1,10 +1,12 @@
 import React, {useState, useEffect} from 'react'
-import axios from 'axios'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column';
 
 class Mapa extends React.Component {
-    
+    /**
+     * Constructor de la clase Mapa
+     * @param {*} props 
+     */
     constructor(props) {
         super(props)
         this.state = {
@@ -12,7 +14,9 @@ class Mapa extends React.Component {
             isFetch: true,
         }
     }
-
+    /**
+     * Función componentDidMount que sirve para cargar el mapa
+     */
     componentDidMount() {
         fetch("http://localhost:8082/mapa")
             .then(response => response.json())
@@ -21,7 +25,10 @@ class Mapa extends React.Component {
                 isFetch: false
             }))
     }
-
+    /**
+     * Render de la clase Mapa
+     * @returns Mapa con todas las atracciones
+     */
     render () {
         
         const { mapa, isFetch } = this.state
