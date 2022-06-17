@@ -19,11 +19,15 @@ class Ciudades extends React.Component {
      */
     componentDidMount() {
         fetch("http://localhost:8082/ciudades")
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw Error(response.status);
+                response.json();
+            })
             .then(ciudadesJson => this.setState( {
                 ciudades: ciudadesJson.data,
                 isFetch: false
             }))
+            .catch(error => console.log(error));
     }
     /**
      * Render que muestra la información de los visitantes 
@@ -34,7 +38,9 @@ class Ciudades extends React.Component {
         const { ciudades, isFetch } = this.state
 
         if (isFetch) {
-            return 'Cargando...'
+            return (
+                <div>Información de las ciudades no disponible</div>
+            )
         }
         return (
           <div className ="container">

@@ -19,11 +19,15 @@ class Visitantes extends React.Component {
      */
     componentDidMount() {
         fetch("http://localhost:8082/visitantes")
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw Error(response.status);
+                response.json();
+            })
             .then(visitantesJson => this.setState( {
                 visitantes: visitantesJson.data,
                 isFetch: false
             }))
+            .catch(error => console.log(error));
     }
     /**
      * Render que muestra la información de los visitantes 
@@ -34,7 +38,9 @@ class Visitantes extends React.Component {
         const { visitantes, isFetch } = this.state
 
         if (isFetch) {
-            return 'Cargando...'
+            return (
+                <div>Información del estado de los visitantes no disponible</div>
+            )
         }
         return (
           <div className ="container">
