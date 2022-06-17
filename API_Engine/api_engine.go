@@ -31,15 +31,12 @@ import (
 type visitante struct {
 	ID           string `json:"id"`
 	Nombre       string `json:"nombre"`
-	Password     string `json:"contraseña"`
 	Posicionx    int    `json:"posicionx"`
 	Posiciony    int    `json:"posiciony"`
 	Destinox     int    `json:"destinox"`
 	Destinoy     int    `json:"destinoy"`
-	DentroParque int    `json:"dentroParque"`
 	IdEnParque   string `json:"idEnParque"`
 	UltimoEvento string `json:"ultimoEvento"`
-	Parque       string `json:"parqueAtracciones"`
 }
 
 type mapa struct {
@@ -49,8 +46,8 @@ type mapa struct {
 
 type ciudad struct {
 	Cuadrante   string  `json:"cuadrante"`
-	Nombre      string  `json:"name"`
-	Temperatura float32 `json:"temp"`
+	Nombre      string  `json:"nombre"`
+	Temperatura float32 `json:"temperatura"`
 }
 
 func main() {
@@ -165,7 +162,7 @@ func getVisitantes(rw http.ResponseWriter, r *http.Request) {
 
 	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
 
-	rows, err := db.Query("SELECT * FROM visitante")
+	rows, err := db.Query("SELECT id, nombre, posicionx, posiciony, destinox, destinoy, idEnParque, ultimoEvento FROM visitante")
 	// Comprobamos que no se produzcan errores al hacer la consulta
 	if err != nil {
 		panic("Error al consultar el estado de los visitantes en la BD: " + err.Error())
@@ -173,7 +170,7 @@ func getVisitantes(rw http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		v := visitante{}
-		rows.Scan(&v.ID, &v.Nombre, &v.Password, &v.Posicionx, &v.Posiciony, &v.Destinox, &v.Destinoy, &v.DentroParque, &v.IdEnParque, &v.IdEnParque, &v.UltimoEvento)
+		rows.Scan(&v.ID, &v.Nombre, &v.Posicionx, &v.Posiciony, &v.Destinox, &v.Destinoy, &v.IdEnParque, &v.UltimoEvento)
 		visitantes = append(visitantes, v)
 	}
 

@@ -1,3 +1,4 @@
+import React  from 'react';
 import './App.css';
 
 import "primereact/resources/themes/lara-light-indigo/theme.css";  //theme
@@ -14,11 +15,9 @@ import Ciudad from './componentes/ciudades/Ciudades'
 function App() {
   return (
     <div className="App">
-      <Menu />
       <Mapa />
       <Visitante />
       <Ciudad />
-      <Footer />
     </div>
         
   );

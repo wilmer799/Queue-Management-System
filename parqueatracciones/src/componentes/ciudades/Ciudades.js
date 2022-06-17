@@ -39,8 +39,9 @@ class Ciudades extends React.Component {
         return (
           <div className ="container">
             <DataTable value={ciudades}>
-                <Column field="nombre" header="nombre"></Column>
-                <Column field="temperatura" header="temperatura"></Column>
+                <Column field="cuadrante" header="Cuadrante"></Column>
+                <Column field="nombre" header="Nombre"></Column>
+                <Column field="temperatura" header="Temperatura"></Column>
             </DataTable>
           </div>
         );
