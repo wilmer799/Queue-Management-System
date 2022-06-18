@@ -6,16 +6,18 @@ import "primereact/resources/primereact.min.css";                  //core css
 import "primeicons/primeicons.css";
                             //icons
 
-import Menu from './componentes/menu/Menu';
-import Footer from './componentes/footer/Footer'
+//import Menu from './componentes/menu/Menu';
+//import Footer from './componentes/footer/Footer'
 import Mapa from './componentes/mapa/Mapa'
 import Visitante from './componentes/visitantes/Visitantes'
 import Ciudad from './componentes/ciudades/Ciudades'
+import Atraccion from './componentes/atracciones/Atracciones'
 
 function App() {
   return (
     <div className="App">
       <Mapa />
+      <Atraccion />
       <Visitante />
       <Ciudad />
     </div>

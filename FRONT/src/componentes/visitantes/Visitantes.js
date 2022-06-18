@@ -42,8 +42,8 @@ class Visitantes extends React.Component {
             <DataTable value={visitantes}>
                 <Column field="id" header="ID"></Column>
                 <Column field="nombre" header="Nombre"></Column>
-                <Column field="posicionx" header="Posicion x"></Column>
-                <Column field="posiciony" header="Posicion y"></Column>
+                <Column field="posicionx" header="Posición x"></Column>
+                <Column field="posiciony" header="Posición y"></Column>
                 <Column field="destinox" header="Destino x"></Column>
                 <Column field="destinoy" header="Destino y"></Column>
                 <Column field="idEnParque" header="ID en el parque"></Column>

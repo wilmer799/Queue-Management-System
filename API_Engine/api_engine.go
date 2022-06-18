@@ -49,6 +49,15 @@ type ciudad struct {
 	Nombre      string  `json:"nombre"`
 	Temperatura float32 `json:"temperatura"`
 }
+type atraccion struct {
+	ID           string `json:"id"`
+	TCiclo       int    `json:"tciclo"`
+	NVisitantes  int    `json:"nvisitantes"`
+	Posicionx    int    `json:"posicionx"`
+	Posiciony    int    `json:"posiciony"`
+	TiempoEspera int    `json:"tiempoEspera"`
+	Estado       string `json:"estado"`
+}
 
 func main() {
 
@@ -63,7 +72,7 @@ func main() {
 	mux.HandleFunc("/visitantes", getVisitantes).Methods("GET")
 	mux.HandleFunc("/mapa", getMapa).Methods("GET")
 	mux.HandleFunc("/ciudades", getCiudades).Methods("GET")
-
+	mux.HandleFunc("/atracciones", getAtracciones).Methods("GET")
 	// SERVIDOR
 	// Arrancamos el servidor https en una go routine
 	//go http.ListenAndServeTLS(":8081", "cert.pem", "key.pem", mux)
@@ -114,6 +123,14 @@ func SendDataGetVisitantes(rw http.ResponseWriter, data interface{}) {
 	response.Send()
 }
 
+/* Función que envía una respuesta a los clientes indicando que la consulta de las atracciones ha sido satisfactoria */
+func SendDataGetAtracciones(rw http.ResponseWriter, data interface{}) {
+	response := CreateDefaultResponse(rw)
+	response.Data = data
+	response.Message = "OK: Estado actual de las atracciones obtenido."
+	response.Send()
+}
+
 /* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
 func SendDataGetMapa(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
@@ -148,7 +165,7 @@ func SendNotFound(rw http.ResponseWriter) {
 /* Función manejadora para la obtención del estado de los visitantes */
 func getVisitantes(rw http.ResponseWriter, r *http.Request) {
 
-	log.Println("Petición de consulta de estado de los visitantes -> " + r.URL.Path)
+	log.Println("Petición de consulta del estado de los visitantes -> " + r.URL.Path)
 
 	visitantes := []visitante{}
 
@@ -184,7 +201,7 @@ func getVisitantes(rw http.ResponseWriter, r *http.Request) {
 /* Función manejadora para la obtención del estado del mapa del parque */
 func getMapa(rw http.ResponseWriter, r *http.Request) {
 
-	log.Println("Petición de consulta de estado del mapa -> " + r.URL.Path)
+	log.Println("Petición de consulta del estado del mapa -> " + r.URL.Path)
 
 	filasParque := []mapa{}
 
@@ -250,5 +267,41 @@ func getCiudades(rw http.ResponseWriter, r *http.Request) {
 
 	// CONTINUAR IMPLEMENTACIÓN
 	SendDataGetCiudades(rw, ciudades)
+
+}
+
+/* Función manejadora para la obtención del estado de los visitantes */
+func getAtracciones(rw http.ResponseWriter, r *http.Request) {
+
+	log.Println("Petición de consulta del estado de las atracciones -> " + r.URL.Path)
+
+	atracciones := []atraccion{}
+
+	// Accedemos a la base de datos, empezando por abrir la conexión
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/parque_atracciones")
+
+	// Comprobamos que no haya error al conectarse
+	if err != nil {
+		panic("Error al conectarse con la BD: " + err.Error())
+	}
+
+	defer db.Close() // Para que siempre se cierre la conexión con la BD al finalizar el programa
+
+	rows, err := db.Query("SELECT id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, estado from atraccion")
+	// Comprobamos que no se produzcan errores al hacer la consulta
+	if err != nil {
+		panic("Error al consultar el estado de los atracciones en la BD: " + err.Error())
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		a := atraccion{}
+		rows.Scan(&a.ID, &a.TCiclo, &a.NVisitantes, &a.Posicionx, &a.Posiciony, &a.TiempoEspera, &a.Estado)
+		atracciones = append(atracciones, a)
+	}
+
+	// CONTINUAR IMPLEMENTACIÓN
+	SendDataGetAtracciones(rw, atracciones)
 
 }
