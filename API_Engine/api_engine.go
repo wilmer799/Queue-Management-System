@@ -168,6 +168,8 @@ func getVisitantes(rw http.ResponseWriter, r *http.Request) {
 		panic("Error al consultar el estado de los visitantes en la BD: " + err.Error())
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		v := visitante{}
 		rows.Scan(&v.ID, &v.Nombre, &v.Posicionx, &v.Posiciony, &v.Destinox, &v.Destinoy, &v.IdEnParque, &v.UltimoEvento)
@@ -202,6 +204,8 @@ func getMapa(rw http.ResponseWriter, r *http.Request) {
 		panic("Error al consultar el estado del mapa en la BD: " + err.Error())
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		fila := mapa{}
 		rows.Scan(&fila.Fila, &fila.InfoParque)
@@ -235,6 +239,8 @@ func getCiudades(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic("Error al consultar la información de las ciudades: " + err.Error())
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		ciudad := ciudad{}
