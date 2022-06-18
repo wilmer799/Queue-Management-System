@@ -41,7 +41,8 @@ type visitante struct {
 func main() {
 
 	host := os.Args[1]
-	puerto := os.Args[2]
+	puertoSockets := os.Args[2]
+	puertoAPI := os.Args[3]
 
 	cert, err := tls.LoadX509KeyPair("cert/cert.pem", "cert/key.pem")
 	if err != nil {
@@ -56,10 +57,10 @@ func main() {
 	config.Rand = rand.Reader
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
-	fmt.Println("Arrancando el Registry, atendiendo vía sockets en " + host + ":" + puerto)
+	fmt.Println("Arrancando el Registry, atendiendo vía sockets en " + host + ":" + puertoSockets)
 
 	//l, err := net.Listen("tcp", host+":"+puerto) // CONEXIONES INSEGURAS
-	l, err := tls.Listen("tcp", host+":"+puerto, &config) // CONEXIONES SEGURAS
+	l, err := tls.Listen("tcp", host+":"+puertoSockets, &config) // CONEXIONES SEGURAS
 	if err != nil {
 		log.Fatal("Error escuchando", err.Error())
 	}
@@ -67,7 +68,7 @@ func main() {
 	// Cerramos el listener cuando se cierra la aplicación
 	defer l.Close()
 
-	go lanzarServidor(host) // El servidor funcionará de forma paralela y concurrente a los sockets
+	go lanzarServidor(host, puertoAPI) // El servidor funcionará de forma paralela y concurrente a los sockets
 
 	// Bucle infinito hasta la salida del programa
 	for {
@@ -362,14 +363,14 @@ func editarPerfil(rw http.ResponseWriter, r *http.Request) {
 // FIN BLOQUE HANDLERS
 
 /* Función que se encarga de arrancar el servidor API REST */
-func lanzarServidor(host string) {
+func lanzarServidor(host, puertoAPI string) {
 
 	// Comprobamos si los ficheros de certificado están disponibles
 	err := httpscerts.Check("cert.pem", "key.pem")
 
 	// Si no están disponibles, generamos unos nuevos
 	if err != nil {
-		err = httpscerts.Generate("cert.pem", "key.pem", host+":8081")
+		err = httpscerts.Generate("cert.pem", "key.pem", host+":"+puertoAPI)
 		if err != nil {
 			log.Fatal("ERROR: No se pudieron crear los certificados https.")
 		}
@@ -385,9 +386,9 @@ func lanzarServidor(host string) {
 
 	// SERVIDOR
 	// Arrancamos el servidor https en una go routine
-	go http.ListenAndServeTLS(":8081", "cert.pem", "key.pem", mux)
-	fmt.Println("Servidor API REST corriendo en https://" + host + ":8081")
-	//log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(redirectToHttps)))
+	go http.ListenAndServeTLS(host+":"+puertoAPI, "cert.pem", "key.pem", mux)
+	fmt.Println("Servidor API REST corriendo en https://" + host + ":" + puertoAPI)
+	//log.Fatal(http.ListenAndServe(":"+puertoAPI, http.HandlerFunc(redirectToHttps)))
 
 }
 
