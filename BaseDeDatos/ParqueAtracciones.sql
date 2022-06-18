@@ -53,6 +53,7 @@ INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspe
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion15", 13, 10, 4, 15, 74, "SDpark");
 INSERT INTO atraccion (id, tciclo, nvisitantes, posicionx, posiciony, tiempoEspera, parqueAtracciones) VALUES ("atraccion16", 19, 11, 15, 15, 23, "SDpark");
 
+INSERT INTO mapa (fila, infoParque) VALUES (0, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 INSERT INTO mapa (fila, infoParque) VALUES (1, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 INSERT INTO mapa (fila, infoParque) VALUES (2, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 INSERT INTO mapa (fila, infoParque) VALUES (3, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
@@ -72,7 +73,6 @@ INSERT INTO mapa (fila, infoParque) VALUES (16, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|
 INSERT INTO mapa (fila, infoParque) VALUES (17, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 INSERT INTO mapa (fila, infoParque) VALUES (18, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 INSERT INTO mapa (fila, infoParque) VALUES (19, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
-INSERT INTO mapa (fila, infoParque) VALUES (20, "|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|");
 
 
 delete from visitante;
