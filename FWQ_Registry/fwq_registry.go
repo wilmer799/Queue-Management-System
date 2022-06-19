@@ -138,9 +138,7 @@ func SendDataEditarPerfil(rw http.ResponseWriter, data interface{}) {
 	response.Send()
 }
 
-/* Función utilizada junto a la de abajo al momento de eliminar,
-recuperar una fila o todas las filas de la BD y
-que se produzcan errores para poder manejarlos. */
+/* Función utilizada junto a la de abajo cuando no se encuentra el recurso solicitado. */
 func (resp *Response) NotFound() {
 	resp.Status = http.StatusNotFound
 	resp.Message = "ERROR: Resource Not Found"
@@ -166,13 +164,13 @@ func SendYaExiste(rw http.ResponseWriter) {
 	response.Send()
 }
 
-/* Función que prepara la respuesta para cuando el id ya existe y se pide un registro sobre dicho id */
+/* Función que prepara la respuesta para cuando el id no existe y se pide una modificación sobre dicho id */
 func (resp *Response) NoExiste() {
 	resp.Status = http.StatusBadRequest
 	resp.Message = "ERROR: El id del visitante indicado no corresponde con uno existente"
 }
 
-/* Función que manda una respuesta indicando que el id indicado ya existe */
+/* Función que manda una respuesta indicando que el id indicado no existe */
 func SendNoExiste(rw http.ResponseWriter) {
 	response := CreateDefaultResponse(rw)
 	response.NoExiste()
