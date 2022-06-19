@@ -141,10 +141,6 @@ type ciudad struct {
 // Array de bytes aleatorios para la implementación de seguridad del kafka
 var iv = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
 
-/*
- * @Description : Función main de fwq_engine
- * @Author : Wilmer Fabricio Bravo Shuira
- */
 func main() {
 
 	IpKafka := os.Args[1]
@@ -177,8 +173,6 @@ func main() {
 	maxVisitantes, _ := strconv.Atoi(numeroVisitantes)
 	establecerMaxVisitantes(conn, maxVisitantes)
 
-	//Para empezar con el kafka
-	//ctx := context.Background()
 	go consumidorEngine(IpKafka, PuertoKafka, maxVisitantes, clave)
 
 	// Guardamos el mapa del parque en curso cada cierto tiempo
@@ -200,23 +194,6 @@ func main() {
 			}
 
 			productorMapa(IpKafka, PuertoKafka, mensajeJson)
-
-			/*for i := 0; i < len(visitantesDelEngine); i++ {
-
-				// Al cerrar el parque tenemos que sacar a los visitantes de este
-				sentenciaPreparada, err := conn.Prepare("UPDATE visitante SET dentroParque = 0, posicionx = 0, posiciony = 0, destinox = -1, destinoy = -1 WHERE id = ?")
-				if err != nil {
-					panic("Error al preparar la sentencia de modificación: " + err.Error())
-				}
-
-				// Ejecutar sentencia, un valor por cada '?'
-				_, err = sentenciaPreparada.Exec(visitantesDelEngine[i])
-				if err != nil {
-					panic("Error al expulsar a los visitantes del parque: " + err.Error())
-				}
-
-				sentenciaPreparada.Close()
-			}*/
 
 			fmt.Println()
 			fmt.Println("Engine apagado manualmente")
@@ -487,24 +464,12 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 		// Nos guardamos la posible contraseña recibida
 		var contraseña string = v.Password
 
-		// Comprobamos si lo enviado son credenciales de acceso en cuyo caso se trata de una petición de login
-		//results, err := db.Query("SELECT * FROM visitante WHERE id = ? and contraseña = ?", v.ID, v.Password)
-
 		// Obtenemos el hash de la contraseña del visitante en caso de que el ID coincida con alguno almacenado en la BD
 		results := db.QueryRow("SELECT contraseña FROM visitante WHERE id = ?", v.ID)
-		/*if err != nil {
-			fmt.Println("Error al hacer la consulta sobre la contraseña para el login: " + err.Error())
-		}*/
 
 		var hash string
 
-		// Si existe una contraseña almacenada para el id recibido
-		//if results.Next() {
 		results.Scan(&hash)
-		//}
-
-		//fmt.Println("Contraseña almacenada: ", hash)
-		//fmt.Println("Contraseña recibida: ", contraseña)
 
 		var respuesta string = ""
 
@@ -621,17 +586,6 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 				panic("Error al actualizar el estado del visitante respecto al parque: " + err.Error())
 			}
 
-			/*encontrado := false
-
-			for i := 0; i < len(visitantesDelEngine) && !encontrado; i++ {
-
-				if visitantesDelEngine[i] == v.ID {
-					visitantesDelEngine = remove(visitantesDelEngine, i)
-					encontrado = true
-				}
-
-			}*/
-
 			sentenciaPreparada.Close()
 
 			RegistroLog(db, IpKafka+":"+PuertoKafka, v.ID, "Baja", "El visitante "+v.ID+" ha salido del parque") // Registramos el evento de log
@@ -654,8 +608,6 @@ func consumidorEngine(IpKafka, PuertoKafka string, maxVisitantes int, clave stri
 				productorLogin(IpKafka, PuertoKafka, respuestaCifrada)
 			}
 		}
-
-		//results.Close()
 
 	}
 
@@ -1176,7 +1128,7 @@ func actualizarClimaParque(numerosCiudadesElegidas string, atracciones []atracci
 
 	var ciudades []ciudad
 
-	for i, nombreCiudad := range ciudadesElegidas { //Obtenemos el valor de ciudades en s y lo pasamos a la función obtener obtenerClimaCiudad
+	for i, nombreCiudad := range ciudadesElegidas {
 
 		city := ciudad{}
 
@@ -1485,7 +1437,7 @@ func obtenerClimaCiudad(nombreCiudad string) float32 {
 
 	clienteHttp := &http.Client{}
 
-	// Cargamos la clave de cifrado AES del archivo
+	// Cargamos el apikey desde fichero para consumir la api de OpenWeather
 	fichero, err := ioutil.ReadFile("apikey.txt")
 	if err != nil {
 		log.Fatal("Error al leer el archivo de la api key de OpenWeather: ", err)

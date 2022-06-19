@@ -1074,6 +1074,8 @@ func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 			}
 			productorMovimientos(IpBroker, PuertoBroker, peticionMovimientoCifrada)
 
+			time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
+
 			/*go func() {
 				var respuesta string
 				fmt.Println("Desea salir del parque (si/no): ")
@@ -1087,8 +1089,6 @@ func consumidorMapa(IpBroker, PuertoBroker, clave string) {
 					os.Exit(1)
 				}
 			}()*/
-
-			time.Sleep(1 * time.Second) // Mandamos el movimiento del visitante cada segundo
 
 		}
 
