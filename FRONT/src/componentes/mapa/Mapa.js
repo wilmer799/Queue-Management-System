@@ -18,7 +18,7 @@ class Mapa extends React.Component {
      * Función componentDidMount que sirve para cargar el mapa
      */
     componentDidMount() {
-        fetch("http://localhost:8082/mapa")
+        fetch("http://192.168.43.50:8082/mapa")
             .then(response => response.json())
             .then(mapaJson => this.setState( {
                 mapa: mapaJson.data,
