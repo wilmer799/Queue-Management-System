@@ -18,7 +18,7 @@ class Visitantes extends React.Component {
      * ComponentDidMount que carga la información de los visitantes
      */
     componentDidMount() {
-        fetch("http://localhost:8082/visitantes")
+        fetch("http://192.168.43.50:8082/visitantes")
             .then(response => response.json())
             .then(visitantesJson => this.setState( {
                 visitantes: visitantesJson.data,

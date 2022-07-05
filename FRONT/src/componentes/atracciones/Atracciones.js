@@ -18,7 +18,7 @@ class Atracciones extends React.Component {
      * ComponentDidMount que carga la información de las atracciones
      */
     componentDidMount() {
-        fetch("http://localhost:8082/atracciones")
+        fetch("http://192.168.43.50:8082/atracciones")
             .then(response => response.json())
             .then(visitantesJson => this.setState( {
                 visitantes: visitantesJson.data,
