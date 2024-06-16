@@ -1,6 +1,6 @@
 # Fun with Queues
 
-![Microservices System Architecture View](/images/SystemArchitecture.png "System Architecture View"))
+![Microservices System Architecture View](/images/SystemArchitecture.png "System Architecture View")
 
 ## Descripción
 
