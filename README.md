@@ -1,5 +1,7 @@
 # Fun with Queues
 
+![Microservices System Architecture View](/images/SystemArchitecture.png "System Architecture View"))
+
 ## Descripción
 
 **Fun with Queues** es un sistema de gestión de colas para parques temáticos. El proyecto simula la gestión de colas y el flujo de visitantes en un parque de atracciones, utilizando múltiples microservicios para manejar diferentes aspectos como el registro de visitantes, la gestión de atracciones, la monitorización de tiempos de espera y la actualización del mapa del parque en tiempo real.
