@@ -40,6 +40,10 @@ type visitante struct {
 
 func main() {
 
+	if len(os.Args) < 4 {
+		log.Fatal("Error: Insufficient command-line arguments. Expected host, puertoSockets, and puertoAPI.")
+	}
+
 	host := os.Args[1]
 	puertoSockets := os.Args[2]
 	puertoAPI := os.Args[3]
@@ -52,9 +56,8 @@ func main() {
 	config := tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ClientAuth:   tls.RequireAnyClientCert,
+		Rand:         rand.Reader, // Configuramos el generador de números aleatorios criptográficamente seguros
 	}
-
-	config.Rand = rand.Reader // Configuramos el generador de números aleatorios criptográficamente seguros
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el Registry, atendiendo vía sockets en " + host + ":" + puertoSockets)
@@ -66,7 +69,11 @@ func main() {
 	}
 
 	// Cerramos el listener cuando se cierra la aplicación
-	defer l.Close()
+	defer func() {
+		log.Println("Shutting down the server...")
+		l.Close()
+		log.Println("Server gracefully shut down.")
+	}()
 
 	go lanzarServidor(host, puertoAPI) // El servidor funcionará de forma paralela y concurrente a los sockets
 
