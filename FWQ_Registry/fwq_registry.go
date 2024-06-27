@@ -54,7 +54,7 @@ func main() {
 		ClientAuth:   tls.RequireAnyClientCert,
 	}
 
-	config.Rand = rand.Reader
+	config.Rand = rand.Reader // Configuramos el generador de números aleatorios criptográficamente seguros
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el Registry, atendiendo vía sockets en " + host + ":" + puertoSockets)
@@ -177,8 +177,11 @@ func SendNoExiste(rw http.ResponseWriter) {
 	response.Send()
 }
 
-/* Función utilizada junto a la de abajo al momento de insertar o
-actualizar una fila de la BD y que se produzcan errores para poder manejarlos. */
+/*
+	Función utilizada junto a la de abajo al momento de insertar o
+
+actualizar una fila de la BD y que se produzcan errores para poder manejarlos.
+*/
 func (resp *Response) UnprocessableEntity() {
 	resp.Status = http.StatusUnprocessableEntity
 	resp.Message = "ERROR: UnprocessableEntity Not Found"
@@ -448,7 +451,7 @@ func manejoConexion(conexion net.Conn) {
 
 	opcionElegida := strings.TrimSpace(string(opcion))
 
-	// Lectura del id del visistante hasta final de línea
+	// Lectura del id del visitante hasta final de línea
 	id, err := bufio.NewReader(conexion).ReadBytes('\n')
 
 	// Cerramos la conexión de los clientes que se han desconectado
