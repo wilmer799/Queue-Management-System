@@ -40,6 +40,10 @@ type visitante struct {
 
 func main() {
 
+	if len(os.Args) < 4 {
+		log.Fatal("Error: Insufficient command-line arguments. Expected host, puertoSockets, and puertoAPI.")
+	}
+
 	host := os.Args[1]
 	puertoSockets := os.Args[2]
 	puertoAPI := os.Args[3]
@@ -52,9 +56,8 @@ func main() {
 	config := tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ClientAuth:   tls.RequireAnyClientCert,
+		Rand:         rand.Reader, // Configuramos el generador de números aleatorios criptográficamente seguros
 	}
-
-	config.Rand = rand.Reader
 
 	// Arrancamos el servidor y atendemos conexiones entrantes
 	fmt.Println("Arrancando el Registry, atendiendo vía sockets en " + host + ":" + puertoSockets)
@@ -66,7 +69,11 @@ func main() {
 	}
 
 	// Cerramos el listener cuando se cierra la aplicación
-	defer l.Close()
+	defer func() {
+		log.Println("Shutting down the server...")
+		l.Close()
+		log.Println("Server gracefully shut down.")
+	}()
 
 	go lanzarServidor(host, puertoAPI) // El servidor funcionará de forma paralela y concurrente a los sockets
 
@@ -116,16 +123,23 @@ func (resp *Response) Send() {
 	resp.responseWrite.WriteHeader(resp.Status)
 
 	// Marshall devuelve 2 valores: Los valores transformados en tipo byte y un error
-	output, _ := json.Marshal(&resp) // Para responder con json
-	//output, _ := xml.Marshal(&resp) // Para responder con xml
-	//output, _ := yaml.Marshal(&resp) // Para responder con yaml
+	output, err := json.Marshal(resp) // Para responder con json
+	if err != nil {
+		// Handle the error, for example:
+		log.Println("Error marshalling response data:", err)
+		// Set an error response
+		resp.Status = http.StatusInternalServerError
+		resp.Message = "Internal Server Error"
+		resp.Send()
+		return
+	}
 	fmt.Fprintln(resp.responseWrite, string(output))
 }
 
 /* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
 func SendDataCrearPerfil(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
-	//response.Data = data
+	response.Data = data
 	response.Message = "OK: Visitante registrado correctamente"
 	response.Send()
 }
@@ -133,7 +147,7 @@ func SendDataCrearPerfil(rw http.ResponseWriter, data interface{}) {
 /* Función que envía una respuesta a los clientes indicando que el registro ha sido satisfactorio */
 func SendDataEditarPerfil(rw http.ResponseWriter, data interface{}) {
 	response := CreateDefaultResponse(rw)
-	//response.Data = data
+	response.Data = data
 	response.Message = "OK: Visitante modificado correctamente"
 	response.Send()
 }
@@ -153,7 +167,7 @@ func SendNotFound(rw http.ResponseWriter) {
 
 /* Función que prepara la respuesta para cuando el id ya existe y se pide un registro sobre dicho id */
 func (resp *Response) YaExiste() {
-	resp.Status = http.StatusBadRequest
+	resp.Status = http.StatusConflict
 	resp.Message = "ERROR: El visitante ya estaba registrado"
 }
 
@@ -177,8 +191,10 @@ func SendNoExiste(rw http.ResponseWriter) {
 	response.Send()
 }
 
-/* Función utilizada junto a la de abajo al momento de insertar o
-actualizar una fila de la BD y que se produzcan errores para poder manejarlos. */
+/*
+Función utilizada junto a la de abajo al momento de insertar o
+actualizar una fila de la BD y que se produzcan errores para poder manejarlos.
+*/
 func (resp *Response) UnprocessableEntity() {
 	resp.Status = http.StatusUnprocessableEntity
 	resp.Message = "ERROR: UnprocessableEntity Not Found"
@@ -448,7 +464,7 @@ func manejoConexion(conexion net.Conn) {
 
 	opcionElegida := strings.TrimSpace(string(opcion))
 
-	// Lectura del id del visistante hasta final de línea
+	// Lectura del id del visitante hasta final de línea
 	id, err := bufio.NewReader(conexion).ReadBytes('\n')
 
 	// Cerramos la conexión de los clientes que se han desconectado
