@@ -32,12 +32,11 @@ func main() {
 
 	// Comprobamos que el id de la atracción sea válido
 	valido := false
-	for i := 1; !valido && i < 17; i++ {
-
+	for i := 1; i < 17; i++ {
 		if idAtraccion == "atraccion"+strconv.Itoa(i) {
 			valido = true
+			break
 		}
-
 	}
 
 	// Si el id pasado por parámetro no es válido
@@ -161,7 +160,7 @@ func crearTopic(IpBroker, PuertoBroker string) {
 	defer controllerConn.Close()
 	//Configuración del topic mapa-visitantes
 	topicConfigs := []kafka.TopicConfig{
-		kafka.TopicConfig{
+		{
 			Topic:             topic,
 			NumPartitions:     1,
 			ReplicationFactor: 1,
