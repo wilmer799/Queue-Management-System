@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 	"strconv"
 	"time"
 
@@ -83,8 +82,8 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		Topic:   "sensor-servidorTiempos",
 	})
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	c := make(chan os.Signal, 1)   // Create a channel of type os.Signal with a buffer size of 1
+	signal.Notify(c, os.Interrupt) // The os.Interrupt signal is registered to be sent to channel c
 	go func() {
 		for sig := range c {
 
@@ -103,7 +102,6 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 
 			fmt.Println()
 			fmt.Println("Sensor desconectado manualmente")
-			pprof.StopCPUProfile()
 			os.Exit(1)
 		}
 	}()
