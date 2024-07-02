@@ -51,17 +51,19 @@ func main() {
 	s.IdAtraccion = idAtraccion
 
 	// Generamos un número aleatorio de personas inicialmente en la cola de la atracción
-	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+	seed := time.Now().UnixNano()       // Generate a seed based on the current time in nanoseconds
+	r := rand.New(rand.NewSource(seed)) // Create a new random number generator using the seed
 	min := 0
 	max := 60
-	s.Personas = (rand.Intn(max-min+1) + min)
+	s.Personas = r.Intn(max-min+1) + min
 	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " personas en cola\n")
 
 	// Generamos un tiempo aleatorio entre 1 y 3 segundos
-	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+	seed = time.Now().UnixNano()       // Generate a seed based on the current time in nanoseconds
+	r = rand.New(rand.NewSource(seed)) // Create a new random number generator using the seed
 	min = 1
 	max = 3
-	tiempoAleatorio := (rand.Intn(max-min+1) + min)
+	tiempoAleatorio := r.Intn(max-min+1) + min
 
 	// Envíamos al servidor de tiempos el número de personas que se encuentra en la cola de la atracción
 	enviaInformacion(s, brokerAddress, tiempoAleatorio)
@@ -119,10 +121,11 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		}
 
 		// Generamos un número aleatorio de personas en cola
-		rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+		seed := time.Now().UnixNano()       // Generate a seed based on the current time in nanoseconds
+		r := rand.New(rand.NewSource(seed)) // Create a new random number generator using the seed
 		min := 0
 		max := 60
-		s.Personas = (rand.Intn(max-min+1) + min)
+		s.Personas = r.Intn(max-min+1) + min
 
 		// Cada 1 a 3 segundos el sensor envía la información al servidor de tiempos
 		time.Sleep(time.Duration(tiempoAleatorio) * time.Second)
@@ -150,15 +153,17 @@ func crearTopic(IpBroker, PuertoBroker string) {
 	if err != nil {
 		panic(err.Error())
 	}
+
 	//Creamos una variable del tipo kafka.Conn
 	var controllerConn *kafka.Conn
+
 	//Le damos los valores necesarios para crear el controllerConn
 	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer controllerConn.Close()
-	//Configuración del topic mapa-visitantes
+
 	topicConfigs := []kafka.TopicConfig{
 		{
 			Topic:             topic,
