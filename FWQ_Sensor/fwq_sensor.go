@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 	"strconv"
 	"time"
 
@@ -22,6 +21,10 @@ type sensor struct {
 
 func main() {
 
+	if len(os.Args) < 4 {
+		panic("Error: Insufficient command line arguments. Expected at least 4 arguments.")
+	}
+
 	ipBrokerGestorColas := os.Args[1]
 
 	puertoBrokerGestorColas := os.Args[2]
@@ -32,12 +35,11 @@ func main() {
 
 	// Comprobamos que el id de la atracción sea válido
 	valido := false
-	for i := 1; !valido && i < 17; i++ {
-
+	for i := 1; i < 17; i++ {
 		if idAtraccion == "atraccion"+strconv.Itoa(i) {
 			valido = true
+			break
 		}
-
 	}
 
 	// Si el id pasado por parámetro no es válido
@@ -52,17 +54,19 @@ func main() {
 	s.IdAtraccion = idAtraccion
 
 	// Generamos un número aleatorio de personas inicialmente en la cola de la atracción
-	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+	seed := time.Now().UnixNano()       // Generate a seed based on the current time in nanoseconds
+	r := rand.New(rand.NewSource(seed)) // Create a new random number generator using the seed
 	min := 0
 	max := 60
-	s.Personas = (rand.Intn(max-min+1) + min)
+	s.Personas = r.Intn(max-min+1) + min
 	fmt.Println("Sensor creado para la atracción (" + idAtraccion + ") en la que inicialmente hay " + strconv.Itoa(s.Personas) + " personas en cola\n")
 
 	// Generamos un tiempo aleatorio entre 1 y 3 segundos
-	rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+	seed = time.Now().UnixNano()       // Generate a seed based on the current time in nanoseconds
+	r = rand.New(rand.NewSource(seed)) // Create a new random number generator using the seed
 	min = 1
 	max = 3
-	tiempoAleatorio := (rand.Intn(max-min+1) + min)
+	tiempoAleatorio := r.Intn(max-min+1) + min
 
 	// Envíamos al servidor de tiempos el número de personas que se encuentra en la cola de la atracción
 	enviaInformacion(s, brokerAddress, tiempoAleatorio)
@@ -82,8 +86,8 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		Topic:   "sensor-servidorTiempos",
 	})
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	c := make(chan os.Signal, 1)   // Create a channel of type os.Signal with a buffer size of 1
+	signal.Notify(c, os.Interrupt) // The os.Interrupt signal is registered to be sent to channel c
 	go func() {
 		for sig := range c {
 
@@ -102,7 +106,6 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 
 			fmt.Println()
 			fmt.Println("Sensor desconectado manualmente")
-			pprof.StopCPUProfile()
 			os.Exit(1)
 		}
 	}()
@@ -120,10 +123,11 @@ func enviaInformacion(s *sensor, brokerAddress string, tiempoAleatorio int) {
 		}
 
 		// Generamos un número aleatorio de personas en cola
-		rand.Seed(time.Now().UnixNano()) // Utilizamos la función Seed(semilla) para inicializar la fuente predeterminada al requerir un comportamiento diferente para cada ejecución
+		seed := time.Now().UnixNano()       // Generate a seed based on the current time in nanoseconds
+		r := rand.New(rand.NewSource(seed)) // Create a new random number generator using the seed
 		min := 0
 		max := 60
-		s.Personas = (rand.Intn(max-min+1) + min)
+		s.Personas = r.Intn(max-min+1) + min
 
 		// Cada 1 a 3 segundos el sensor envía la información al servidor de tiempos
 		time.Sleep(time.Duration(tiempoAleatorio) * time.Second)
@@ -151,17 +155,19 @@ func crearTopic(IpBroker, PuertoBroker string) {
 	if err != nil {
 		panic(err.Error())
 	}
+
 	//Creamos una variable del tipo kafka.Conn
 	var controllerConn *kafka.Conn
+
 	//Le damos los valores necesarios para crear el controllerConn
 	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer controllerConn.Close()
-	//Configuración del topic mapa-visitantes
+
 	topicConfigs := []kafka.TopicConfig{
-		kafka.TopicConfig{
+		{
 			Topic:             topic,
 			NumPartitions:     1,
 			ReplicationFactor: 1,
