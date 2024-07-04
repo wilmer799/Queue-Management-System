@@ -21,6 +21,10 @@ type sensor struct {
 
 func main() {
 
+	if len(os.Args) < 4 {
+		panic("Error: Insufficient command line arguments. Expected at least 4 arguments.")
+	}
+
 	ipBrokerGestorColas := os.Args[1]
 
 	puertoBrokerGestorColas := os.Args[2]
